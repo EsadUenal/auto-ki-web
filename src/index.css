@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a3a transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #3a3a3a; border-radius: 2px; }
+}
+
+/* ---- Streaming-Cursor ---- */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink > *:last-child::after {
+  content: '▌';
+  animation: blink 1s step-start infinite;
+  font-size: 0.85em;
+  margin-left: 1px;
+  color: #9ca3af;
+  font-style: normal;
+}
+
+/* ---- Splash-Screen Animationen ---- */
+@keyframes splash-streak {
+  0%   { transform: translateX(-110%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 0.5; }
+  100% { transform: translateX(110%); opacity: 0; }
+}
+
+
+/* ---- Markdown / Chat-Prose ---- */
+/* Eigenständige Styles ohne @tailwindcss/typography dependency */
+.chat-prose {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: #1f2937;
+}
+
+.chat-prose > * + * {
+  margin-top: 0.875em;
+}
+
+/* Überschriften mit Abstand */
+.chat-prose h1,
+.chat-prose h2,
+.chat-prose h3,
+.chat-prose h4 {
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.35;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+}
+.chat-prose h1 { font-size: 1.2em; }
+.chat-prose h2 { font-size: 1.1em; }
+.chat-prose h3 { font-size: 1em; }
+.chat-prose h4 { font-size: 0.95em; color: #374151; }
+
+/* Erster Heading braucht keinen oberen Abstand */
+.chat-prose > h1:first-child,
+.chat-prose > h2:first-child,
+.chat-prose > h3:first-child {
+  margin-top: 0;
+}
+
+/* Absätze */
+.chat-prose p {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+.chat-prose p:last-child { margin-bottom: 0; }
+
+/* Listen */
+.chat-prose ul,
+.chat-prose ol {
+  padding-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.75em;
+}
+.chat-prose ul { list-style-type: disc; }
+.chat-prose ol { list-style-type: decimal; }
+.chat-prose li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  padding-left: 0.25em;
+}
+.chat-prose li > p { margin-bottom: 0.25em; }
+
+/* Verschachtelte Listen */
+.chat-prose ul ul,
+.chat-prose ol ul,
+.chat-prose ul ol,
+.chat-prose ol ol {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+/* Fett / Kursiv */
+.chat-prose strong { font-weight: 600; color: #111827; }
+.chat-prose em { font-style: italic; }
+
+/* Inline Code */
+.chat-prose code:not(pre > code) {
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.82em;
+  background: #f3f4f6;
+  color: #111827;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Code-Block */
+.chat-prose pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 10px;
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  font-size: 0.82em;
+  line-height: 1.6;
+  margin: 1em 0;
+}
+.chat-prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Blockquote */
+.chat-prose blockquote {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 1em;
+  color: #6b7280;
+  margin: 1em 0;
+  font-style: italic;
+}
+
+/* Trennlinie */
+.chat-prose hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5em 0;
+}
+
+/* Tabellen */
+.chat-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88em;
+  margin: 1em 0;
+}
+.chat-prose thead {
+  background: #f9fafb;
+}
+.chat-prose th {
+  font-weight: 600;
+  text-align: left;
+  padding: 0.6em 0.9em;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+.chat-prose td {
+  padding: 0.6em 0.9em;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+}
+.chat-prose tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+/* Links */
+.chat-prose a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-prose a:hover { color: #1d4ed8; }

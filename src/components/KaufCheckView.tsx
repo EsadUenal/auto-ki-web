@@ -1,0 +1,245 @@
+import { useState } from 'react'
+import {
+  ShoppingCart,
+  ImagePlus,
+  X,
+  Loader2,
+  CheckCircle,
+  MinusCircle,
+  XCircle,
+} from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { runKaufCheck } from '../api/client'
+import SourceBadge from './SourceBadge'
+import type { KaufCheckForm, KaufCheckResult } from '../types'
+
+const EMPTY: KaufCheckForm = {
+  marke: '',
+  modell: '',
+  baujahr: new Date().getFullYear() - 3,
+  kilometerstand: 0,
+  motor: '',
+  ausstattung: '',
+  preis: 0,
+  beschreibung: '',
+}
+
+export default function KaufCheckView() {
+  const [form, setForm] = useState<KaufCheckForm>(EMPTY)
+  const [screenshot, setScreenshot] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<KaufCheckResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  function set<K extends keyof KaufCheckForm>(key: K, value: KaufCheckForm[K]) {
+    setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    try {
+      const res = await runKaufCheck(form, screenshot)
+      setResult(res)
+      setTimeout(
+        () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
+        100
+      )
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+            <ShoppingCart size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Kauf-Check</h1>
+            <p className="text-sm text-gray-500">Inserat prüfen — fair, Risiken, Empfehlung</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
+            <h2 className="font-medium text-gray-800">Fahrzeugdaten</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Marke" required>
+                <input className={inputCls} value={form.marke}
+                  onChange={(e) => set('marke', e.target.value)} placeholder="z. B. BMW" required />
+              </Field>
+              <Field label="Modell" required>
+                <input className={inputCls} value={form.modell}
+                  onChange={(e) => set('modell', e.target.value)} placeholder="z. B. 320d" required />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Baujahr" required>
+                <input className={inputCls} type="number" min={1980} max={new Date().getFullYear() + 1}
+                  value={form.baujahr} onChange={(e) => set('baujahr', parseInt(e.target.value))} required />
+              </Field>
+              <Field label="Kilometerstand" required>
+                <div className="relative">
+                  <input className={inputCls + ' pr-10'} type="number" min={0}
+                    value={form.kilometerstand || ''}
+                    onChange={(e) => set('kilometerstand', parseInt(e.target.value) || 0)}
+                    placeholder="0" required />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">km</span>
+                </div>
+              </Field>
+            </div>
+            <Field label="Motor / Antrieb">
+              <input className={inputCls} value={form.motor}
+                onChange={(e) => set('motor', e.target.value)}
+                placeholder="z. B. 2.0 TDI 150 PS, Diesel" />
+            </Field>
+            <Field label="Ausstattung">
+              <textarea className={inputCls + ' resize-none'} rows={2} value={form.ausstattung}
+                onChange={(e) => set('ausstattung', e.target.value)}
+                placeholder="z. B. Navi, Sitzheizung, Panoramadach (kommagetrennt)" />
+            </Field>
+            <Field label="Angebotspreis" required>
+              <div className="relative">
+                <input className={inputCls + ' pr-8'} type="number" min={0}
+                  value={form.preis || ''}
+                  onChange={(e) => set('preis', parseInt(e.target.value) || 0)}
+                  placeholder="0" required />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">€</span>
+              </div>
+            </Field>
+            <Field label="Inserat-Text / Beschreibung">
+              <textarea className={inputCls + ' resize-none'} rows={4} value={form.beschreibung}
+                onChange={(e) => set('beschreibung', e.target.value)}
+                placeholder="Text aus dem Inserat einfügen — je mehr, desto besser…" />
+            </Field>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <h2 className="font-medium text-gray-800 mb-4">Inserat-Screenshot (optional)</h2>
+            {screenshot ? (
+              <div className="relative inline-block">
+                <img src={screenshot} className="max-h-40 rounded-xl border border-gray-200" alt="Screenshot" />
+                <button type="button" onClick={() => setScreenshot(null)}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center">
+                  <X size={13} className="text-white" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-8 cursor-pointer hover:border-gray-300 transition-colors">
+                <ImagePlus size={24} className="text-gray-400" />
+                <span className="text-sm text-gray-500">Screenshot hochladen</span>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    const r = new FileReader()
+                    r.onload = () => setScreenshot(r.result as string)
+                    r.readAsDataURL(f)
+                  }} />
+              </label>
+            )}
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{error}</div>
+          )}
+
+          <button type="submit" disabled={loading}
+            className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
+            {loading
+              ? <><Loader2 size={16} className="animate-spin" /> Analysiere Inserat…</>
+              : <><ShoppingCart size={16} /> Kauf-Check starten</>}
+          </button>
+        </form>
+
+        {result && <KaufCheckReport result={result} />}
+      </div>
+    </div>
+  )
+}
+
+function KaufCheckReport({ result }: { result: KaufCheckResult }) {
+  const empf = result.empfehlung?.toLowerCase()
+
+  const recStyle = empf === 'kaufen'
+    ? { bg: 'bg-green-50 border-green-200', icon: <CheckCircle size={24} className="text-green-600 shrink-0 mt-0.5" />, label: 'text-green-700' }
+    : empf === 'verhandeln'
+      ? { bg: 'bg-yellow-50 border-yellow-200', icon: <MinusCircle size={24} className="text-yellow-600 shrink-0 mt-0.5" />, label: 'text-yellow-700' }
+      : { bg: 'bg-red-50 border-red-200', icon: <XCircle size={24} className="text-red-600 shrink-0 mt-0.5" />, label: 'text-red-700' }
+
+  return (
+    <div id="kauf-result" className="mt-8 space-y-4">
+      <h2 className="font-semibold text-gray-900 text-lg">Ergebnis</h2>
+
+      {/* Empfehlung Banner */}
+      <div className={`rounded-2xl p-5 border flex items-start gap-4 ${recStyle.bg}`}>
+        {recStyle.icon}
+        <div>
+          <p className={`font-semibold text-sm uppercase tracking-wide mb-1 ${recStyle.label}`}>
+            Empfehlung: {result.empfehlung}
+          </p>
+          {result.preis_bewertung && (
+            <p className={`text-sm font-medium mb-1 ${recStyle.label}`}>
+              Preisbewertung: {result.preis_bewertung.replace('_', ' ')}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Marktpreis */}
+      {(result.marktpreis_min || result.marktpreis_max) && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Marktpreis-Einschätzung</p>
+          <p className="text-xl font-semibold text-gray-900">
+            {result.marktpreis_min?.toLocaleString('de-DE')} € – {result.marktpreis_max?.toLocaleString('de-DE')} €
+          </p>
+          {result.baureihe_erkannt && (
+            <p className="text-xs text-gray-400 mt-1">Baureihe: {result.baureihe_erkannt}</p>
+          )}
+        </div>
+      )}
+
+      {/* Bericht (Markdown) */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht</p>
+        <div className="chat-prose">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.bericht}</ReactMarkdown>
+        </div>
+      </div>
+
+      {/* Quellen-Badge */}
+      <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
+    </div>
+  )
+}
+
+const inputCls =
+  'w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition-colors placeholder-gray-400'
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        {label}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
