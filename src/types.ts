@@ -18,9 +18,21 @@ export interface Message {
 
 export interface Conversation {
   id: string
+  backendId?: number   // gesetzt sobald die Konversation in der DB existiert
   title: string
   messages: Message[]
   createdAt: Date
+}
+
+// ---- Gespeicherte Checks ----
+export interface SavedKaufCheck {
+  eingabe: KaufCheckForm
+  ergebnis: KaufCheckResult
+}
+
+export interface SavedVerkaufsCheck {
+  eingabe: VerkaufsCheckForm
+  ergebnis: VerkaufsCheckResult
 }
 
 // ---- Kauf-Check ----

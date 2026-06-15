@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { TrendingUp, ImagePlus, X, Loader2, ChevronRight, Clock } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { TrendingUp, ImagePlus, X, Loader2, Clock, History } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { runVerkaufsCheck } from '../api/client'
+import { runVerkaufsCheck, apiSaveCheck } from '../api/client'
 import SourceBadge from './SourceBadge'
-import type { VerkaufsCheckForm, VerkaufsCheckResult } from '../types'
+import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
 const ZUSTAND_OPTIONS = [
   { value: 'sehr_gut', label: 'Sehr gut', desc: 'Kaum Gebrauchsspuren, gepflegt' },
@@ -23,12 +23,35 @@ const EMPTY: VerkaufsCheckForm = {
   zustand: 'gut',
 }
 
-export default function VerkaufsCheckView() {
+interface VerkaufsCheckViewProps {
+  savedCheck?: SavedVerkaufsCheck | null
+  onCheckSaved?: () => void
+  onClearSaved?: () => void
+}
+
+export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSaved }: VerkaufsCheckViewProps) {
   const [form, setForm] = useState<VerkaufsCheckForm>(EMPTY)
   const [images, setImages] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VerkaufsCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Gespeicherten Check laden
+  useEffect(() => {
+    if (savedCheck) {
+      setForm(savedCheck.eingabe)
+      setResult(savedCheck.ergebnis)
+      setError(null)
+      setTimeout(
+        () => document.getElementById('verk-result')?.scrollIntoView({ behavior: 'smooth' }),
+        100
+      )
+    } else {
+      setForm(EMPTY)
+      setResult(null)
+      setError(null)
+    }
+  }, [savedCheck])
 
   function set<K extends keyof VerkaufsCheckForm>(key: K, value: VerkaufsCheckForm[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -55,6 +78,11 @@ export default function VerkaufsCheckView() {
         () => document.getElementById('verk-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
+      // Im Backend speichern (fire & forget — Fotos werden nicht gespeichert)
+      const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
+      apiSaveCheck('verkauf', titel, form, res)
+        .then(() => onCheckSaved?.())
+        .catch(() => {})
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -74,6 +102,22 @@ export default function VerkaufsCheckView() {
             <p className="text-sm text-gray-500">Dein Auto bewerten — Preisspanne und Tipps</p>
           </div>
         </div>
+
+        {/* Banner für gespeicherten Check */}
+        {savedCheck && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-green-700">
+              <History size={15} />
+              <span>Gespeicherter Check</span>
+            </div>
+            <button
+              onClick={onClearSaved}
+              className="text-sm font-medium text-green-600 hover:text-green-800 transition-colors whitespace-nowrap"
+            >
+              Neue Prüfung →
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
@@ -132,37 +176,41 @@ export default function VerkaufsCheckView() {
             </Field>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="font-medium text-gray-800 mb-1">Fotos (optional)</h2>
-            <p className="text-xs text-gray-500 mb-4">Fotos helfen bei der Zustandsbewertung.</p>
-            <div className="flex flex-wrap gap-2">
-              {images.map((img, i) => (
-                <div key={i} className="relative">
-                  <img src={img} className="w-20 h-20 object-cover rounded-xl border border-gray-200" alt={`Foto ${i + 1}`} />
-                  <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center">
-                    <X size={11} className="text-white" />
-                  </button>
-                </div>
-              ))}
-              <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition-colors">
-                <ImagePlus size={18} className="text-gray-400" />
-                <span className="text-xs text-gray-400 mt-1">Foto</span>
-                <input type="file" accept="image/*" multiple className="hidden" onChange={addImages} />
-              </label>
+          {!savedCheck && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="font-medium text-gray-800 mb-1">Fotos (optional)</h2>
+              <p className="text-xs text-gray-500 mb-4">Fotos helfen bei der Zustandsbewertung.</p>
+              <div className="flex flex-wrap gap-2">
+                {images.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img} className="w-20 h-20 object-cover rounded-xl border border-gray-200" alt={`Foto ${i + 1}`} />
+                    <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center">
+                      <X size={11} className="text-white" />
+                    </button>
+                  </div>
+                ))}
+                <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition-colors">
+                  <ImagePlus size={18} className="text-gray-400" />
+                  <span className="text-xs text-gray-400 mt-1">Foto</span>
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={addImages} />
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{error}</div>
           )}
 
-          <button type="submit" disabled={loading}
-            className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
-            {loading
-              ? <><Loader2 size={16} className="animate-spin" /> Berechne Preisspanne…</>
-              : <><TrendingUp size={16} /> Verkaufswert ermitteln</>}
-          </button>
+          {!savedCheck && (
+            <button type="submit" disabled={loading}
+              className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
+              {loading
+                ? <><Loader2 size={16} className="animate-spin" /> Berechne Preisspanne…</>
+                : <><TrendingUp size={16} /> Verkaufswert ermitteln</>}
+            </button>
+          )}
         </form>
 
         {result && <VerkaufsReport result={result} />}
@@ -178,7 +226,6 @@ function VerkaufsReport({ result }: { result: VerkaufsCheckResult }) {
     <div id="verk-result" className="mt-8 space-y-4">
       <h2 className="font-semibold text-gray-900 text-lg">Ergebnis</h2>
 
-      {/* Preisspanne — prominent */}
       {hasPreise && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preisspanne</p>
@@ -195,7 +242,6 @@ function VerkaufsReport({ result }: { result: VerkaufsCheckResult }) {
         </div>
       )}
 
-      {/* Bericht (Markdown) */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht & Tipps</p>
         <div className="chat-prose">

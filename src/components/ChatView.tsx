@@ -9,11 +9,12 @@ import type { Conversation, Message, SourceMeta } from '../types'
 interface ChatViewProps {
   conversation: Conversation
   onMessagesUpdate: (messages: Message[]) => void
+  onSaveExchange?: (userText: string, assistantText: string) => void
   autoMessage?: string | null
   onAutoMessageDone?: () => void
 }
 
-export default function ChatView({ conversation, onMessagesUpdate, autoMessage, onAutoMessageDone }: ChatViewProps) {
+export default function ChatView({ conversation, onMessagesUpdate, onSaveExchange, autoMessage, onAutoMessageDone }: ChatViewProps) {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -126,7 +127,7 @@ export default function ChatView({ conversation, onMessagesUpdate, autoMessage, 
           setStatusText('')
           setIsStreaming(false)
 
-          // Jetzt einmal den Parent mit dem fertigen Text updaten
+          // Parent mit dem fertigen Text updaten
           onMessagesUpdate(
             baseMessages.map((m) =>
               m.id === assistantMsg.id
@@ -134,6 +135,11 @@ export default function ChatView({ conversation, onMessagesUpdate, autoMessage, 
                 : m
             )
           )
+
+          // Im Backend persistieren (fire & forget)
+          if (finalContent) {
+            onSaveExchange?.(text, finalContent)
+          }
         },
 
         onError(err: string) {

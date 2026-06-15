@@ -16,6 +16,187 @@ function authHeaders(): Record<string, string> {
   }
 }
 
+// ── User Auth (Phase 2b) ──────────────────────────────────────────────────────
+
+export interface AuthUser {
+  id: number
+  email: string
+  abo_typ: 'none' | 'light' | 'pro' | 'max'
+  checks_verbleibend: number
+}
+
+async function authFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/auth${path}`, {
+    ...init,
+    credentials: 'include',   // httpOnly-Cookie mitsenden
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+function extractMessage(data: unknown): string {
+  if (data && typeof data === 'object' && 'fehler' in data) {
+    const f = (data as Record<string, unknown>).fehler
+    if (f && typeof f === 'object' && 'nachricht' in f) return String((f as Record<string, unknown>).nachricht)
+  }
+  return 'Unbekannter Fehler'
+}
+
+export async function authRegister(email: string, password: string): Promise<AuthUser> {
+  const res = await authFetch('/register', { method: 'POST', body: JSON.stringify({ email, password }) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as AuthUser
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthUser> {
+  const res = await authFetch('/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as AuthUser
+}
+
+export async function authMe(): Promise<AuthUser | null> {
+  try {
+    const res = await authFetch('/me')
+    if (res.status === 401) return null
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
+}
+
+export async function authLogout(): Promise<void> {
+  await authFetch('/logout', { method: 'POST' }).catch(() => {})
+}
+
+// ── Checks (Phase 2c) ────────────────────────────────────────────────────────
+
+export interface ApiCheckSummary {
+  id: number
+  typ: 'kauf' | 'verkauf'
+  titel: string
+  created_at: string
+}
+
+export interface ApiCheckDetail extends ApiCheckSummary {
+  eingabe: Record<string, unknown>
+  ergebnis: Record<string, unknown>
+}
+
+async function checkFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/checks${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export async function apiListChecks(): Promise<ApiCheckSummary[]> {
+  try {
+    const res = await checkFetch('')
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
+  }
+}
+
+export async function apiSaveCheck(
+  typ: 'kauf' | 'verkauf',
+  titel: string,
+  eingabe: object,
+  ergebnis: object,
+): Promise<ApiCheckDetail> {
+  const res = await checkFetch('', {
+    method: 'POST',
+    body: JSON.stringify({ typ, titel, eingabe, ergebnis }),
+  })
+  if (!res.ok) throw new Error('Check speichern fehlgeschlagen')
+  return res.json()
+}
+
+export async function apiGetCheck(id: number): Promise<ApiCheckDetail> {
+  const res = await checkFetch(`/${id}`)
+  if (!res.ok) throw new Error('Check nicht gefunden')
+  return res.json()
+}
+
+export async function apiDeleteCheck(id: number): Promise<void> {
+  await checkFetch(`/${id}`, { method: 'DELETE' })
+}
+
+// ── Conversations (Phase 2c) ──────────────────────────────────────────────────
+
+export interface ApiConversation {
+  id: number
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ApiMessage {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+export interface ApiConversationDetail extends ApiConversation {
+  messages: ApiMessage[]
+}
+
+async function convFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/conversations${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export async function apiListConversations(): Promise<ApiConversation[]> {
+  try {
+    const res = await convFetch('')
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
+  }
+}
+
+export async function apiCreateConversation(title: string): Promise<ApiConversation> {
+  const res = await convFetch('', { method: 'POST', body: JSON.stringify({ title }) })
+  if (!res.ok) throw new Error('Konversation anlegen fehlgeschlagen')
+  return res.json()
+}
+
+export async function apiGetConversation(id: number): Promise<ApiConversationDetail> {
+  const res = await convFetch(`/${id}`)
+  if (!res.ok) throw new Error('Konversation nicht gefunden')
+  return res.json()
+}
+
+export async function apiPatchConversation(id: number, title: string): Promise<void> {
+  await convFetch(`/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) })
+}
+
+export async function apiDeleteConversation(id: number): Promise<void> {
+  await convFetch(`/${id}`, { method: 'DELETE' })
+}
+
+export async function apiAddMessage(
+  convId: number,
+  role: 'user' | 'assistant',
+  content: string,
+): Promise<ApiMessage> {
+  const res = await convFetch(`/${convId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ role, content }),
+  })
+  if (!res.ok) throw new Error('Nachricht speichern fehlgeschlagen')
+  return res.json()
+}
+
 // ---- Chat verlauf item (backend format) ----
 export interface VerlaufItem {
   rolle: 'user' | 'ki'

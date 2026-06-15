@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ShoppingCart,
   ImagePlus,
@@ -7,12 +7,13 @@ import {
   CheckCircle,
   MinusCircle,
   XCircle,
+  History,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { runKaufCheck } from '../api/client'
+import { runKaufCheck, apiSaveCheck } from '../api/client'
 import SourceBadge from './SourceBadge'
-import type { KaufCheckForm, KaufCheckResult } from '../types'
+import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
   marke: '',
@@ -25,12 +26,35 @@ const EMPTY: KaufCheckForm = {
   beschreibung: '',
 }
 
-export default function KaufCheckView() {
+interface KaufCheckViewProps {
+  savedCheck?: SavedKaufCheck | null
+  onCheckSaved?: () => void
+  onClearSaved?: () => void
+}
+
+export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }: KaufCheckViewProps) {
   const [form, setForm] = useState<KaufCheckForm>(EMPTY)
   const [screenshot, setScreenshot] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<KaufCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Gespeicherten Check laden
+  useEffect(() => {
+    if (savedCheck) {
+      setForm(savedCheck.eingabe)
+      setResult(savedCheck.ergebnis)
+      setError(null)
+      setTimeout(
+        () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
+        100
+      )
+    } else {
+      setForm(EMPTY)
+      setResult(null)
+      setError(null)
+    }
+  }, [savedCheck])
 
   function set<K extends keyof KaufCheckForm>(key: K, value: KaufCheckForm[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -48,6 +72,11 @@ export default function KaufCheckView() {
         () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
+      // Im Backend speichern (fire & forget — Screenshot wird nicht gespeichert)
+      const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
+      apiSaveCheck('kauf', titel, form, res)
+        .then(() => onCheckSaved?.())
+        .catch(() => {})
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -67,6 +96,22 @@ export default function KaufCheckView() {
             <p className="text-sm text-gray-500">Inserat prüfen — fair, Risiken, Empfehlung</p>
           </div>
         </div>
+
+        {/* Banner für gespeicherten Check */}
+        {savedCheck && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-blue-700">
+              <History size={15} />
+              <span>Gespeicherter Check</span>
+            </div>
+            <button
+              onClick={onClearSaved}
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors whitespace-nowrap"
+            >
+              Neue Prüfung →
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
@@ -122,42 +167,46 @@ export default function KaufCheckView() {
             </Field>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="font-medium text-gray-800 mb-4">Inserat-Screenshot (optional)</h2>
-            {screenshot ? (
-              <div className="relative inline-block">
-                <img src={screenshot} className="max-h-40 rounded-xl border border-gray-200" alt="Screenshot" />
-                <button type="button" onClick={() => setScreenshot(null)}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center">
-                  <X size={13} className="text-white" />
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-8 cursor-pointer hover:border-gray-300 transition-colors">
-                <ImagePlus size={24} className="text-gray-400" />
-                <span className="text-sm text-gray-500">Screenshot hochladen</span>
-                <input type="file" accept="image/*" className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (!f) return
-                    const r = new FileReader()
-                    r.onload = () => setScreenshot(r.result as string)
-                    r.readAsDataURL(f)
-                  }} />
-              </label>
-            )}
-          </div>
+          {!savedCheck && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="font-medium text-gray-800 mb-4">Inserat-Screenshot (optional)</h2>
+              {screenshot ? (
+                <div className="relative inline-block">
+                  <img src={screenshot} className="max-h-40 rounded-xl border border-gray-200" alt="Screenshot" />
+                  <button type="button" onClick={() => setScreenshot(null)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center">
+                    <X size={13} className="text-white" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-8 cursor-pointer hover:border-gray-300 transition-colors">
+                  <ImagePlus size={24} className="text-gray-400" />
+                  <span className="text-sm text-gray-500">Screenshot hochladen</span>
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      const r = new FileReader()
+                      r.onload = () => setScreenshot(r.result as string)
+                      r.readAsDataURL(f)
+                    }} />
+                </label>
+              )}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{error}</div>
           )}
 
-          <button type="submit" disabled={loading}
-            className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
-            {loading
-              ? <><Loader2 size={16} className="animate-spin" /> Analysiere Inserat…</>
-              : <><ShoppingCart size={16} /> Kauf-Check starten</>}
-          </button>
+          {!savedCheck && (
+            <button type="submit" disabled={loading}
+              className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
+              {loading
+                ? <><Loader2 size={16} className="animate-spin" /> Analysiere Inserat…</>
+                : <><ShoppingCart size={16} /> Kauf-Check starten</>}
+            </button>
+          )}
         </form>
 
         {result && <KaufCheckReport result={result} />}
@@ -179,7 +228,6 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
     <div id="kauf-result" className="mt-8 space-y-4">
       <h2 className="font-semibold text-gray-900 text-lg">Ergebnis</h2>
 
-      {/* Empfehlung Banner */}
       <div className={`rounded-2xl p-5 border flex items-start gap-4 ${recStyle.bg}`}>
         {recStyle.icon}
         <div>
@@ -194,7 +242,6 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
         </div>
       </div>
 
-      {/* Marktpreis */}
       {(result.marktpreis_min || result.marktpreis_max) && (
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Marktpreis-Einschätzung</p>
@@ -207,7 +254,6 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
         </div>
       )}
 
-      {/* Bericht (Markdown) */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht</p>
         <div className="chat-prose">
@@ -215,7 +261,6 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
         </div>
       </div>
 
-      {/* Quellen-Badge */}
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
     </div>
   )

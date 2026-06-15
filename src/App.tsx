@@ -1,12 +1,25 @@
-import { startTransition, useCallback, useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ChatView from './components/ChatView'
 import KaufCheckView from './components/KaufCheckView'
 import VerkaufsCheckView from './components/VerkaufsCheckView'
 import EntdeckenView from './components/EntdeckenView'
+import LoginView from './components/LoginView'
+import PrivateRoute from './components/PrivateRoute'
 import SplashScreen from './components/SplashScreen'
-import type { Conversation, Message } from './types'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import {
+  apiAddMessage,
+  apiCreateConversation,
+  apiGetConversation,
+  apiListConversations,
+  apiPatchConversation,
+  apiListChecks,
+  apiGetCheck,
+} from './api/client'
+import type { ApiCheckSummary } from './api/client'
+import type { Conversation, Message, SavedKaufCheck, SavedVerkaufsCheck, KaufCheckForm, KaufCheckResult, VerkaufsCheckForm, VerkaufsCheckResult } from './types'
 
 function newConversation(): Conversation {
   return {
@@ -23,27 +36,141 @@ function titleFromMessages(messages: Message[]): string {
   return first.content.slice(0, 42) + (first.content.length > 42 ? '…' : '')
 }
 
-export default function App() {
-  const [showSplash, setShowSplash] = useState(true)
-  const [appMounted, setAppMounted] = useState(false)
+// ── Inner app — muss innerhalb von AuthProvider sein um useAuth() zu nutzen ──
 
-  // Defer heavy app mount so the splash animation runs jank-free.
-  useEffect(() => {
-    const t = setTimeout(() => startTransition(() => setAppMounted(true)), 150)
-    return () => clearTimeout(t)
-  }, [])
+function AppContent() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
   const [conversations, setConversations] = useState<Conversation[]>(() => [newConversation()])
   const [activeId, setActiveId] = useState<string>(conversations[0].id)
   const [pendingAutoMessage, setPendingAutoMessage] = useState<string | null>(null)
+  const [myChecks, setMyChecks] = useState<ApiCheckSummary[]>([])
+  const [savedKaufCheck, setSavedKaufCheck] = useState<SavedKaufCheck | null>(null)
+  const [savedVerkaufsCheck, setSavedVerkaufsCheck] = useState<SavedVerkaufsCheck | null>(null)
+
+  // Refs damit Callbacks auf aktuellen State zugreifen ohne Stale-Closures
+  const conversationsRef = useRef(conversations)
+  conversationsRef.current = conversations
+  const activeIdRef = useRef(activeId)
+  activeIdRef.current = activeId
 
   const activeConv = conversations.find((c) => c.id === activeId) ?? conversations[0]
+
+  // ── Konversationen laden wenn Nutzer eingeloggt ist ─────────────────────────
+  useEffect(() => {
+    if (!user) {
+      const fresh = newConversation()
+      setConversations([fresh])
+      setActiveId(fresh.id)
+      setMyChecks([])
+      setSavedKaufCheck(null)
+      setSavedVerkaufsCheck(null)
+      return
+    }
+    apiListChecks().then(setMyChecks)
+    apiListConversations().then((apiConvs) => {
+      if (apiConvs.length === 0) return   // leere Standardkonversation behalten
+      const loaded: Conversation[] = apiConvs.map((c) => ({
+        id: crypto.randomUUID(),
+        backendId: c.id,
+        title: c.title,
+        messages: [],
+        createdAt: new Date(c.created_at),
+      }))
+      setConversations(loaded)
+      setActiveId(loaded[0].id)
+    })
+  }, [user])
+
+  // ── Nachrichten lazily laden wenn leere Backend-Konversation aktiv wird ─────
+  const loadingRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const conv = conversationsRef.current.find((c) => c.id === activeId)
+    if (!conv?.backendId || conv.messages.length > 0) return
+    if (loadingRef.current === activeId) return
+    loadingRef.current = activeId
+
+    apiGetConversation(conv.backendId).then((full) => {
+      const messages: Message[] = full.messages.map((m) => ({
+        id: String(m.id),
+        role: m.role,
+        content: m.content,
+      }))
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeId ? { ...c, messages } : c))
+      )
+      loadingRef.current = null
+    }).catch(() => {
+      loadingRef.current = null
+    })
+  }, [activeId])  // nur bei activeId-Wechsel triggern
+
+  // ── Nachrichten im Backend persistieren (nach jeder vollständigen Antwort) ──
+  const handleSaveExchange = useCallback(async (userText: string, assistantText: string) => {
+    const convId = activeIdRef.current
+    const conv = conversationsRef.current.find((c) => c.id === convId)
+    if (!conv) return
+
+    let backendId = conv.backendId
+
+    if (!backendId) {
+      // Neue Konversation: im Backend anlegen
+      const title = conv.title !== 'Neuer Chat'
+        ? conv.title
+        : (userText.slice(0, 42) + (userText.length > 42 ? '…' : ''))
+      const apiConv = await apiCreateConversation(title)
+      backendId = apiConv.id
+      setConversations((prev) =>
+        prev.map((c) => (c.id === convId ? { ...c, backendId } : c))
+      )
+    } else if (conv.title === 'Neuer Chat') {
+      // Bestehende Backend-Konversation ohne Titel: updaten
+      const title = userText.slice(0, 42) + (userText.length > 42 ? '…' : '')
+      apiPatchConversation(backendId, title).catch(() => {})
+    }
+
+    // User- und Assistenten-Nachricht speichern
+    await apiAddMessage(backendId, 'user', userText).catch(() => {})
+    await apiAddMessage(backendId, 'assistant', assistantText).catch(() => {})
+  }, [])
+
+  // ── Konversations-Aktionen ───────────────────────────────────────────────────
+
+  const refreshChecks = useCallback(() => {
+    apiListChecks().then(setMyChecks)
+  }, [])
+
+  const handleSelectCheck = useCallback(async (id: number, typ: 'kauf' | 'verkauf') => {
+    try {
+      const full = await apiGetCheck(id)
+      if (typ === 'kauf') {
+        setSavedKaufCheck({
+          eingabe: full.eingabe as unknown as KaufCheckForm,
+          ergebnis: full.ergebnis as unknown as KaufCheckResult,
+        })
+        setSavedVerkaufsCheck(null)
+        navigate('/kaufcheck')
+      } else {
+        setSavedVerkaufsCheck({
+          eingabe: full.eingabe as unknown as VerkaufsCheckForm,
+          ergebnis: full.ergebnis as unknown as VerkaufsCheckResult,
+        })
+        setSavedKaufCheck(null)
+        navigate('/verkaufscheck')
+      }
+    } catch {
+      // Fehler still ignorieren — Check nicht mehr vorhanden
+    }
+  }, [navigate])
 
   const handleNewChat = useCallback(() => {
     const conv = newConversation()
     setConversations((prev) => [conv, ...prev])
     setActiveId(conv.id)
-  }, [])
+    navigate('/chat')
+  }, [navigate])
 
   const handleEntdeckenSelect = useCallback((frage: string, titel: string) => {
     const conv = { ...newConversation(), title: titel }
@@ -54,25 +181,86 @@ export default function App() {
 
   const handleSelectConv = useCallback((id: string) => {
     setActiveId(id)
-  }, [])
+    navigate('/chat')
+  }, [navigate])
 
   const handleMessagesUpdate = useCallback(
     (messages: Message[]) => {
+      const id = activeIdRef.current
       setConversations((prev) =>
         prev.map((c) =>
-          c.id === activeId
+          c.id === id
             ? {
                 ...c,
                 messages,
-                // Only auto-title if it's still the default; Entdecken-started chats keep their model name
                 title: c.title === 'Neuer Chat' ? titleFromMessages(messages) : c.title,
               }
             : c
         )
       )
     },
-    [activeId]
+    []
   )
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-white">
+      <Sidebar
+        conversations={conversations}
+        activeConvId={activeId}
+        onNewChat={handleNewChat}
+        onSelectConv={handleSelectConv}
+        checks={myChecks}
+        onSelectCheck={handleSelectCheck}
+      />
+      <main className="flex-1 overflow-hidden">
+        <Routes>
+          <Route path="/" element={<Navigate to="/chat" replace />} />
+          <Route
+            path="/chat"
+            element={
+              <ChatView
+                conversation={activeConv}
+                onMessagesUpdate={handleMessagesUpdate}
+                onSaveExchange={handleSaveExchange}
+                autoMessage={pendingAutoMessage}
+                onAutoMessageDone={() => setPendingAutoMessage(null)}
+              />
+            }
+          />
+          <Route path="/kaufcheck" element={
+            <KaufCheckView
+              savedCheck={savedKaufCheck}
+              onCheckSaved={refreshChecks}
+              onClearSaved={() => setSavedKaufCheck(null)}
+            />
+          } />
+          <Route path="/verkaufscheck" element={
+            <VerkaufsCheckView
+              savedCheck={savedVerkaufsCheck}
+              onCheckSaved={refreshChecks}
+              onClearSaved={() => setSavedVerkaufsCheck(null)}
+            />
+          } />
+          <Route
+            path="/entdecken"
+            element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}
+          />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
+// ── Root App ──────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [showSplash, setShowSplash] = useState(true)
+  const [appMounted, setAppMounted] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => startTransition(() => setAppMounted(true)), 150)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
     <>
@@ -82,36 +270,19 @@ export default function App() {
 
       {appMounted && (
         <BrowserRouter>
-          <div className="flex h-screen overflow-hidden bg-white">
-            <Sidebar
-              conversations={conversations}
-              activeConvId={activeId}
-              onNewChat={handleNewChat}
-              onSelectConv={handleSelectConv}
-            />
-            <main className="flex-1 overflow-hidden">
-              <Routes>
-                <Route path="/" element={<Navigate to="/chat" replace />} />
-                <Route
-                  path="/chat"
-                  element={
-                    <ChatView
-                      conversation={activeConv}
-                      onMessagesUpdate={handleMessagesUpdate}
-                      autoMessage={pendingAutoMessage}
-                      onAutoMessageDone={() => setPendingAutoMessage(null)}
-                    />
-                  }
-                />
-                <Route path="/kaufcheck" element={<KaufCheckView />} />
-                <Route path="/verkaufscheck" element={<VerkaufsCheckView />} />
-                <Route
-                  path="/entdecken"
-                  element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}
-                />
-              </Routes>
-            </main>
-          </div>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<LoginView />} />
+              <Route
+                path="/*"
+                element={
+                  <PrivateRoute>
+                    <AppContent />
+                  </PrivateRoute>
+                }
+              />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       )}
     </>
