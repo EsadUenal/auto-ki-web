@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Square, ImagePlus, X } from 'lucide-react'
+import { Send, Square, ImagePlus, X, Pencil } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { streamChat } from '../api/client'
+import type { VerlaufItem } from '../api/client'
 import SourceBadge from './SourceBadge'
-import type { Conversation, Message, SourceMeta } from '../types'
+import type { CarContext, Conversation, Message, SourceMeta } from '../types'
 
 interface ChatViewProps {
   conversation: Conversation
@@ -25,6 +26,9 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
   const streamIdRef   = useRef<string | null>(null)
   const rafRef        = useRef<number | null>(null)
   const [liveText, setLiveText] = useState('')
+
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
 
   const abortRef      = useRef<AbortController | null>(null)
   const bottomRef     = useRef<HTMLDivElement>(null)
@@ -72,31 +76,32 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }
 
-  async function handleSend(overrideText?: string) {
-    const text = (overrideText ?? input).trim()
-    if (!text || isStreaming) return
+  async function handleSendWithHistory(text: string, priorMessages: Message[]) {
+    if (!text.trim() || isStreaming) return
 
-    // Verlauf im Backend-Format aufbauen
-    const verlauf = conversation.messages
+    const car = conversation.carContext
+    const historyItems: VerlaufItem[] = priorMessages
       .filter((m) => m.content)
       .map((m) => ({
         rolle: m.role === 'user' ? ('user' as const) : ('ki' as const),
         text: m.content,
       }))
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text }
+    const verlauf: VerlaufItem[] = car
+      ? [
+          { rolle: 'user' as const, text: `Ich interessiere mich für den ${car.titel}.` },
+          { rolle: 'ki' as const,   text: `Verstanden! Ich beantworte alle deine Fragen direkt bezogen auf den ${car.titel}.` },
+          ...historyItems,
+        ]
+      : historyItems
+
+    const userMsg: Message      = { id: crypto.randomUUID(), role: 'user',      content: text }
     const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: '', streaming: true }
-    const baseMessages = [...conversation.messages, userMsg, assistantMsg]
+    const baseMessages = [...priorMessages, userMsg, assistantMsg]
 
-    // Sofort User-Nachricht + leeren Assistenten-Slot in Parent pushen
     onMessagesUpdate(baseMessages)
-    setInput('')
-    setImagePreview(null)
-    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     setIsStreaming(true)
-
-    // Lokalen Streaming-State initialisieren
-    accumRef.current = ''
+    accumRef.current    = ''
     streamIdRef.current = assistantMsg.id
     setLiveText('')
     setStatusText('Denke nach…')
@@ -104,61 +109,57 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
-    await streamChat(
-      text,
-      verlauf,
-      {
-        onStatus(text) {
-          setStatusText(text)
-        },
-
-        onToken(token) {
-          setStatusText('')
-          accumRef.current += token
-          scheduleRender()
-        },
-
-        onDone(meta: SourceMeta) {
-          cancelPendingRaf()
-          const finalContent = accumRef.current
-
-          streamIdRef.current = null
-          setLiveText('')
-          setStatusText('')
-          setIsStreaming(false)
-
-          // Parent mit dem fertigen Text updaten
-          onMessagesUpdate(
-            baseMessages.map((m) =>
-              m.id === assistantMsg.id
-                ? { ...m, content: finalContent, streaming: false, meta }
-                : m
-            )
-          )
-
-          // Im Backend persistieren (fire & forget)
-          if (finalContent) {
-            onSaveExchange?.(text, finalContent)
-          }
-        },
-
-        onError(err: string) {
-          cancelPendingRaf()
-          streamIdRef.current = null
-          setLiveText('')
-          setStatusText('')
-          setIsStreaming(false)
-          onMessagesUpdate(
-            baseMessages.map((m) =>
-              m.id === assistantMsg.id
-                ? { ...m, content: `**Fehler:** ${err}`, streaming: false }
-                : m
-            )
-          )
-        },
+    await streamChat(text, verlauf, {
+      onStatus(s) { setStatusText(s) },
+      onToken(token) {
+        setStatusText('')
+        accumRef.current += token
+        scheduleRender()
       },
-      ctrl.signal
-    )
+      onDone(meta: SourceMeta) {
+        cancelPendingRaf()
+        const finalContent = accumRef.current
+        streamIdRef.current = null
+        setLiveText('')
+        setStatusText('')
+        setIsStreaming(false)
+        onMessagesUpdate(
+          baseMessages.map((m) =>
+            m.id === assistantMsg.id ? { ...m, content: finalContent, streaming: false, meta } : m
+          )
+        )
+        if (finalContent) onSaveExchange?.(text, finalContent)
+      },
+      onError(err: string) {
+        cancelPendingRaf()
+        streamIdRef.current = null
+        setLiveText('')
+        setStatusText('')
+        setIsStreaming(false)
+        onMessagesUpdate(
+          baseMessages.map((m) =>
+            m.id === assistantMsg.id ? { ...m, content: `**Fehler:** ${err}`, streaming: false } : m
+          )
+        )
+      },
+    }, ctrl.signal)
+  }
+
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim()
+    if (!text) return
+    setInput('')
+    setImagePreview(null)
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    await handleSendWithHistory(text, conversation.messages)
+  }
+
+  async function handleEditAndResend(messageId: string, newText: string) {
+    if (!newText.trim() || isStreaming) return
+    const idx = conversation.messages.findIndex((m) => m.id === messageId)
+    if (idx < 0) return
+    setEditingMsgId(null)
+    await handleSendWithHistory(newText.trim(), conversation.messages.slice(0, idx))
   }
 
   function handleStop() {
@@ -202,17 +203,31 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
-        {isEmpty ? (
+        {conversation.carContext && (
+          <CarPanels car={conversation.carContext} />
+        )}
+        {isEmpty && !conversation.carContext && (
           <WelcomeScreen
             onSuggestion={(t) => {
               setInput(t)
               textareaRef.current?.focus()
             }}
           />
-        ) : (
+        )}
+        {!isEmpty && (
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
             {displayMessages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isEditing={editingMsgId === msg.id}
+                editText={editingMsgId === msg.id ? editText : ''}
+                onEditStart={() => { setEditingMsgId(msg.id); setEditText(msg.content) }}
+                onEditChange={setEditText}
+                onEditCancel={() => setEditingMsgId(null)}
+                onEditConfirm={() => handleEditAndResend(msg.id, editText)}
+                editDisabled={isStreaming}
+              />
             ))}
             <div ref={bottomRef} />
           </div>
@@ -276,12 +291,78 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
   )
 }
 
-function MessageBubble({ message }: { message: Message }) {
+interface MessageBubbleProps {
+  message: Message
+  isEditing?: boolean
+  editText?: string
+  onEditStart?: () => void
+  onEditChange?: (v: string) => void
+  onEditCancel?: () => void
+  onEditConfirm?: () => void
+  editDisabled?: boolean
+}
+
+function MessageBubble({
+  message, isEditing, editText, onEditStart, onEditChange, onEditCancel, onEditConfirm, editDisabled,
+}: MessageBubbleProps) {
+  const editRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (isEditing) {
+      const el = editRef.current
+      if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; el.focus() }
+    }
+  }, [isEditing])
+
   if (message.role === 'user') {
+    if (isEditing) {
+      return (
+        <div className="flex flex-col items-end gap-2">
+          <textarea
+            ref={editRef}
+            value={editText}
+            onChange={(e) => { onEditChange?.(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEditConfirm?.() }
+              if (e.key === 'Escape') onEditCancel?.()
+            }}
+            className="w-full max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed resize-none outline-none ring-2 ring-orange-400 overflow-hidden"
+            rows={1}
+          />
+          <div className="flex gap-2 mr-0.5">
+            <button
+              onClick={onEditCancel}
+              className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={onEditConfirm}
+              disabled={!editText?.trim()}
+              className="text-xs text-white bg-gray-900 hover:bg-gray-700 disabled:bg-gray-200 disabled:text-gray-400 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Send size={11} /> Senden
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
-          {message.content}
+      <div className="flex justify-end group/msg">
+        <div className="relative">
+          <div className="max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+            {message.content}
+          </div>
+          {!editDisabled && !message.streaming && (
+            <button
+              onClick={onEditStart}
+              title="Bearbeiten"
+              className="absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover/msg:opacity-100 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+            >
+              <Pencil size={12} />
+            </button>
+          )}
         </div>
       </div>
     )
@@ -323,6 +404,135 @@ const SUGGESTIONS = [
   'Wie viel km-Laufleistung ist für ein 5 Jahre altes Auto normal?',
   'Was bedeutet HU AU beim Fahrzeugkauf?',
 ]
+
+// Pseudo-3D tilt per panel — rAF-driven, GPU-only (transform), no repaints
+function PanelCard({ label, img, phase, imgScale = 1.35 }: { label: string; img?: string; phase: number; imgScale?: number }) {
+  const cardRef  = useRef<HTMLDivElement>(null)
+  const shineRef = useRef<HTMLDivElement>(null)
+  // Mutable animation state — never triggers React re-renders
+  const s = useRef({ t: phase * 4, hx: 0, hy: 0, hs: 0, on: true, hover: false })
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+
+    // Respect reduced-motion and skip on narrow viewports (mobile performance)
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      window.matchMedia('(max-width: 640px)').matches
+    ) return
+
+    let frameId: number
+
+    function tick() {
+      if (!s.current.on || !el) return
+      const state = s.current
+      state.t += 0.0038                        // ~1 full cycle every ~8 s
+
+      // Idle sinusoidal tilt — 2.5° side / 0.9° pitch, each panel offset by phase
+      const idleRy = Math.sin(state.t) * 2.5
+      const idleRx = Math.cos(state.t * 0.67) * 0.9
+
+      // Decay hover offset when mouse leaves
+      if (!state.hover) {
+        state.hx *= 0.88
+        state.hy *= 0.88
+      }
+      // Lerp hover-scale 0→1
+      state.hs += ((state.hover ? 1 : 0) - state.hs) * 0.06
+
+      // Combine idle + interactive hover (max ±7° extra from mouse position)
+      const ry    = idleRy + state.hx * 7
+      const rx    = idleRx + state.hy * -4
+      const scale = 1 + state.hs * 0.025      // subtle 2.5% zoom on hover
+
+      el.style.transform = `perspective(700px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${scale})`
+      frameId = requestAnimationFrame(tick)
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => { s.current.on = false; cancelAnimationFrame(frameId) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const r  = e.currentTarget.getBoundingClientRect()
+    const nx = (e.clientX - r.left) / r.width   // 0–1
+    const ny = (e.clientY - r.top)  / r.height  // 0–1
+    s.current.hx = nx - 0.5
+    s.current.hy = ny - 0.5
+    // Shine: radial gradient follows cursor
+    if (shineRef.current) {
+      shineRef.current.style.opacity = '1'
+      shineRef.current.style.backgroundImage =
+        `radial-gradient(circle at ${nx * 100}% ${ny * 100}%, rgba(255,255,255,0.22) 0%, transparent 62%)`
+    }
+  }
+
+  function handleMouseLeave() {
+    s.current.hover = false
+    if (shineRef.current) shineRef.current.style.opacity = '0'
+  }
+
+  return (
+    <div
+      ref={cardRef}
+      className="car-panel flex flex-col rounded-xl border border-gray-200 bg-gray-50 select-none"
+      style={{ willChange: 'transform' }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => { s.current.hover = true }}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className="relative aspect-video bg-gray-100 rounded-t-xl overflow-hidden">
+        {img && (
+          <img
+            src={img}
+            alt={label}
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{ transform: `scale(${imgScale})` }}
+            draggable={false}
+          />
+        )}
+        {/* Lichtreflex-Overlay — folgt dem Cursor */}
+        <div
+          ref={shineRef}
+          className="absolute inset-0 pointer-events-none rounded-t-xl"
+          style={{ opacity: 0, transition: 'opacity 0.35s ease' }}
+        />
+      </div>
+      <div className="px-2 py-1.5 text-center border-t border-gray-100">
+        <span className="text-gray-400 text-[10px] font-medium tracking-wide">{label}</span>
+      </div>
+    </div>
+  )
+}
+
+function CarPanels({ car }: { car: CarContext }) {
+  const panels: Array<{ label: string; img?: string; imgScale?: number }> = [
+    { label: 'Außenansicht', img: car.imgAussen ?? car.img, imgScale: 2.5 },
+    { label: 'Motor',        img: car.imgMotor,              imgScale: 1.35 },
+    { label: 'Röntgen',      img: car.imgInnen,              imgScale: 2.5 },
+  ]
+
+  return (
+    <div className="px-4 py-4 border-b border-gray-100">
+      <div className="max-w-3xl mx-auto">
+        <p className="text-[10px] font-semibold text-gray-400 tracking-widest uppercase mb-2">{car.titel}</p>
+        <div className="grid grid-cols-3 gap-3">
+          {panels.map(({ label, img, imgScale }, i) => (
+            <PanelCard
+              key={label}
+              label={label}
+              img={img}
+              phase={(i * Math.PI * 2) / 3}
+              imgScale={imgScale}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 function WelcomeScreen({ onSuggestion }: { onSuggestion: (text: string) => void }) {
   return (
