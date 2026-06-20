@@ -1,12 +1,19 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   Car, Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import type { ApiCheckSummary } from '../api/client'
 import type { Conversation } from '../types'
+
+const ABO_CONFIG = {
+  light: { label: 'LIGHT', icon: <Zap size={11} />, cls: 'bg-blue-500 text-white' },
+  pro:   { label: 'PRO',   icon: <Star size={11} />, cls: 'bg-orange-500 text-white' },
+  max:   { label: 'MAX',   icon: <Crown size={11} />, cls: 'bg-purple-500 text-white' },
+} as const
 
 interface SidebarProps {
   conversations: Conversation[]
@@ -32,6 +39,20 @@ export default function Sidebar({
   const [editTitle, setEditTitle] = useState('')
   const editInputRef = useRef<HTMLInputElement>(null)
 
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [menuOpen])
+
   function startRename(conv: Conversation) {
     setEditingConvId(conv.id)
     setEditTitle(conv.title)
@@ -55,8 +76,14 @@ export default function Sidebar({
   }
 
   async function handleLogout() {
+    setMenuOpen(false)
     await logout()
     navigate('/login', { replace: true })
+  }
+
+  function goTo(path: string) {
+    setMenuOpen(false)
+    navigate(path)
   }
 
   return (
@@ -209,42 +236,129 @@ export default function Sidebar({
       )}
 
       {/* User-Footer */}
-      <div className="mt-auto border-t border-sidebar-border">
-        {user && (
-          <div className="px-3 py-3 space-y-1.5">
-            {user.abo_typ !== 'none' && (
-              <div className="flex items-center gap-1.5 px-2">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  user.abo_typ === 'max'   ? 'bg-purple-500 text-white' :
-                  user.abo_typ === 'pro'   ? 'bg-orange-500 text-white' :
-                                             'bg-blue-500 text-white'
-                }`}>{user.abo_typ.toUpperCase()}</span>
-                {user.abo_typ !== 'max' && (
-                  <span className="text-xs text-sidebar-muted">{user.checks_verbleibend} verbleibend</span>
-                )}
+      <div className="mt-auto border-t border-sidebar-border relative" ref={menuRef}>
+
+        {/* ── Account-Menü-Popover ─────────────────────────────────────── */}
+        {menuOpen && user && (
+          <div className="absolute bottom-full left-2 right-2 mb-2 rounded-xl border border-sidebar-border bg-sidebar-bg shadow-2xl overflow-hidden z-50">
+
+            {/* Kopf: Avatar + E-Mail + Abo */}
+            <div className="px-4 py-3 border-b border-sidebar-border">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0 text-white text-sm font-bold select-none">
+                  {user.email[0].toUpperCase()}
+                </div>
+                <span className="text-xs text-sidebar-text truncate min-w-0 font-medium">
+                  {user.email}
+                </span>
               </div>
-            )}
-            {user.abo_typ === 'none' && user.checks_verbleibend > 0 && (
-              <div className="px-2">
-                <span className="text-xs text-sidebar-muted">{user.checks_verbleibend} Gratis-Check übrig</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0 text-white text-xs font-bold select-none">
-                {user.email[0].toUpperCase()}
-              </div>
-              <span className="flex-1 text-xs text-sidebar-muted truncate min-w-0">
-                {user.email}
-              </span>
+              {/* Abo-Status */}
+              {user.abo_typ !== 'none' ? (
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${ABO_CONFIG[user.abo_typ].cls}`}>
+                    {ABO_CONFIG[user.abo_typ].icon}
+                    {ABO_CONFIG[user.abo_typ].label}
+                  </span>
+                  {user.abo_typ !== 'max' && (
+                    <span className="text-xs text-sidebar-muted">{user.checks_verbleibend} Check{user.checks_verbleibend !== 1 ? 's' : ''} verbleibend</span>
+                  )}
+                  {user.abo_typ === 'max' && (
+                    <span className="text-xs text-sidebar-muted">Unbegrenzte Checks</span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-sidebar-muted">
+                  {user.checks_verbleibend > 0
+                    ? <>{user.checks_verbleibend} Gratis-Check{user.checks_verbleibend !== 1 ? 's' : ''} übrig</>
+                    : 'Kein Abo aktiv'}
+                </div>
+              )}
+            </div>
+
+            {/* Menü-Einträge */}
+            <div className="py-1">
+              <button
+                onClick={() => goTo('/pricing')}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors text-left"
+              >
+                <CreditCard size={15} className="text-sidebar-muted shrink-0" />
+                Alle Tarife anzeigen
+              </button>
+
+              <div className="my-1 border-t border-sidebar-border" />
+
+              <button
+                onClick={() => goTo('/settings')}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors text-left"
+              >
+                <Settings size={15} className="text-sidebar-muted shrink-0" />
+                Einstellungen
+              </button>
+              <button
+                onClick={() => goTo('/help')}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors text-left"
+              >
+                <HelpCircle size={15} className="text-sidebar-muted shrink-0" />
+                Hilfe
+              </button>
+
+              <div className="my-1 border-t border-sidebar-border" />
+
               <button
                 onClick={handleLogout}
-                title="Abmelden"
-                className="shrink-0 p-1 rounded text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-sidebar-hover transition-colors text-left"
               >
-                <LogOut size={14} />
+                <LogOut size={15} className="shrink-0" />
+                Abmelden
               </button>
             </div>
           </div>
+        )}
+
+        {/* ── Trigger-Button ───────────────────────────────────────────── */}
+        {user && (
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className={`w-full flex items-center gap-2.5 px-3 py-3 transition-colors text-left ${
+              menuOpen ? 'bg-sidebar-hover' : 'hover:bg-sidebar-hover'
+            }`}
+          >
+            {/* Avatar */}
+            <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0 text-white text-xs font-bold select-none">
+              {user.email[0].toUpperCase()}
+            </div>
+
+            {/* E-Mail + Abo-Badge */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-sidebar-text truncate font-medium">
+                  {user.email}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {user.abo_typ !== 'none' ? (
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-px rounded-full ${ABO_CONFIG[user.abo_typ].cls}`}>
+                    {ABO_CONFIG[user.abo_typ].icon}
+                    {ABO_CONFIG[user.abo_typ].label}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-sidebar-muted">Kostenlos</span>
+                )}
+                {user.abo_typ !== 'none' && user.abo_typ !== 'max' && (
+                  <span className="text-[10px] text-sidebar-muted">{user.checks_verbleibend} verbleibend</span>
+                )}
+                {user.abo_typ === 'none' && user.checks_verbleibend > 0 && (
+                  <span className="text-[10px] text-sidebar-muted">{user.checks_verbleibend} Check{user.checks_verbleibend !== 1 ? 's' : ''} übrig</span>
+                )}
+              </div>
+            </div>
+
+            {/* Chevron */}
+            <ChevronUp
+              size={14}
+              className={`shrink-0 text-sidebar-muted transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
         )}
       </div>
     </aside>
