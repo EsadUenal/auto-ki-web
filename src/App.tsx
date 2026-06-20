@@ -5,6 +5,7 @@ import ChatView from './components/ChatView'
 import KaufCheckView from './components/KaufCheckView'
 import VerkaufsCheckView from './components/VerkaufsCheckView'
 import EntdeckenView from './components/EntdeckenView'
+import PricingView from './components/PricingView'
 import LoginView from './components/LoginView'
 import PrivateRoute from './components/PrivateRoute'
 import SplashScreen from './components/SplashScreen'
@@ -12,11 +13,13 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import {
   apiAddMessage,
   apiCreateConversation,
+  apiDeleteConversation,
   apiGetConversation,
   apiListConversations,
   apiPatchConversation,
   apiListChecks,
   apiGetCheck,
+  apiDeleteCheck,
 } from './api/client'
 import type { ApiCheckSummary } from './api/client'
 import type { Conversation, Message, SavedKaufCheck, SavedVerkaufsCheck, KaufCheckForm, KaufCheckResult, VerkaufsCheckForm, VerkaufsCheckResult } from './types'
@@ -44,7 +47,7 @@ function AppContent() {
 
   const [conversations, setConversations] = useState<Conversation[]>(() => [newConversation()])
   const [activeId, setActiveId] = useState<string>(conversations[0].id)
-  const [pendingAutoMessage, setPendingAutoMessage] = useState<string | null>(null)
+  const [pendingAutoMessage] = useState<string | null>(null)
   const [myChecks, setMyChecks] = useState<ApiCheckSummary[]>([])
   const [savedKaufCheck, setSavedKaufCheck] = useState<SavedKaufCheck | null>(null)
   const [savedVerkaufsCheck, setSavedVerkaufsCheck] = useState<SavedVerkaufsCheck | null>(null)
@@ -165,19 +168,78 @@ function AppContent() {
     }
   }, [navigate])
 
+  const handleDeleteConv = useCallback(async (localId: string) => {
+    const conv = conversationsRef.current.find((c) => c.id === localId)
+    if (conv?.backendId) apiDeleteConversation(conv.backendId).catch(() => {})
+
+    const remaining = conversationsRef.current.filter((c) => c.id !== localId)
+    if (activeIdRef.current === localId) {
+      if (remaining.length > 0) {
+        setActiveId(remaining[0].id)
+      } else {
+        const fresh = newConversation()
+        setConversations([fresh])
+        setActiveId(fresh.id)
+        return
+      }
+    }
+    setConversations(remaining)
+  }, [])
+
+  const handleRenameConv = useCallback((localId: string, newTitle: string) => {
+    if (!newTitle.trim()) return
+    const conv = conversationsRef.current.find((c) => c.id === localId)
+    if (conv?.backendId) apiPatchConversation(conv.backendId, newTitle.trim()).catch(() => {})
+    setConversations((prev) =>
+      prev.map((c) => c.id === localId ? { ...c, title: newTitle.trim() } : c)
+    )
+  }, [])
+
+  const handleDeleteCheck = useCallback(async (id: number) => {
+    apiDeleteCheck(id).catch(() => {})
+    setMyChecks((prev) => prev.filter((c) => c.id !== id))
+  }, [])
+
   const handleNewChat = useCallback(() => {
+    // Leere lokale Konversation (kein Backend, keine Nachrichten) wiederverwenden
+    // statt neue Leiche anzuhäufen
+    const emptyLocal = conversationsRef.current.find(
+      (c) => !c.backendId && c.messages.length === 0 && !c.carContext
+    )
+    if (emptyLocal) {
+      setActiveId(emptyLocal.id)
+      navigate('/chat')
+      return
+    }
     const conv = newConversation()
     setConversations((prev) => [conv, ...prev])
     setActiveId(conv.id)
     navigate('/chat')
   }, [navigate])
 
-  const handleEntdeckenSelect = useCallback((frage: string, titel: string) => {
-    const conv = { ...newConversation(), title: titel }
-    setConversations((prev) => [conv, ...prev])
+  const handleEntdeckenSelect = useCallback((carId: string, titel: string, img?: string, imgAussen?: string, imgMotor?: string, imgInnen?: string) => {
+    // Existierende leere Auto-Konversation desselben Modells wiederverwenden
+    const existing = conversationsRef.current.find(
+      (c) => c.carContext?.id === carId && !c.backendId && c.messages.length === 0
+    )
+    if (existing) {
+      setActiveId(existing.id)
+      navigate('/chat')
+      return
+    }
+    const conv = {
+      ...newConversation(),
+      title: titel,
+      carContext: { id: carId, titel, img, imgAussen, imgMotor, imgInnen },
+    }
+    // Andere leere lokale Konversationen vor dem Hinzufügen entfernen
+    setConversations((prev) => [
+      conv,
+      ...prev.filter((c) => c.backendId !== undefined || c.messages.length > 0),
+    ])
     setActiveId(conv.id)
-    setPendingAutoMessage(frage)
-  }, [])
+    navigate('/chat')
+  }, [navigate])
 
   const handleSelectConv = useCallback((id: string) => {
     setActiveId(id)
@@ -205,12 +267,17 @@ function AppContent() {
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <Sidebar
-        conversations={conversations}
+        conversations={conversations.filter(
+          (c) => c.backendId !== undefined || c.messages.length > 0
+        )}
         activeConvId={activeId}
         onNewChat={handleNewChat}
         onSelectConv={handleSelectConv}
+        onDeleteConv={handleDeleteConv}
+        onRenameConv={handleRenameConv}
         checks={myChecks}
         onSelectCheck={handleSelectCheck}
+        onDeleteCheck={handleDeleteCheck}
       />
       <main className="flex-1 overflow-hidden">
         <Routes>
@@ -223,7 +290,7 @@ function AppContent() {
                 onMessagesUpdate={handleMessagesUpdate}
                 onSaveExchange={handleSaveExchange}
                 autoMessage={pendingAutoMessage}
-                onAutoMessageDone={() => setPendingAutoMessage(null)}
+                onAutoMessageDone={() => {}}
               />
             }
           />
@@ -245,6 +312,7 @@ function AppContent() {
             path="/entdecken"
             element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}
           />
+          <Route path="/pricing" element={<PricingView />} />
         </Routes>
       </main>
     </div>

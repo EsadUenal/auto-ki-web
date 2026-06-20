@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, ImagePlus, X, Loader2, Clock, History } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { TrendingUp, ImagePlus, X, Loader2, Clock, History, Lock } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { runVerkaufsCheck, apiSaveCheck } from '../api/client'
+import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
@@ -30,11 +31,13 @@ interface VerkaufsCheckViewProps {
 }
 
 export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSaved }: VerkaufsCheckViewProps) {
+  const navigate = useNavigate()
   const [form, setForm] = useState<VerkaufsCheckForm>(EMPTY)
   const [images, setImages] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VerkaufsCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [paymentRequired, setPaymentRequired] = useState(false)
 
   // Gespeicherten Check laden
   useEffect(() => {
@@ -71,6 +74,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
     setLoading(true)
     setError(null)
     setResult(null)
+    setPaymentRequired(false)
     try {
       const res = await runVerkaufsCheck(form, images)
       setResult(res)
@@ -84,7 +88,11 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
         .then(() => onCheckSaved?.())
         .catch(() => {})
     } catch (err) {
-      setError((err as Error).message)
+      if (err instanceof PaymentRequiredError) {
+        setPaymentRequired(true)
+      } else {
+        setError((err as Error).message)
+      }
     } finally {
       setLoading(false)
     }
@@ -201,6 +209,38 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{error}</div>
+          )}
+
+          {paymentRequired && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Lock size={18} className="text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-900 mb-1">Kein Check-Kontingent mehr</p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    Du hast alle verfügbaren Checks verbraucht. Kaufe einen Einzelcheck oder schließe ein Abo ab.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/pricing')}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Preise & Abo ansehen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentRequired(false)}
+                      className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-sm transition-colors"
+                    >
+                      Schließen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {!savedCheck && (

@@ -9,6 +9,13 @@ import type {
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 const API_KEY = import.meta.env.VITE_API_KEY ?? ''
 
+export class PaymentRequiredError extends Error {
+  constructor() {
+    super('payment_required')
+    this.name = 'PaymentRequiredError'
+  }
+}
+
 function authHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
@@ -309,6 +316,45 @@ export async function streamChat(
   )
 }
 
+// ── Payments (Phase 2d) ───────────────────────────────────────────────────────
+
+async function paymentFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/payments${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export interface PaymentStatus {
+  abo_typ: 'none' | 'light' | 'pro' | 'max'
+  checks_verbleibend: number
+  hat_abo: boolean
+}
+
+export async function apiCreateCheckoutSession(
+  typ: 'abo' | 'einzelkauf',
+  abo_typ?: 'light' | 'pro' | 'max',
+): Promise<{ url: string }> {
+  const res = await paymentFetch('/checkout-session', {
+    method: 'POST',
+    body: JSON.stringify({ typ, abo_typ }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as { url: string }
+}
+
+export async function apiPaymentStatus(): Promise<PaymentStatus | null> {
+  try {
+    const res = await paymentFetch('/status')
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
+}
+
 // ---- Kauf-Check ----
 export async function runKaufCheck(
   form: KaufCheckForm,
@@ -334,9 +380,11 @@ export async function runKaufCheck(
   const response = await fetch(`${BASE_URL}/api/v1/kaufcheck`, {
     method: 'POST',
     headers: authHeaders(),
+    credentials: 'include',
     body: JSON.stringify(body),
   })
 
+  if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
     const text = await response.text().catch(() => '')
     throw new Error(`Kauf-Check fehlgeschlagen (${response.status}): ${text}`)
@@ -376,9 +424,11 @@ export async function runVerkaufsCheck(
   const response = await fetch(`${BASE_URL}/api/v1/verkaufscheck`, {
     method: 'POST',
     headers: authHeaders(),
+    credentials: 'include',
     body: JSON.stringify(body),
   })
 
+  if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
     const text = await response.text().catch(() => '')
     throw new Error(`Verkaufs-Check fehlgeschlagen (${response.status}): ${text}`)
