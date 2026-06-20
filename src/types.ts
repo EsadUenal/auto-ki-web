@@ -16,12 +16,22 @@ export interface Message {
   statusText?: string
 }
 
+export interface CarContext {
+  id: string
+  titel: string
+  img?: string        // Karten-Thumbnail in Entdecken
+  imgAussen?: string  // Außenansicht-Panel im Chat
+  imgMotor?: string   // Motor-Panel im Chat
+  imgInnen?: string   // Röntgen/Innen-Panel im Chat
+}
+
 export interface Conversation {
   id: string
   backendId?: number   // gesetzt sobald die Konversation in der DB existiert
   title: string
   messages: Message[]
   createdAt: Date
+  carContext?: CarContext  // gesetzt wenn aus Entdecken geöffnet
 }
 
 // ---- Gespeicherte Checks ----
