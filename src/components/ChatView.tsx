@@ -405,99 +405,71 @@ const SUGGESTIONS = [
   'Was bedeutet HU AU beim Fahrzeugkauf?',
 ]
 
-// Pseudo-3D tilt per panel — rAF-driven, GPU-only (transform), no repaints
-function PanelCard({ label, img, phase, imgScale = 1.35 }: { label: string; img?: string; phase: number; imgScale?: number }) {
-  const cardRef  = useRef<HTMLDivElement>(null)
-  const shineRef = useRef<HTMLDivElement>(null)
-  // Mutable animation state — never triggers React re-renders
-  const s = useRef({ t: phase * 4, hx: 0, hy: 0, hs: 0, on: true, hover: false })
+// Glow-Farben — identisch mit EntdeckenView, damit Panels konsistent wirken
+const GLOW_BY_ID: Record<string, string> = {
+  'bmw-m3':         '#3b82f6',
+  'bmw-m4':         '#60a5fa',
+  'bmw-m5':         '#2563eb',
+  'bmw-x5m':        '#1d4ed8',
+  'amg-gt':         '#94a3b8',
+  'g-klasse':       '#64748b',
+  'c63-amg':        '#8b5cf6',
+  'audi-r8':        '#ef4444',
+  'audi-rs6':       '#f87171',
+  'audi-rs3':       '#dc2626',
+  'golf-gti':       '#22c55e',
+  'golf-r':         '#16a34a',
+  'supra':          '#f97316',
+  'gr-yaris':       '#ea580c',
+  'porsche-911':    '#eab308',
+  'porsche-911t':   '#f59e0b',
+  'cayenne':        '#d97706',
+  'gtr':            '#a855f7',
+  'mustang':        '#f43f5e',
+  'huracan':        '#fbbf24',
+  'ferrari-488':    '#ef4444',
+  'mclaren-720s':   '#f97316',
+}
 
-  useEffect(() => {
-    const el = cardRef.current
-    if (!el) return
-
-    // Respect reduced-motion and skip on narrow viewports (mobile performance)
-    if (
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-      window.matchMedia('(max-width: 640px)').matches
-    ) return
-
-    let frameId: number
-
-    function tick() {
-      if (!s.current.on || !el) return
-      const state = s.current
-      state.t += 0.0038                        // ~1 full cycle every ~8 s
-
-      // Idle sinusoidal tilt — 2.5° side / 0.9° pitch, each panel offset by phase
-      const idleRy = Math.sin(state.t) * 2.5
-      const idleRx = Math.cos(state.t * 0.67) * 0.9
-
-      // Decay hover offset when mouse leaves
-      if (!state.hover) {
-        state.hx *= 0.88
-        state.hy *= 0.88
-      }
-      // Lerp hover-scale 0→1
-      state.hs += ((state.hover ? 1 : 0) - state.hs) * 0.06
-
-      // Combine idle + interactive hover (max ±7° extra from mouse position)
-      const ry    = idleRy + state.hx * 7
-      const rx    = idleRx + state.hy * -4
-      const scale = 1 + state.hs * 0.025      // subtle 2.5% zoom on hover
-
-      el.style.transform = `perspective(700px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${scale})`
-      frameId = requestAnimationFrame(tick)
-    }
-
-    frameId = requestAnimationFrame(tick)
-    return () => { s.current.on = false; cancelAnimationFrame(frameId) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    const r  = e.currentTarget.getBoundingClientRect()
-    const nx = (e.clientX - r.left) / r.width   // 0–1
-    const ny = (e.clientY - r.top)  / r.height  // 0–1
-    s.current.hx = nx - 0.5
-    s.current.hy = ny - 0.5
-    // Shine: radial gradient follows cursor
-    if (shineRef.current) {
-      shineRef.current.style.opacity = '1'
-      shineRef.current.style.backgroundImage =
-        `radial-gradient(circle at ${nx * 100}% ${ny * 100}%, rgba(255,255,255,0.22) 0%, transparent 62%)`
-    }
-  }
-
-  function handleMouseLeave() {
-    s.current.hover = false
-    if (shineRef.current) shineRef.current.style.opacity = '0'
-  }
+function PanelCard({ label, img, glow = '#6b7280', ratio = '5/2' }: {
+  label: string; img?: string; glow?: string; ratio?: string
+}) {
+  const [hovered, setHovered] = useState(false)
 
   return (
     <div
-      ref={cardRef}
-      className="car-panel flex flex-col rounded-xl border border-gray-200 bg-gray-50 select-none"
-      style={{ willChange: 'transform' }}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => { s.current.hover = true }}
-      onMouseLeave={handleMouseLeave}
+      className="flex flex-col rounded-xl border border-gray-200 bg-gray-50 select-none overflow-hidden"
+      style={{
+        transform: hovered ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
+        transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)',
+        boxShadow: hovered
+          ? `0 12px 32px rgba(0,0,0,0.15), 0 0 28px ${glow}22`
+          : '0 2px 8px rgba(0,0,0,0.06)',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <div className="relative aspect-video bg-gray-100 rounded-t-xl overflow-hidden">
+      <div className="relative bg-gray-100 overflow-hidden" style={{ aspectRatio: ratio }}>
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 50% 58%, ${glow}35 0%, transparent 68%)`,
+            opacity: hovered ? 0.75 : 0.18,
+            transition: 'opacity 0.32s ease',
+          }}
+        />
         {img && (
           <img
             src={img}
             alt={label}
             className="absolute inset-0 w-full h-full object-contain"
-            style={{ transform: `scale(${imgScale})` }}
             draggable={false}
+            style={{
+              filter: hovered ? 'brightness(1.12)' : 'brightness(1)',
+              transition: 'filter 0.22s ease',
+            }}
           />
         )}
-        {/* Lichtreflex-Overlay — folgt dem Cursor */}
-        <div
-          ref={shineRef}
-          className="absolute inset-0 pointer-events-none rounded-t-xl"
-          style={{ opacity: 0, transition: 'opacity 0.35s ease' }}
-        />
       </div>
       <div className="px-2 py-1.5 text-center border-t border-gray-100">
         <span className="text-gray-400 text-[10px] font-medium tracking-wide">{label}</span>
@@ -507,25 +479,20 @@ function PanelCard({ label, img, phase, imgScale = 1.35 }: { label: string; img?
 }
 
 function CarPanels({ car }: { car: CarContext }) {
-  const panels: Array<{ label: string; img?: string; imgScale?: number }> = [
-    { label: 'Außenansicht', img: car.imgAussen ?? car.img, imgScale: 2.5 },
-    { label: 'Motor',        img: car.imgMotor,              imgScale: 1.35 },
-    { label: 'Röntgen',      img: car.imgInnen,              imgScale: 2.5 },
+  const glow = GLOW_BY_ID[car.id] ?? '#6b7280'
+  const panels = [
+    { label: 'Außenansicht', img: car.imgAussen ?? car.img, ratio: '5/2' },
+    { label: 'Motor',        img: car.imgMotor,             ratio: '1/1' },
+    { label: 'Röntgen',      img: car.imgInnen,             ratio: '5/2' },
   ]
 
   return (
     <div className="px-4 py-4 border-b border-gray-100">
       <div className="max-w-3xl mx-auto">
         <p className="text-[10px] font-semibold text-gray-400 tracking-widest uppercase mb-2">{car.titel}</p>
-        <div className="grid grid-cols-3 gap-3">
-          {panels.map(({ label, img, imgScale }, i) => (
-            <PanelCard
-              key={label}
-              label={label}
-              img={img}
-              phase={(i * Math.PI * 2) / 3}
-              imgScale={imgScale}
-            />
+        <div className="grid grid-cols-3 gap-3 items-start">
+          {panels.map(({ label, img, ratio }) => (
+            <PanelCard key={label} label={label} img={img} glow={glow} ratio={ratio} />
           ))}
         </div>
       </div>

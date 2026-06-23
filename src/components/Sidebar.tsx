@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   Car, Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
-  Settings, HelpCircle, ChevronUp, Zap, Star, Crown,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, Image,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import type { ApiCheckSummary } from '../api/client'
@@ -116,6 +116,7 @@ export default function Sidebar({
           { to: '/kaufcheck',     Icon: ShoppingCart,  label: 'Kauf-Check' },
           { to: '/verkaufscheck', Icon: TrendingUp,    label: 'Verkaufs-Check' },
           { to: '/entdecken',     Icon: Compass,       label: 'Entdecken' },
+          { to: '/poster',        Icon: Image,         label: 'Poster' },
           { to: '/pricing',       Icon: CreditCard,    label: 'Preise & Abo' },
         ].map(({ to, Icon, label }) => (
           <NavLink

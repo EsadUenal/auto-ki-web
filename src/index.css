@@ -195,3 +195,44 @@
   text-underline-offset: 2px;
 }
 .chat-prose a:hover { color: #1d4ed8; }
+
+/* ── Poster-Kachel Hover-Animation ── */
+@keyframes poster-shine {
+  0%   { transform: translateX(-180%) skewX(-12deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(280%) skewX(-12deg); opacity: 0; }
+}
+
+.poster-tile .poster-img-wrap {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.2s ease;
+  will-change: transform;
+}
+.poster-tile:hover .poster-img-wrap {
+  transform: scale(1.03) translateY(-5px);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.08);
+}
+.poster-tile .poster-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    108deg,
+    transparent 22%,
+    rgba(255,255,255,0.10) 40%,
+    rgba(255,255,255,0.26) 50%,
+    rgba(255,255,255,0.10) 60%,
+    transparent 78%
+  );
+  transform: translateX(-180%) skewX(-12deg);
+  pointer-events: none;
+  opacity: 0;
+}
+.poster-tile:hover .poster-shine {
+  animation: poster-shine 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@media (hover: none), (max-width: 640px) {
+  .poster-tile .poster-img-wrap { transition: none; }
+  .poster-tile:hover .poster-img-wrap { transform: none; box-shadow: none; }
+  .poster-tile:hover .poster-shine { animation: none; }
+}

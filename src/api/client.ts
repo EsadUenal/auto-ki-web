@@ -30,6 +30,7 @@ export interface AuthUser {
   email: string
   abo_typ: 'none' | 'light' | 'pro' | 'max'
   checks_verbleibend: number
+  abo_kuendigt_zum?: string | null
 }
 
 async function authFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -75,6 +76,31 @@ export async function authMe(): Promise<AuthUser | null> {
 
 export async function authLogout(): Promise<void> {
   await authFetch('/logout', { method: 'POST' }).catch(() => {})
+}
+
+export async function apiChangePassword(old_password: string, new_password: string): Promise<void> {
+  const res = await authFetch('/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ old_password, new_password }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+}
+
+export async function apiDeleteAccount(password: string): Promise<void> {
+  const res = await authFetch('/delete-account', {
+    method: 'DELETE',
+    body: JSON.stringify({ password }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+}
+
+export async function apiCancelSubscription(): Promise<{ abo_kuendigt_zum: string }> {
+  const res = await paymentFetch('/cancel-subscription', { method: 'POST' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as { abo_kuendigt_zum: string }
 }
 
 // ── Checks (Phase 2c) ────────────────────────────────────────────────────────
@@ -353,6 +379,98 @@ export async function apiPaymentStatus(): Promise<PaymentStatus | null> {
   } catch {
     return null
   }
+}
+
+// ── Poster (Etappe 2) ─────────────────────────────────────────────────────────
+
+export interface ApiPoster {
+  id: string
+  titel: string
+  beschreibung: string
+  bildpfad: string | null
+  preis: number
+  preis_normal: number
+  hat_rabatt: boolean
+}
+
+export interface ApiAdresse {
+  name: string
+  strasse: string
+  plz: string
+  ort: string
+  land: string
+}
+
+export interface ApiBestellung {
+  id: number
+  poster_id: string
+  poster_titel: string
+  bildpfad: string | null
+  preis_bezahlt: number
+  status: 'offen' | 'bezahlt' | 'versendet' | 'storniert' | 'erstattet'
+  paid_at: string | null
+  created_at: string
+  adresse_name: string
+  adresse_strasse: string
+  adresse_plz: string
+  adresse_ort: string
+  adresse_land: string
+}
+
+export interface ApiBestellungDetail extends ApiBestellung {
+  stripe_session_id: string
+  stripe_payment_intent_id: string | null
+}
+
+async function posterFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/posters${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export async function apiListPosters(): Promise<ApiPoster[]> {
+  const res = await posterFetch('')
+  if (!res.ok) throw new Error('Poster konnten nicht geladen werden.')
+  return res.json()
+}
+
+export async function apiPosterCheckout(
+  poster_id: string,
+  adresse: ApiAdresse,
+  adresse_speichern: boolean,
+): Promise<{ url: string }> {
+  const res = await posterFetch('/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ poster_id, adresse, adresse_speichern }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as { url: string }
+}
+
+export async function apiListBestellungen(): Promise<ApiBestellung[]> {
+  const res = await posterFetch('/bestellungen')
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function apiGetBestellung(id: number): Promise<ApiBestellungDetail> {
+  const res = await posterFetch(`/bestellungen/${id}`)
+  if (!res.ok) throw new Error('Bestellung nicht gefunden.')
+  return res.json()
+}
+
+export async function apiGetAdresse(): Promise<ApiAdresse | null> {
+  const res = await posterFetch('/adresse')
+  if (!res.ok) return null
+  const data = await res.json()
+  return data ?? null
+}
+
+export async function apiSaveAdresse(adresse: ApiAdresse): Promise<void> {
+  await posterFetch('/adresse', { method: 'PUT', body: JSON.stringify(adresse) })
 }
 
 // ---- Kauf-Check ----

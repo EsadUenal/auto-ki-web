@@ -5,7 +5,10 @@ import ChatView from './components/ChatView'
 import KaufCheckView from './components/KaufCheckView'
 import VerkaufsCheckView from './components/VerkaufsCheckView'
 import EntdeckenView from './components/EntdeckenView'
+import PosterView from './components/PosterView'
 import PricingView from './components/PricingView'
+import SettingsView from './components/SettingsView'
+import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import PrivateRoute from './components/PrivateRoute'
 import SplashScreen from './components/SplashScreen'
@@ -74,13 +77,18 @@ function AppContent() {
     apiListChecks().then(setMyChecks)
     apiListConversations().then((apiConvs) => {
       if (apiConvs.length === 0) return   // leere Standardkonversation behalten
-      const loaded: Conversation[] = apiConvs.map((c) => ({
-        id: crypto.randomUUID(),
-        backendId: c.id,
-        title: c.title,
-        messages: [],
-        createdAt: new Date(c.created_at),
-      }))
+      const loaded: Conversation[] = apiConvs.map((c) => {
+        const raw = localStorage.getItem(`carCtx_${c.id}`)
+        const carContext = raw ? JSON.parse(raw) : undefined
+        return {
+          id: crypto.randomUUID(),
+          backendId: c.id,
+          title: c.title,
+          messages: [],
+          createdAt: new Date(c.created_at),
+          carContext,
+        }
+      })
       setConversations(loaded)
       setActiveId(loaded[0].id)
     })
@@ -125,6 +133,9 @@ function AppContent() {
         : (userText.slice(0, 42) + (userText.length > 42 ? '…' : ''))
       const apiConv = await apiCreateConversation(title)
       backendId = apiConv.id
+      if (conv.carContext) {
+        localStorage.setItem(`carCtx_${backendId}`, JSON.stringify(conv.carContext))
+      }
       setConversations((prev) =>
         prev.map((c) => (c.id === convId ? { ...c, backendId } : c))
       )
@@ -170,7 +181,10 @@ function AppContent() {
 
   const handleDeleteConv = useCallback(async (localId: string) => {
     const conv = conversationsRef.current.find((c) => c.id === localId)
-    if (conv?.backendId) apiDeleteConversation(conv.backendId).catch(() => {})
+    if (conv?.backendId) {
+      apiDeleteConversation(conv.backendId).catch(() => {})
+      localStorage.removeItem(`carCtx_${conv.backendId}`)
+    }
 
     const remaining = conversationsRef.current.filter((c) => c.id !== localId)
     if (activeIdRef.current === localId) {
@@ -312,7 +326,10 @@ function AppContent() {
             path="/entdecken"
             element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}
           />
+          <Route path="/poster" element={<PosterView />} />
           <Route path="/pricing" element={<PricingView />} />
+          <Route path="/settings" element={<SettingsView />} />
+          <Route path="/help" element={<HelpView />} />
         </Routes>
       </main>
     </div>
