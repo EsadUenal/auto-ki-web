@@ -56,6 +56,11 @@ export interface KaufCheckForm {
   ausstattung: string   // comma/newline separated → split before sending
   preis: number
   beschreibung: string
+  // Zusätzliche Angaben (optional) — verbessern die Risikoeinschätzung
+  unfallfrei: '' | 'ja' | 'nein' | 'unbekannt'
+  vorbesitzer: number | ''
+  tuevBis: string
+  scheckheft: boolean
 }
 
 // Exact backend response shape
@@ -81,6 +86,11 @@ export interface VerkaufsCheckForm {
   motor: string
   ausstattung: string
   zustand: string
+  // Zusätzliche Angaben (optional) — verbessern die Preiseinschätzung
+  unfallfrei: '' | 'ja' | 'nein' | 'unbekannt'
+  vorbesitzer: number | ''
+  tuevBis: string
+  scheckheft: boolean
 }
 
 export interface VerkaufsCheckResult {

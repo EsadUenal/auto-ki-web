@@ -8,8 +8,11 @@ import {
   CheckCircle,
   MinusCircle,
   XCircle,
+  AlertTriangle,
+  Wrench,
   History,
   Lock,
+  ChevronDown,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -26,6 +29,10 @@ const EMPTY: KaufCheckForm = {
   ausstattung: '',
   preis: 0,
   beschreibung: '',
+  unfallfrei: '',
+  vorbesitzer: '',
+  tuevBis: '',
+  scheckheft: false,
 }
 
 interface KaufCheckViewProps {
@@ -42,6 +49,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   const [result, setResult] = useState<KaufCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentRequired, setPaymentRequired] = useState(false)
+  const [showMore, setShowMore] = useState(false)
 
   // Gespeicherten Check laden
   useEffect(() => {
@@ -174,6 +182,46 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                 onChange={(e) => set('beschreibung', e.target.value)}
                 placeholder="Text aus dem Inserat einfügen — je mehr, desto besser…" />
             </Field>
+
+            <button
+              type="button"
+              onClick={() => setShowMore((v) => !v)}
+              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <ChevronDown size={15} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
+              Weitere Angaben (optional)
+            </button>
+
+            {showMore && (
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                <Field label="Unfallfrei laut Inserat">
+                  <select className={inputCls} value={form.unfallfrei}
+                    onChange={(e) => set('unfallfrei', e.target.value as KaufCheckForm['unfallfrei'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="ja">Ja, unfallfrei</option>
+                    <option value="nein">Unfallschaden vorhanden</option>
+                    <option value="unbekannt">Unklar/nicht erwähnt</option>
+                  </select>
+                </Field>
+                <Field label="Anzahl Vorbesitzer">
+                  <input className={inputCls} type="number" min={0} value={form.vorbesitzer}
+                    onChange={(e) => set('vorbesitzer', e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="z. B. 2" />
+                </Field>
+                <Field label="TÜV bis">
+                  <input className={inputCls} value={form.tuevBis}
+                    onChange={(e) => set('tuevBis', e.target.value)}
+                    placeholder="z. B. 06/2027" />
+                </Field>
+                <div className="flex items-end pb-2.5">
+                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" checked={form.scheckheft}
+                      onChange={(e) => set('scheckheft', e.target.checked)} />
+                    Scheckheftgepflegt laut Inserat
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {!savedCheck && (
@@ -242,7 +290,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
 
           {!savedCheck && (
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
+              className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
               {loading
                 ? <><Loader2 size={16} className="animate-spin" /> Analysiere Inserat…</>
                 : <><ShoppingCart size={16} /> Kauf-Check starten</>}
@@ -256,14 +304,58 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   )
 }
 
-function KaufCheckReport({ result }: { result: KaufCheckResult }) {
-  const empf = result.empfehlung?.toLowerCase()
+const EMPFEHLUNG_CONFIG: Record<string, { label: string; bg: string; label_cls: string; icon: React.ReactNode }> = {
+  kaufen: {
+    label: 'Kaufen',
+    bg: 'bg-green-50 border-green-200', label_cls: 'text-green-700',
+    icon: <CheckCircle size={24} className="text-green-600 shrink-0 mt-0.5" />,
+  },
+  kaufen_nach_besichtigung: {
+    label: 'Kaufen nach Besichtigung',
+    bg: 'bg-green-50 border-green-200', label_cls: 'text-green-700',
+    icon: <CheckCircle size={24} className="text-green-600 shrink-0 mt-0.5" />,
+  },
+  nur_mit_werkstattpruefung: {
+    label: 'Nur mit Werkstattprüfung',
+    bg: 'bg-yellow-50 border-yellow-200', label_cls: 'text-yellow-700',
+    icon: <Wrench size={22} className="text-yellow-600 shrink-0 mt-0.5" />,
+  },
+  preis_nachverhandeln: {
+    label: 'Preis nachverhandeln',
+    bg: 'bg-yellow-50 border-yellow-200', label_cls: 'text-yellow-700',
+    icon: <MinusCircle size={24} className="text-yellow-600 shrink-0 mt-0.5" />,
+  },
+  hohes_risiko: {
+    label: 'Hohes Risiko',
+    bg: 'bg-orange-50 border-orange-200', label_cls: 'text-orange-700',
+    icon: <AlertTriangle size={22} className="text-orange-600 shrink-0 mt-0.5" />,
+  },
+  finger_weg: {
+    label: 'Finger weg',
+    bg: 'bg-red-50 border-red-200', label_cls: 'text-red-700',
+    icon: <XCircle size={24} className="text-red-600 shrink-0 mt-0.5" />,
+  },
+  unbekannt: {
+    label: 'Unbekannt',
+    bg: 'bg-gray-50 border-gray-200', label_cls: 'text-gray-600',
+    icon: <MinusCircle size={24} className="text-gray-400 shrink-0 mt-0.5" />,
+  },
+}
 
-  const recStyle = empf === 'kaufen'
-    ? { bg: 'bg-green-50 border-green-200', icon: <CheckCircle size={24} className="text-green-600 shrink-0 mt-0.5" />, label: 'text-green-700' }
-    : empf === 'verhandeln'
-      ? { bg: 'bg-yellow-50 border-yellow-200', icon: <MinusCircle size={24} className="text-yellow-600 shrink-0 mt-0.5" />, label: 'text-yellow-700' }
-      : { bg: 'bg-red-50 border-red-200', icon: <XCircle size={24} className="text-red-600 shrink-0 mt-0.5" />, label: 'text-red-700' }
+const PREIS_LABEL: Record<string, string> = {
+  extrem_guenstig: 'Extrem günstig',
+  guenstig: 'Günstig',
+  marktgerecht: 'Marktgerecht',
+  teuer: 'Teuer',
+  extrem_teuer: 'Extrem teuer',
+  unbekannt: 'Unbekannt',
+}
+
+function KaufCheckReport({ result }: { result: KaufCheckResult }) {
+  const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
+  const recStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
+  const preisKey = result.preis_bewertung?.toLowerCase()
+  const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? result.preis_bewertung) : null
 
   return (
     <div id="kauf-result" className="mt-8 space-y-4">
@@ -272,12 +364,12 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
       <div className={`rounded-2xl p-5 border flex items-start gap-4 ${recStyle.bg}`}>
         {recStyle.icon}
         <div>
-          <p className={`font-semibold text-sm uppercase tracking-wide mb-1 ${recStyle.label}`}>
-            Empfehlung: {result.empfehlung}
+          <p className={`font-semibold text-sm uppercase tracking-wide mb-1 ${recStyle.label_cls}`}>
+            Empfehlung: {recStyle.label}
           </p>
-          {result.preis_bewertung && (
-            <p className={`text-sm font-medium mb-1 ${recStyle.label}`}>
-              Preisbewertung: {result.preis_bewertung.replace('_', ' ')}
+          {preisLabel && (
+            <p className={`text-sm font-medium mb-1 ${recStyle.label_cls}`}>
+              Preisbewertung: {preisLabel}
             </p>
           )}
         </div>
@@ -308,7 +400,7 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
 }
 
 const inputCls =
-  'w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition-colors placeholder-gray-400'
+  'w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 transition-colors placeholder-gray-400'
 
 function Field({
   label,

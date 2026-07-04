@@ -607,6 +607,10 @@ export async function runKaufCheck(
     preis_eur: form.preis || undefined,
     ausstattung: ausstattungListe,
     beschreibung: form.beschreibung || undefined,
+    unfallfrei: form.unfallfrei || undefined,
+    vorbesitzer: form.vorbesitzer || undefined,
+    tuev_bis: form.tuevBis || undefined,
+    scheckheftgepflegt: form.scheckheft || undefined,
     bild_base64: screenshot ?? undefined,
   }
 
@@ -651,6 +655,10 @@ export async function runVerkaufsCheck(
     motor: form.motor || undefined,
     ausstattung: ausstattungListe,
     beschreibung: ZUSTAND_TEXT[form.zustand] ?? form.zustand,
+    unfallfrei: form.unfallfrei || undefined,
+    vorbesitzer: form.vorbesitzer || undefined,
+    tuev_bis: form.tuevBis || undefined,
+    scheckheftgepflegt: form.scheckheft || undefined,
     bild_base64: images[0] ?? undefined,  // Backend nimmt aktuell ein Bild
   }
 

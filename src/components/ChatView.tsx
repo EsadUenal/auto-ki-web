@@ -218,7 +218,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
           />
         )}
         {!isEmpty && (
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+          <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
             {displayMessages.map((msg) => (
               <MessageBubble
                 key={msg.id}
@@ -238,7 +238,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
       </div>
 
       <div className="border-t border-gray-100 bg-white px-4 py-3">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {imagePreview && (
             <div className="relative inline-block mb-2">
               <img
@@ -329,7 +329,7 @@ function MessageBubble({
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEditConfirm?.() }
               if (e.key === 'Escape') onEditCancel?.()
             }}
-            className="w-full max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed resize-none outline-none ring-2 ring-orange-400 overflow-hidden"
+            className="w-full max-w-[88%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed resize-none outline-none ring-2 ring-orange-400 overflow-hidden"
             rows={1}
           />
           <div className="flex gap-2 mr-0.5">
@@ -354,7 +354,7 @@ function MessageBubble({
     return (
       <div className="flex justify-end group/msg">
         <div className="relative">
-          <div className="max-w-[80%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="max-w-[88%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
             {message.content}
           </div>
           {!editDisabled && !message.streaming && (
@@ -373,8 +373,8 @@ function MessageBubble({
 
   return (
     <div className="flex gap-3">
-      <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0 mt-0.5">
-        <span className="text-white text-xs font-bold">KI</span>
+      <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 mt-0.5 bg-orange-500 flex items-center justify-center">
+        <img src="/logo.svg" alt="Vira" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1 min-w-0">
         {message.streaming && message.statusText && !message.content ? (

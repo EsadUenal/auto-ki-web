@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TrendingUp, ImagePlus, X, Loader2, Clock, History, Lock } from 'lucide-react'
+import { TrendingUp, ImagePlus, X, Loader2, Clock, History, Lock, ChevronDown } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
@@ -22,6 +22,10 @@ const EMPTY: VerkaufsCheckForm = {
   motor: '',
   ausstattung: '',
   zustand: 'gut',
+  unfallfrei: '',
+  vorbesitzer: '',
+  tuevBis: '',
+  scheckheft: false,
 }
 
 interface VerkaufsCheckViewProps {
@@ -38,6 +42,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
   const [result, setResult] = useState<VerkaufsCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentRequired, setPaymentRequired] = useState(false)
+  const [showMore, setShowMore] = useState(false)
 
   // Gespeicherten Check laden
   useEffect(() => {
@@ -171,7 +176,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                   <button key={opt.value} type="button" onClick={() => set('zustand', opt.value)}
                     className={`text-left p-3 rounded-xl border text-sm transition-colors ${
                       form.zustand === opt.value
-                        ? 'border-gray-900 bg-gray-900 text-white'
+                        ? 'border-green-700 bg-green-700 text-white'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700'
                     }`}>
                     <p className="font-medium">{opt.label}</p>
@@ -182,6 +187,46 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                 ))}
               </div>
             </Field>
+
+            <button
+              type="button"
+              onClick={() => setShowMore((v) => !v)}
+              className="flex items-center gap-1.5 text-sm text-green-700 hover:text-green-800 font-medium"
+            >
+              <ChevronDown size={15} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
+              Weitere Angaben (optional)
+            </button>
+
+            {showMore && (
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                <Field label="Unfallfrei">
+                  <select className={inputCls} value={form.unfallfrei}
+                    onChange={(e) => set('unfallfrei', e.target.value as VerkaufsCheckForm['unfallfrei'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="ja">Ja, unfallfrei</option>
+                    <option value="nein">Unfallschaden vorhanden</option>
+                    <option value="unbekannt">Unklar</option>
+                  </select>
+                </Field>
+                <Field label="Anzahl Vorbesitzer">
+                  <input className={inputCls} type="number" min={0} value={form.vorbesitzer}
+                    onChange={(e) => set('vorbesitzer', e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="z. B. 1" />
+                </Field>
+                <Field label="TÜV bis">
+                  <input className={inputCls} value={form.tuevBis}
+                    onChange={(e) => set('tuevBis', e.target.value)}
+                    placeholder="z. B. 06/2027" />
+                </Field>
+                <div className="flex items-end pb-2.5">
+                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" checked={form.scheckheft}
+                      onChange={(e) => set('scheckheft', e.target.checked)} />
+                    Scheckheftgepflegt
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {!savedCheck && (
@@ -245,7 +290,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
 
           {!savedCheck && (
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
+              className="w-full py-3 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
               {loading
                 ? <><Loader2 size={16} className="animate-spin" /> Berechne Preisspanne…</>
                 : <><TrendingUp size={16} /> Verkaufswert ermitteln</>}
@@ -302,7 +347,7 @@ function PriceCard({
   return (
     <div className={`rounded-xl p-4 text-center ${
       variant === 'primary'
-        ? 'bg-gray-900 text-white ring-2 ring-gray-900'
+        ? 'bg-green-700 text-white ring-2 ring-green-700'
         : 'bg-gray-50 border border-gray-200 text-gray-700'
     }`}>
       <p className={`text-xs font-medium mb-1 ${variant === 'primary' ? 'text-gray-300' : 'text-gray-500'}`}>
@@ -324,7 +369,7 @@ function PriceCard({
 }
 
 const inputCls =
-  'w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 transition-colors placeholder-gray-400'
+  'w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-green-400 focus:ring-1 focus:ring-green-200 transition-colors placeholder-gray-400'
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (

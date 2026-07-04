@@ -135,7 +135,7 @@ export default function Sidebar({
 
       {/* Verlauf */}
       {conversations.length > 0 && (
-        <div className="px-3 pt-5 flex-1 overflow-y-auto scrollbar-thin">
+        <div className="px-3 pt-5 flex-1 min-h-0 overflow-y-auto scrollbar-thin">
           <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
             <Clock size={11} /> Verlauf
           </p>
@@ -202,9 +202,10 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Meine Checks */}
+      {/* Meine Checks — begrenzte, eigene Scroll-Höhe: wächst bei vielen Checks nicht
+          unbegrenzt und verdrängt so nie den Verlauf/Footer darunter (Layout-Bug) */}
       {checks.length > 0 && (
-        <div className="px-3 pt-4 shrink-0">
+        <div className="px-3 pt-4 shrink-0 max-h-52 overflow-y-auto scrollbar-thin">
           <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
             <FileText size={11} /> Meine Checks
           </p>
