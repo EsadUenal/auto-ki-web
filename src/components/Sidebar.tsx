@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
-  Car, Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
-  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, Image,
+  Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import type { ApiCheckSummary } from '../api/client'
@@ -91,10 +91,8 @@ export default function Sidebar({
 
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
-        <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center shrink-0">
-          <Car size={15} className="text-white" />
-        </div>
-        <span className="font-semibold text-sm tracking-tight">Auto-KI</span>
+        <img src="/logo.svg" alt="Vira" className="w-7 h-7 rounded-lg shrink-0" />
+        <span className="font-semibold text-sm tracking-tight">Vira</span>
       </div>
 
       {/* Neuer Chat */}
@@ -115,8 +113,9 @@ export default function Sidebar({
           { to: '/chat',          Icon: MessageSquare, label: 'KI-Chat' },
           { to: '/kaufcheck',     Icon: ShoppingCart,  label: 'Kauf-Check' },
           { to: '/verkaufscheck', Icon: TrendingUp,    label: 'Verkaufs-Check' },
+          { to: '/ersatzteile',   Icon: Wrench,        label: 'Ersatzteile' },
           { to: '/entdecken',     Icon: Compass,       label: 'Entdecken' },
-          { to: '/poster',        Icon: Image,         label: 'Poster' },
+          { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },
           { to: '/pricing',       Icon: CreditCard,    label: 'Preise & Abo' },
         ].map(({ to, Icon, label }) => (
           <NavLink
@@ -243,8 +242,13 @@ export default function Sidebar({
         {menuOpen && user && (
           <div className="absolute bottom-full left-2 right-2 mb-2 rounded-xl border border-sidebar-border bg-sidebar-bg shadow-2xl overflow-hidden z-50">
 
-            {/* Kopf: Avatar + E-Mail + Abo */}
+            {/* Kopf: Vira-Brand + E-Mail + Abo */}
             <div className="px-4 py-3 border-b border-sidebar-border">
+              <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-sidebar-border/50">
+                <img src="/logo.svg" alt="Vira" className="w-5 h-5 rounded-md shrink-0" />
+                <span className="text-xs font-semibold text-sidebar-text tracking-tight">Vira</span>
+                <span className="text-[10px] text-sidebar-muted ml-0.5">getvira.de</span>
+              </div>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0 text-white text-sm font-bold select-none">
                   {user.email[0].toUpperCase()}

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Car } from 'lucide-react'
 
 interface SplashScreenProps {
   onDone: () => void
@@ -66,19 +65,16 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
           width: '76px',
           height: '76px',
           borderRadius: '22px',
-          background: '#f97316',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          overflow: 'hidden',
           boxShadow: '0 0 55px rgba(249,115,22,0.22), 0 0 110px rgba(249,115,22,0.08)',
         }}
       >
-        <Car size={36} color="white" strokeWidth={1.6} />
+        <img src="/logo.svg" alt="Vira" style={{ width: '100%', height: '100%' }} />
       </div>
 
       <div style={{ textAlign: 'center' }}>
         <p style={{ color: '#ffffff', fontSize: '24px', fontWeight: 600, letterSpacing: '-0.5px', margin: 0, lineHeight: 1 }}>
-          Auto-KI
+          Vira
         </p>
         <p style={{ color: '#444', fontSize: '11px', marginTop: '6px', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
           Intelligente Kfz-Beratung

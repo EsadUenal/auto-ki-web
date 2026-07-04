@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Car, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 type Mode = 'login' | 'register'
@@ -64,12 +64,12 @@ export default function LoginView() {
       <div className="w-full max-w-md relative">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center mb-3 shadow-lg"
+          <div className="w-12 h-12 rounded-2xl overflow-hidden mb-3 shadow-lg"
                style={{ boxShadow: '0 0 32px rgba(249,115,22,0.35)' }}>
-            <Car size={22} className="text-white" />
+            <img src="/logo.svg" alt="Vira" className="w-full h-full" />
           </div>
           <h1 className="text-xl font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
-            Auto-KI
+            Vira
           </h1>
           <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Intelligente Beratung rund ums Auto

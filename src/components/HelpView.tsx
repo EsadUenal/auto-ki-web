@@ -94,17 +94,17 @@ export default function HelpView() {
               innerhalb von 24 Stunden an Werktagen.
             </p>
             <a
-              href="mailto:support@auto-ki.de"
+              href="mailto:support@getvira.de"
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-700 transition-colors"
             >
               <Mail size={15} />
-              support@auto-ki.de
+              support@getvira.de
             </a>
           </div>
         </Section>
 
         {/* ── Über die App ── */}
-        <Section title="Über Auto-KI" icon={Info}>
+        <Section title="Über Vira" icon={Info}>
           <div className="px-6 py-5 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Version</span>
@@ -112,7 +112,7 @@ export default function HelpView() {
             </div>
             <div className="border-t border-gray-100 pt-3 mt-3">
               <p className="text-sm text-gray-600 leading-relaxed">
-                Auto-KI ist ein KI-gestützter Assistent für Autokäufer und -verkäufer.
+                Vira ist ein KI-gestützter Assistent für Autokäufer und -verkäufer.
                 Die App analysiert Fahrzeuginserate, prüft bekannte Schwachstellen und
                 hilft dir, den richtigen Preis zu finden — schnell, neutral und datenbasiert.
               </p>

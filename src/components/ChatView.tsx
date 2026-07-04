@@ -204,7 +204,10 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
         {conversation.carContext && (
-          <CarPanels car={conversation.carContext} />
+          <CarPanels
+            car={conversation.carContext}
+            onPanelClick={(prompt) => { if (!isStreaming) handleSend(prompt) }}
+          />
         )}
         {isEmpty && !conversation.carContext && (
           <WelcomeScreen
@@ -431,14 +434,46 @@ const GLOW_BY_ID: Record<string, string> = {
   'mclaren-720s':   '#f97316',
 }
 
-function PanelCard({ label, img, glow = '#6b7280', ratio = '5/2' }: {
-  label: string; img?: string; glow?: string; ratio?: string
+const PANEL_PROMPTS: Record<string, (titel: string) => string> = {
+  'Außenansicht': (t) =>
+    `Erkläre mir ausführlich das **Design und die Außenansicht** des ${t}. Gehe dabei auf folgende Punkte ein:\n\n` +
+    `- Karosserievarianten mit Baujahren und Generationsübersicht (wann kam welche Generation?)\n` +
+    `- Abmessungen: Länge, Breite, Höhe, Radstand je Generation\n` +
+    `- Designsprache und markante Erkennungsmerkmale (Scheinwerfer, Kühlergrill, Linienführung)\n` +
+    `- Generationsunterschiede: woran erkennt man welchen Jahrgang auf den ersten Blick?\n` +
+    `- Aerodynamik (cW-Wert, Spoiler, Diffusor), Felgengrößen, Lackfarbangebot\n\n` +
+    `Bitte strukturiert mit Zwischenüberschriften, ausführlich aber übersichtlich.`,
+
+  'Motor': (t) =>
+    `Erkläre mir ausführlich den **Motor und die Motorisierungen** des ${t}. Gehe dabei auf folgende Punkte ein:\n\n` +
+    `- Alle verfügbaren Motorvarianten (Benziner, Diesel, Hybrid, Elektro)\n` +
+    `- Hubraum, Zylinderzahl, PS/kW, Drehmoment je Variante\n` +
+    `- Technologien (Turbo, Direkteinspritzung, MHEV, Allrad etc.)\n` +
+    `- Typische Stärken und Schwächen jeder Motorvariante\n` +
+    `- Verbrauchswerte (WLTP), 0–100-Zeiten, Höchstgeschwindigkeit\n` +
+    `- Besonderheiten und Empfehlungen\n\n` +
+    `Bitte strukturiert mit Zwischenüberschriften, ausführlich aber übersichtlich.`,
+
+  'Röntgen': (t) =>
+    `Erkläre mir ausführlich das **Innenleben und den technischen Aufbau** des ${t}. Gehe dabei auf folgende Punkte ein:\n\n` +
+    `- Interieur-Design: Materialien, Verarbeitung, Raumgefühl\n` +
+    `- Infotainment: Display-Größe, Navigation, Konnektivität (Apple CarPlay, Android Auto)\n` +
+    `- Fahrerassistenzsysteme (ADAS): Tempomat, Spurhalte, Notbremse etc.\n` +
+    `- Fahrwerksaufbau: Vorder-/Hinterachskonstruktion, Federung, Dämpfer\n` +
+    `- Karosseriestruktur und Sicherheitskonzept\n` +
+    `- Kofferraumvolumen, Sitzkomfort, Besonderheiten\n\n` +
+    `Bitte strukturiert mit Zwischenüberschriften, ausführlich aber übersichtlich.`,
+}
+
+function PanelCard({ label, img, glow = '#6b7280', ratio = '5/2', onClick }: {
+  label: string; img?: string; glow?: string; ratio?: string; onClick?: () => void
 }) {
   const [hovered, setHovered] = useState(false)
+  const clickable = !!onClick
 
   return (
     <div
-      className="flex flex-col rounded-xl border border-gray-200 bg-gray-50 select-none overflow-hidden"
+      className={`flex flex-col rounded-xl border border-gray-200 bg-gray-50 select-none overflow-hidden${clickable ? ' cursor-pointer' : ''}`}
       style={{
         transform: hovered ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
         transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)',
@@ -448,6 +483,7 @@ function PanelCard({ label, img, glow = '#6b7280', ratio = '5/2' }: {
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
     >
       <div className="relative bg-gray-100 overflow-hidden" style={{ aspectRatio: ratio }}>
         <div
@@ -470,15 +506,29 @@ function PanelCard({ label, img, glow = '#6b7280', ratio = '5/2' }: {
             }}
           />
         )}
+        {/* Klick-Hinweis: erscheint nur wenn klickbar und auf hover */}
+        {clickable && (
+          <div
+            className="absolute bottom-1.5 right-1.5 bg-orange-500 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full pointer-events-none"
+            style={{ opacity: hovered ? 1 : 0, transition: 'opacity 0.2s ease' }}
+          >
+            KI-Erklärung
+          </div>
+        )}
       </div>
-      <div className="px-2 py-1.5 text-center border-t border-gray-100">
-        <span className="text-gray-400 text-[10px] font-medium tracking-wide">{label}</span>
+      <div className="px-2 py-1.5 text-center border-t border-gray-100 relative">
+        <span
+          className="text-[10px] font-medium tracking-wide transition-colors duration-200"
+          style={{ color: clickable && hovered ? '#f97316' : '#9ca3af' }}
+        >
+          {label}
+        </span>
       </div>
     </div>
   )
 }
 
-function CarPanels({ car }: { car: CarContext }) {
+function CarPanels({ car, onPanelClick }: { car: CarContext; onPanelClick: (prompt: string) => void }) {
   const glow = GLOW_BY_ID[car.id] ?? '#6b7280'
   const panels = [
     { label: 'Außenansicht', img: car.imgAussen ?? car.img, ratio: '5/2' },
@@ -491,9 +541,19 @@ function CarPanels({ car }: { car: CarContext }) {
       <div className="max-w-3xl mx-auto">
         <p className="text-[10px] font-semibold text-gray-400 tracking-widest uppercase mb-2">{car.titel}</p>
         <div className="grid grid-cols-3 gap-3 items-start">
-          {panels.map(({ label, img, ratio }) => (
-            <PanelCard key={label} label={label} img={img} glow={glow} ratio={ratio} />
-          ))}
+          {panels.map(({ label, img, ratio }) => {
+            const promptFn = PANEL_PROMPTS[label]
+            return (
+              <PanelCard
+                key={label}
+                label={label}
+                img={img}
+                glow={glow}
+                ratio={ratio}
+                onClick={promptFn ? () => onPanelClick(promptFn(car.titel)) : undefined}
+              />
+            )
+          })}
         </div>
       </div>
     </div>
@@ -504,10 +564,10 @@ function CarPanels({ car }: { car: CarContext }) {
 function WelcomeScreen({ onSuggestion }: { onSuggestion: (text: string) => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-4 py-16 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-orange-500 flex items-center justify-center mb-5 shadow-lg">
-        <span className="text-white text-2xl font-bold">KI</span>
+      <div className="w-14 h-14 rounded-2xl overflow-hidden mb-5 shadow-lg">
+        <img src="/logo.svg" alt="Vira" className="w-full h-full" />
       </div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Auto-KI</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Vira</h1>
       <p className="text-gray-500 text-sm max-w-sm mb-8">
         Intelligente Beratung rund ums Auto — Kauf, Verkauf, technische Fragen.
         Transparente Quellen, ehrliche Einschätzungen.

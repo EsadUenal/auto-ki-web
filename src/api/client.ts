@@ -30,6 +30,7 @@ export interface AuthUser {
   email: string
   abo_typ: 'none' | 'light' | 'pro' | 'max'
   checks_verbleibend: number
+  ersatzteil_suchen_verbleibend: number
   abo_kuendigt_zum?: string | null
 }
 
@@ -381,6 +382,78 @@ export async function apiPaymentStatus(): Promise<PaymentStatus | null> {
   }
 }
 
+// ── E-Books ───────────────────────────────────────────────────────────────────
+
+export interface ApiEbook {
+  id: string
+  titel: string
+  untertitel: string
+  beschreibung: string
+  zielgruppe: string
+  preis: number
+  preis_normal: number
+  hat_rabatt: boolean
+}
+
+export interface ApiEbookBestellung {
+  id: number
+  ebook_id: string
+  titel: string
+  untertitel: string
+  zielgruppe: string
+  preis_bezahlt: number
+  status: 'offen' | 'bezahlt' | 'storniert' | 'erstattet'
+  paid_at: string | null
+  created_at: string
+}
+
+async function ebookFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/ebooks${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export async function apiListEbooks(): Promise<ApiEbook[]> {
+  const res = await ebookFetch('')
+  if (!res.ok) throw new Error('E-Books konnten nicht geladen werden.')
+  return res.json()
+}
+
+export async function apiEbookCheckout(ebook_id: string): Promise<{ url: string }> {
+  const res = await ebookFetch('/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ ebook_id }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as { url: string }
+}
+
+export async function apiListEbookBestellungen(): Promise<ApiEbookBestellung[]> {
+  const res = await ebookFetch('/bestellungen')
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function apiDownloadEbook(ebook_id: string, titel: string): Promise<void> {
+  const res = await ebookFetch(`/${ebook_id}/download`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { fehler?: { nachricht?: string } })?.fehler?.nachricht ?? 'Download fehlgeschlagen.')
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `Vira_${titel.replace(/\s+/g, '_')}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ── Poster (Etappe 2) ─────────────────────────────────────────────────────────
 
 export interface ApiPoster {
@@ -471,6 +544,48 @@ export async function apiGetAdresse(): Promise<ApiAdresse | null> {
 
 export async function apiSaveAdresse(adresse: ApiAdresse): Promise<void> {
   await posterFetch('/adresse', { method: 'PUT', body: JSON.stringify(adresse) })
+}
+
+// ── Ersatzteile — Preisvergleich ──────────────────────────────────────────────
+
+export type ErsatzteilMarkeTyp = 'oem' | 'original' | 'nachbau' | 'unbekannt'
+
+export interface ApiErsatzteilErgebnis {
+  teilename: string
+  anbieter: string
+  preis_eur: number | null
+  marke_typ: ErsatzteilMarkeTyp
+  qualitaetsstufe: string
+  url: string
+  hinweis: string
+}
+
+export interface ApiErsatzteilSuche {
+  suchanfrage: { fahrzeug: string; bauteil: string }
+  ergebnisse: ApiErsatzteilErgebnis[]
+  empfehlung: string
+  empfohlener_index: number | null
+  quelle: string
+  belege: unknown[]
+}
+
+async function ersatzteilFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/ersatzteile${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export async function apiErsatzteilSuche(fahrzeug: string, bauteil: string): Promise<ApiErsatzteilSuche> {
+  const res = await ersatzteilFetch('/suche', {
+    method: 'POST',
+    body: JSON.stringify({ fahrzeug, bauteil }),
+  })
+  if (res.status === 402) throw new PaymentRequiredError()
+  const data = await res.json()
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as ApiErsatzteilSuche
 }
 
 // ---- Kauf-Check ----

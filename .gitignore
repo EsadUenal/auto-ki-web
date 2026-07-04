@@ -3,3 +3,6 @@ dist
 .env.local
 .env
 *.local
+
+# Lokales Backup alter Bild-Assets (114MB) — nicht fürs Repo bestimmt
+public/cars/_backup/

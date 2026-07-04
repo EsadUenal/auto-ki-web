@@ -5,7 +5,8 @@ import ChatView from './components/ChatView'
 import KaufCheckView from './components/KaufCheckView'
 import VerkaufsCheckView from './components/VerkaufsCheckView'
 import EntdeckenView from './components/EntdeckenView'
-import PosterView from './components/PosterView'
+import EbookView from './components/EbookView'
+import ErsatzteileView from './components/ErsatzteileView'
 import PricingView from './components/PricingView'
 import SettingsView from './components/SettingsView'
 import HelpView from './components/HelpView'
@@ -326,7 +327,8 @@ function AppContent() {
             path="/entdecken"
             element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}
           />
-          <Route path="/poster" element={<PosterView />} />
+          <Route path="/ebooks" element={<EbookView />} />
+          <Route path="/ersatzteile" element={<ErsatzteileView />} />
           <Route path="/pricing" element={<PricingView />} />
           <Route path="/settings" element={<SettingsView />} />
           <Route path="/help" element={<HelpView />} />

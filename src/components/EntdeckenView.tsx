@@ -242,7 +242,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
           className="text-[10px] font-semibold tracking-[0.25em] uppercase mb-4"
           style={{ color: 'rgba(255,255,255,0.2)' }}
         >
-          Auto-KI · Showroom
+          Vira · Showroom
         </p>
         <h1
           className="text-4xl font-bold mb-3"
