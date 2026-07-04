@@ -1,42 +1,18 @@
-import { ShieldCheck, Globe, Layers, HelpCircle } from 'lucide-react'
-import type { SourceMeta, TrustLevel } from '../types'
-
-const TRUST_CONFIG: Record<TrustLevel, { label: string; textColor: string; dotColor: string; dots: number }> = {
-  hoch:      { label: 'Hohes Vertrauen',    textColor: 'text-green-700',  dotColor: 'bg-green-500',  dots: 3 },
-  mittel:    { label: 'Mittleres Vertrauen', textColor: 'text-yellow-700', dotColor: 'bg-yellow-500', dots: 2 },
-  niedrig:   { label: 'Niedriges Vertrauen', textColor: 'text-red-600',    dotColor: 'bg-red-500',    dots: 1 },
-  keine:     { label: '',                    textColor: 'text-gray-400',   dotColor: 'bg-gray-300',   dots: 0 },
-  unbekannt: { label: '',                    textColor: 'text-gray-400',   dotColor: 'bg-gray-300',   dots: 0 },
-}
+import { ShieldCheck, Globe, Layers, HelpCircle, Sparkles } from 'lucide-react'
+import type { SourceMeta } from '../types'
 
 interface SourceBadgeProps {
   meta: SourceMeta
 }
 
 export default function SourceBadge({ meta }: SourceBadgeProps) {
-  // Kein Badge bei reiner Konversation (keine DB- oder Web-Daten)
-  if (meta.source === 'gespräch') return null
+  // gespräch = reines KI-Wissen ohne DB/Web-Abruf → neutraler Badge statt null
 
-  const trust = TRUST_CONFIG[meta.trust_level] ?? TRUST_CONFIG.unbekannt
   const links = extractLinks(meta.belege)
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
       <SourceChip source={meta.source} />
-
-      {trust.dots > 0 && (
-        <div className={`flex items-center gap-1.5 text-xs ${trust.textColor}`}>
-          <span className="flex gap-0.5">
-            {[1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className={`inline-block w-2 h-2 rounded-full ${i <= trust.dots ? trust.dotColor : 'bg-gray-200'}`}
-              />
-            ))}
-          </span>
-          <span>{trust.label}</span>
-        </div>
-      )}
 
       {links.map((link, i) => (
         <a
@@ -65,7 +41,7 @@ function SourceChip({ source }: { source: string }) {
   if (s === 'web') {
     return (
       <span className="inline-flex items-center gap-1 text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2.5 py-0.5">
-        <Globe size={11} /> Web (ungeprüft)
+        <Globe size={11} /> Web-Recherche
       </span>
     )
   }
@@ -73,6 +49,13 @@ function SourceChip({ source }: { source: string }) {
     return (
       <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5">
         <Layers size={11} /> Datenbank + Web
+      </span>
+    )
+  }
+  if (s === 'gespräch') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2.5 py-0.5">
+        <Sparkles size={11} /> KI-Wissen
       </span>
     )
   }
