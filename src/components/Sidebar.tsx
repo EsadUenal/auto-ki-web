@@ -133,106 +133,113 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* Verlauf */}
-      {conversations.length > 0 && (
-        <div className="px-3 pt-5 flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-          <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
-            <Clock size={11} /> Verlauf
-          </p>
-          <div className="space-y-0.5 mt-1">
-            {conversations.map((conv) => (
-              <div key={conv.id} className="relative group/conv">
+      {/* Verlauf + Meine Checks — EIN gemeinsamer Scroll-Bereich statt zwei
+          konkurrierender Sektionen. Vorher hatte "Meine Checks" eine eigene
+          (wachsende) Höhe, die "Verlauf" immer weiter zusammendrückte, bis der
+          Chat-Verlauf verschwand/überdeckt wurde. Jetzt teilen sich beide EINEN
+          flex-1 min-h-0 overflow-y-auto Container → Footer bleibt immer sichtbar,
+          nichts wird verdrängt, es scrollt bei Bedarf einfach als Ganzes. */}
+      {(conversations.length > 0 || checks.length > 0) && (
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+          {conversations.length > 0 && (
+            <div className="px-3 pt-5">
+              <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
+                <Clock size={11} /> Verlauf
+              </p>
+              <div className="space-y-0.5 mt-1">
+                {conversations.map((conv) => (
+                  <div key={conv.id} className="relative group/conv">
 
-                {editingConvId === conv.id ? (
-                  /* ── Inline-Rename ── */
-                  <div className="flex items-center gap-1 px-1">
-                    <input
-                      ref={editInputRef}
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter')  { e.preventDefault(); confirmRename() }
-                        if (e.key === 'Escape') cancelRename()
-                      }}
-                      className="flex-1 min-w-0 bg-sidebar-hover text-sidebar-text text-sm rounded px-2 py-1.5 outline-none border border-sidebar-border"
-                    />
-                    <button onClick={confirmRename} className="shrink-0 p-1 rounded text-green-400 hover:bg-sidebar-hover">
-                      <Check size={13} />
+                    {editingConvId === conv.id ? (
+                      /* ── Inline-Rename ── */
+                      <div className="flex items-center gap-1 px-1">
+                        <input
+                          ref={editInputRef}
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter')  { e.preventDefault(); confirmRename() }
+                            if (e.key === 'Escape') cancelRename()
+                          }}
+                          className="flex-1 min-w-0 bg-sidebar-hover text-sidebar-text text-sm rounded px-2 py-1.5 outline-none border border-sidebar-border"
+                        />
+                        <button onClick={confirmRename} className="shrink-0 p-1 rounded text-green-400 hover:bg-sidebar-hover">
+                          <Check size={13} />
+                        </button>
+                        <button onClick={cancelRename} className="shrink-0 p-1 rounded text-sidebar-muted hover:bg-sidebar-hover">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      /* ── Normal row ── */
+                      <>
+                        <button
+                          onClick={() => { onSelectConv(conv.id); navigate('/chat') }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors pr-14 ${
+                            activeConvId === conv.id
+                              ? 'bg-sidebar-active text-white'
+                              : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text'
+                          }`}
+                        >
+                          {conv.title}
+                        </button>
+
+                        {/* Action-Buttons — erscheinen beim Hover */}
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/conv:flex gap-0.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startRename(conv) }}
+                            title="Umbenennen"
+                            className="p-1 rounded text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover transition-colors"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDeleteConv(conv.id) }}
+                            title="Löschen"
+                            className="p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {checks.length > 0 && (
+            <div className="px-3 pt-4 pb-2">
+              <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
+                <FileText size={11} /> Meine Checks
+              </p>
+              <div className="space-y-0.5 mt-1">
+                {checks.map((check) => (
+                  <div key={check.id} className="relative group/check">
+                    <button
+                      onClick={() => onSelectCheck(check.id, check.typ)}
+                      className="w-full text-left px-3 py-2 rounded-lg transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2 pr-8"
+                    >
+                      {check.typ === 'kauf'
+                        ? <ShoppingCart size={12} className="shrink-0 text-blue-400" />
+                        : <TrendingUp   size={12} className="shrink-0 text-green-400" />
+                      }
+                      <span className="text-xs truncate min-w-0">{check.titel}</span>
                     </button>
-                    <button onClick={cancelRename} className="shrink-0 p-1 rounded text-sidebar-muted hover:bg-sidebar-hover">
-                      <X size={13} />
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteCheck(check.id) }}
+                      title="Löschen"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/check:flex p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
+                    >
+                      <Trash2 size={12} />
                     </button>
                   </div>
-                ) : (
-                  /* ── Normal row ── */
-                  <>
-                    <button
-                      onClick={() => { onSelectConv(conv.id); navigate('/chat') }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors pr-14 ${
-                        activeConvId === conv.id
-                          ? 'bg-sidebar-active text-white'
-                          : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text'
-                      }`}
-                    >
-                      {conv.title}
-                    </button>
-
-                    {/* Action-Buttons — erscheinen beim Hover */}
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/conv:flex gap-0.5">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); startRename(conv) }}
-                        title="Umbenennen"
-                        className="p-1 rounded text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover transition-colors"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onDeleteConv(conv.id) }}
-                        title="Löschen"
-                        className="p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Meine Checks — begrenzte, eigene Scroll-Höhe: wächst bei vielen Checks nicht
-          unbegrenzt und verdrängt so nie den Verlauf/Footer darunter (Layout-Bug) */}
-      {checks.length > 0 && (
-        <div className="px-3 pt-4 shrink-0 max-h-52 overflow-y-auto scrollbar-thin">
-          <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
-            <FileText size={11} /> Meine Checks
-          </p>
-          <div className="space-y-0.5 mt-1">
-            {checks.map((check) => (
-              <div key={check.id} className="relative group/check">
-                <button
-                  onClick={() => onSelectCheck(check.id, check.typ)}
-                  className="w-full text-left px-3 py-2 rounded-lg transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2 pr-8"
-                >
-                  {check.typ === 'kauf'
-                    ? <ShoppingCart size={12} className="shrink-0 text-blue-400" />
-                    : <TrendingUp   size={12} className="shrink-0 text-green-400" />
-                  }
-                  <span className="text-xs truncate min-w-0">{check.titel}</span>
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDeleteCheck(check.id) }}
-                  title="Löschen"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/check:flex p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
