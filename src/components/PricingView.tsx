@@ -174,7 +174,7 @@ export default function PricingView() {
         )}
 
         {/* Abo-Karten */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
           {PLANS.map((plan) => {
             const istAktuell = aktuellerPlan === plan.id
             const istHighlight = plan.highlight
@@ -226,9 +226,9 @@ export default function PricingView() {
                   disabled={!!loading || istAktuell}
                   className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     istAktuell
-                      ? 'bg-gray-100 text-gray-400 cursor-default'
+                      ? 'bg-gray-100 text-gray-400 cursor-default border border-transparent'
                       : istHighlight
-                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
+                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm border border-transparent'
                         : `${plan.bg} ${plan.farbe} hover:opacity-80 border ${plan.border}`
                   } disabled:opacity-60`}
                 >

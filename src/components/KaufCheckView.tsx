@@ -318,7 +318,7 @@ const EMPFEHLUNG_CONFIG: Record<string, { label: string; bg: string; label_cls: 
   nur_mit_werkstattpruefung: {
     label: 'Nur mit Werkstattprüfung',
     bg: 'bg-yellow-50 border-yellow-200', label_cls: 'text-yellow-700',
-    icon: <Wrench size={22} className="text-yellow-600 shrink-0 mt-0.5" />,
+    icon: <Wrench size={24} className="text-yellow-600 shrink-0 mt-0.5" />,
   },
   preis_nachverhandeln: {
     label: 'Preis nachverhandeln',
@@ -328,7 +328,7 @@ const EMPFEHLUNG_CONFIG: Record<string, { label: string; bg: string; label_cls: 
   hohes_risiko: {
     label: 'Hohes Risiko',
     bg: 'bg-orange-50 border-orange-200', label_cls: 'text-orange-700',
-    icon: <AlertTriangle size={22} className="text-orange-600 shrink-0 mt-0.5" />,
+    icon: <AlertTriangle size={24} className="text-orange-600 shrink-0 mt-0.5" />,
   },
   finger_weg: {
     label: 'Finger weg',
