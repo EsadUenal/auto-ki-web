@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import ChatView from './components/ChatView'
 import KaufCheckView from './components/KaufCheckView'
@@ -48,6 +49,15 @@ function titleFromMessages(messages: Message[]): string {
 function AppContent() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Bei jedem Seitenwechsel die mobile Sidebar automatisch schließen (z.B. wenn
+  // eine Navigation programmatisch erfolgt, nicht nur per Klick in der Sidebar).
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [location.pathname])
 
   const [conversations, setConversations] = useState<Conversation[]>(() => [newConversation()])
   const [activeId, setActiveId] = useState<string>(conversations[0].id)
@@ -293,8 +303,24 @@ function AppContent() {
         checks={myChecks}
         onSelectCheck={handleSelectCheck}
         onDeleteCheck={handleDeleteCheck}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden flex flex-col min-w-0">
+        {/* Mobile-Topbar — nur < md sichtbar, öffnet die Off-Canvas-Sidebar.
+            Auf Desktop (md+) ist die Sidebar immer sichtbar, diese Leiste entfällt. */}
+        <div className="md:hidden flex items-center gap-3 h-14 px-4 border-b border-gray-100 shrink-0">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Menü öffnen"
+            className="p-2 -ml-2 rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            <Menu size={20} />
+          </button>
+          <img src="/logo.svg" alt="Vira" className="w-6 h-6 rounded-md" />
+          <span className="font-semibold text-sm text-gray-900 tracking-tight">Vira</span>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
         <Routes>
           <Route path="/" element={<Navigate to="/chat" replace />} />
           <Route
@@ -333,6 +359,7 @@ function AppContent() {
           <Route path="/settings" element={<SettingsView />} />
           <Route path="/help" element={<HelpView />} />
         </Routes>
+        </div>
       </main>
     </div>
   )

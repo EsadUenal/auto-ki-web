@@ -25,12 +25,17 @@ interface SidebarProps {
   checks: ApiCheckSummary[]
   onSelectCheck: (id: number, typ: 'kauf' | 'verkauf') => void
   onDeleteCheck: (id: number) => void
+  /** Nur für Mobile/Tablet (< md): steuert den Off-Canvas-Zustand der Sidebar.
+   *  Auf Desktop (md+) bleibt die Sidebar unabhängig davon immer sichtbar. */
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 export default function Sidebar({
   conversations, activeConvId, onNewChat, onSelectConv,
   onDeleteConv, onRenameConv,
   checks, onSelectCheck, onDeleteCheck,
+  mobileOpen = false, onMobileClose,
 }: SidebarProps) {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
@@ -73,6 +78,7 @@ export default function Sidebar({
   function handleNewChat() {
     onNewChat()
     navigate('/chat')
+    onMobileClose?.()
   }
 
   async function handleLogout() {
@@ -84,15 +90,39 @@ export default function Sidebar({
   function goTo(path: string) {
     setMenuOpen(false)
     navigate(path)
+    onMobileClose?.()
   }
 
   return (
-    <aside className="flex flex-col w-64 shrink-0 bg-sidebar-bg text-sidebar-text h-full">
+    <>
+      {/* Mobile-Backdrop — schließt die Sidebar bei Tap außerhalb (nur < md, nur wenn offen) */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`flex flex-col w-64 shrink-0 bg-sidebar-bg text-sidebar-text h-full
+          fixed inset-y-0 left-0 z-40 transition-transform duration-300 ease-out
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:static md:z-auto md:translate-x-0`}
+      >
 
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
         <img src="/logo.svg" alt="Vira" className="w-7 h-7 rounded-lg shrink-0" />
-        <span className="font-semibold text-sm tracking-tight">Vira</span>
+        <span className="font-semibold text-sm tracking-tight flex-1">Vira</span>
+        {/* Schließen-Button — nur auf Mobile/Tablet sichtbar */}
+        <button
+          onClick={onMobileClose}
+          aria-label="Menü schließen"
+          className="md:hidden p-1.5 -mr-1.5 rounded-lg text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover transition-colors"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Neuer Chat */}
@@ -121,6 +151,7 @@ export default function Sidebar({
           <NavLink
             key={to}
             to={to}
+            onClick={onMobileClose}
             className={({ isActive }) =>
               `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive ? 'bg-sidebar-active text-white' : 'text-sidebar-text hover:bg-sidebar-hover'
@@ -174,7 +205,7 @@ export default function Sidebar({
                       /* ── Normal row ── */
                       <>
                         <button
-                          onClick={() => { onSelectConv(conv.id); navigate('/chat') }}
+                          onClick={() => { onSelectConv(conv.id); navigate('/chat'); onMobileClose?.() }}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors pr-14 ${
                             activeConvId === conv.id
                               ? 'bg-sidebar-active text-white'
@@ -218,7 +249,7 @@ export default function Sidebar({
                 {checks.map((check) => (
                   <div key={check.id} className="relative group/check">
                     <button
-                      onClick={() => onSelectCheck(check.id, check.typ)}
+                      onClick={() => { onSelectCheck(check.id, check.typ); onMobileClose?.() }}
                       className="w-full text-left px-3 py-2 rounded-lg transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2 pr-8"
                     >
                       {check.typ === 'kauf'
@@ -374,6 +405,7 @@ export default function Sidebar({
           </button>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }
