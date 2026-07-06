@@ -144,12 +144,28 @@ export default function PricingView() {
   const aktuellerPlan = user?.abo_typ ?? 'none'
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-4 py-10">
+    <div
+      className="relative h-full overflow-y-auto scrollbar-thin"
+      style={{ background: 'radial-gradient(120% 60% at 50% 0%, #fdfaf6 0%, #faf7f3 40%, #f4f0ea 100%)' }}
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
+        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
+      </div>
+
+      <div className="relative max-w-5xl mx-auto px-4 py-12">
 
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Preise & Pläne</h1>
+          <div className="inline-flex items-center gap-2.5 mb-5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+              <Star size={12} />
+            </span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Preise</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3 tracking-[-0.03em] leading-[1.0]">
+            Ein Plan, <span className="text-gray-400">der mitwächst.</span>
+          </h1>
           <p className="text-gray-500 text-base max-w-xl mx-auto">
             Wähle den Plan, der zu deiner Nutzung passt. Alle Pläne können monatlich gekündigt werden.
           </p>
@@ -277,8 +293,8 @@ export default function PricingView() {
         <div
           onMouseEnter={() => setHoveredCard('einzelkauf')}
           onMouseLeave={() => setHoveredCard(null)}
-          className="bg-white border-2 border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-6"
-          style={cardHoverStyle('einzelkauf', hoveredCard === 'einzelkauf', '0 1px 3px rgba(0,0,0,0.05)')}
+          className="bg-white border border-[#e6e1da] rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-6"
+          style={cardHoverStyle('einzelkauf', hoveredCard === 'einzelkauf', '0 8px 24px -16px rgba(40,25,10,0.2)')}
         >
           <div className="w-11 h-11 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
             <ShoppingCart size={22} />

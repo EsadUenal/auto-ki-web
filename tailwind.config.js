@@ -5,12 +5,12 @@ export default {
     extend: {
       colors: {
         sidebar: {
-          bg: '#1a1a1a',
-          hover: '#2a2a2a',
-          active: '#333333',
-          text: '#e5e5e5',
-          muted: '#888888',
-          border: '#2e2e2e',
+          bg: '#f6f2ec',
+          hover: '#ece6dd',
+          active: '#f97316',
+          text: '#3d382f',
+          muted: '#9a938a',
+          border: '#e7e3dd',
         },
       },
       typography: {

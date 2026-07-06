@@ -252,13 +252,30 @@ export default function EbookView() {
   const kaufSet = new Set(bestellungen.filter(b => b.status === 'bezahlt').map(b => b.ebook_id))
 
   return (
-    <div className="h-full overflow-y-auto bg-white">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div
+      className="relative h-full overflow-y-auto scrollbar-thin"
+      style={{ background: 'radial-gradient(120% 60% at 50% 0%, #fdfaf6 0%, #faf7f3 40%, #f4f0ea 100%)' }}
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
+        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
+      </div>
+
+      <div className="relative max-w-4xl mx-auto px-6 py-10">
 
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">E-Books</h1>
-          <p className="text-sm text-gray-500">Digitale Ratgeber für smarte Autokäufer</p>
+        <div className="mb-7">
+          <div className="flex items-center gap-2.5 mb-5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+              <BookOpen size={12} />
+            </span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · E-Books</span>
+          </div>
+          <h1 className="text-3xl sm:text-[2.6rem] font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
+            Wissen, das
+            <br />
+            <span className="text-gray-400">sich auszahlt.</span>
+          </h1>
         </div>
 
         {/* Banner */}
@@ -296,14 +313,14 @@ export default function EbookView() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-100 mb-6">
+        <div className="flex gap-1 border-b border-[#e9e4dd] mb-6">
           {(['bibliothek', 'meine'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 tab === t
-                  ? 'border-gray-900 text-gray-900'
+                  ? 'border-orange-500 text-gray-900'
                   : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
             >
@@ -432,7 +449,7 @@ export default function EbookView() {
           ) : (
             <div className="space-y-3">
               {bestellungen.map(b => (
-                <div key={b.id} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50">
+                <div key={b.id} className="flex items-center gap-4 p-4 rounded-xl border border-[#e9e4dd] bg-white shadow-[0_8px_24px_-18px_rgba(40,25,10,0.2)]">
                   <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 border border-gray-200">
                     <EbookCover id={b.ebook_id} titel={b.titel} untertitel={b.untertitel} zielgruppe={b.zielgruppe} />
                   </div>

@@ -102,28 +102,42 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-            <ShoppingCart size={20} className="text-white" />
+    <div
+      className="relative h-full overflow-y-auto scrollbar-thin"
+      style={{ background: 'radial-gradient(120% 60% at 50% 0%, #fdfaf6 0%, #faf7f3 40%, #f4f0ea 100%)' }}
+    >
+      {/* Eine ruhige warme Lichtquelle oben */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
+        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
+      </div>
+
+      <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
+        {/* Hero */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2.5 mb-5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+              <ShoppingCart size={12} />
+            </span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Kauf-Check</span>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Kauf-Check</h1>
-            <p className="text-sm text-gray-500">Inserat prüfen — fair, Risiken, Empfehlung</p>
-          </div>
+          <h1 className="text-3xl sm:text-[2.6rem] font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
+            Kauf mit Sicherheit.
+            <br />
+            <span className="text-gray-400">Bevor du bezahlst.</span>
+          </h1>
         </div>
 
         {/* Banner für gespeicherten Check */}
         {savedCheck && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-blue-700">
+          <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-orange-700">
               <History size={15} />
               <span>Gespeicherter Check</span>
             </div>
             <button
               onClick={onClearSaved}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors whitespace-nowrap"
+              className="text-sm font-medium text-orange-600 hover:text-orange-800 transition-colors whitespace-nowrap"
             >
               Neue Prüfung →
             </button>
@@ -131,8 +145,8 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
-            <h2 className="font-medium text-gray-800">Fahrzeugdaten</h2>
+          <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 space-y-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+            <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#a49c92]">Fahrzeugdaten</p>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Marke" required>
                 <input className={inputCls} value={form.marke}
@@ -186,7 +200,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <button
               type="button"
               onClick={() => setShowMore((v) => !v)}
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 font-medium"
             >
               <ChevronDown size={15} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
               Weitere Angaben (optional)
@@ -225,8 +239,8 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           </div>
 
           {!savedCheck && (
-            <div className="bg-white border border-gray-200 rounded-2xl p-6">
-              <h2 className="font-medium text-gray-800 mb-4">Inserat-Screenshot (optional)</h2>
+            <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+              <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#a49c92] mb-4">Inserat-Screenshot (optional)</p>
               {screenshot ? (
                 <div className="relative inline-block">
                   <img src={screenshot} className="max-h-40 rounded-xl border border-gray-200" alt="Screenshot" />
@@ -290,7 +304,8 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
 
           {!savedCheck && (
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2">
+              className="w-full py-3.5 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:saturate-50 flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 10px 24px -8px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
               {loading
                 ? <><Loader2 size={16} className="animate-spin" /> Analysiere Inserat…</>
                 : <><ShoppingCart size={16} /> Kauf-Check starten</>}
@@ -376,7 +391,7 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
       </div>
 
       {(result.marktpreis_min || result.marktpreis_max) && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Marktpreis-Einschätzung</p>
           <p className="text-xl font-semibold text-gray-900">
             {result.marktpreis_min?.toLocaleString('de-DE')} € – {result.marktpreis_max?.toLocaleString('de-DE')} €
@@ -387,7 +402,7 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+      <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht</p>
         <div className="chat-prose">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.bericht}</ReactMarkdown>
@@ -400,7 +415,7 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
 }
 
 const inputCls =
-  'w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 transition-colors placeholder-gray-400'
+  'w-full text-sm bg-white border border-[#e6e1da] rounded-xl px-3 py-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60 transition-colors placeholder-gray-400'
 
 function Field({
   label,
