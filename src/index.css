@@ -236,3 +236,55 @@
   .poster-tile:hover .poster-img-wrap { transform: none; box-shadow: none; }
   .poster-tile:hover .poster-shine { animation: none; }
 }
+
+/* ── Ersatzteile-Redesign ("Spotlight Command") ────────────────────────────
+   Scoped Utilities (Präfix ez-) — nur auf der Ersatzteile-Seite verwendet.   */
+
+/* Sanftes Aufsteigen einzelner Elemente (Ergebnis-Karten, Empty State). */
+@keyframes ez-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ez-rise { animation: ez-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Ruhiges Atmen der zentralen Lichtquelle — kaum wahrnehmbar, gibt Tiefe. */
+@keyframes ez-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.8; }
+}
+.ez-aurora { animation: ez-breathe 9s ease-in-out infinite; }
+
+/* Ergebnis-Karte: dieselbe Spring-Hover-Signatur wie Entdecken. */
+.ez-card {
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.32s ease, border-color 0.2s ease;
+  will-change: transform;
+}
+.ez-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Laufendes Schimmern der Skeleton-Kacheln. */
+@keyframes ez-shimmer {
+  0%   { background-position: -420px 0; }
+  100% { background-position: 420px 0; }
+}
+.ez-skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.03) 0%,
+    rgba(255,255,255,0.07) 50%,
+    rgba(255,255,255,0.03) 100%);
+  background-size: 840px 100%;
+  animation: ez-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ez-rise, .ez-aurora, .ez-skeleton { animation: none; }
+  .ez-card { transition: none; }
+  .ez-card:hover { transform: none; }
+}
+@media (hover: none) {
+  .ez-card:hover { transform: none; box-shadow: none; }
+}
