@@ -164,7 +164,7 @@ export default function ErsatzteileView() {
     <div className="h-full overflow-y-auto bg-white">
       {/* ── Hero: Showroom bei Nacht ─────────────────────────────────────── */}
       <div
-        className="relative overflow-hidden px-6 sm:px-10 py-10 sm:py-14"
+        className="relative overflow-hidden px-6 sm:px-10 pt-10 sm:pt-14 pb-24 sm:pb-28"
         style={{
           background: 'radial-gradient(circle at 15% 0%, #241a10 0%, #14100c 35%, #0a0a0a 100%)',
         }}
@@ -177,6 +177,14 @@ export default function ErsatzteileView() {
         <div
           className="absolute bottom-0 left-1/3 w-72 h-72 rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)' }}
+        />
+
+        {/* Weicher Übergang: dunkler Hero löst sich am unteren Rand in den warmen
+            Ton des Ergebnisbereichs auf — kein harter Schnitt Dunkel ↔ Hell.
+            Liegt unter dem Inhalt und im leeren Bodenbereich (kein Text betroffen). */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent, #f6f4f1)' }}
         />
 
         <div className="relative max-w-4xl mx-auto">
@@ -265,6 +273,9 @@ export default function ErsatzteileView() {
       </div>
 
       {/* ── Ergebnisse ────────────────────────────────────────────────────── */}
+      {/* Band entwickelt sich aus dem Hero-Fade heraus: startet im selben warmen
+          Ton (#f6f4f1) und läuft weich nach Weiß aus — eine zusammenhängende Fläche. */}
+      <div className="w-full" style={{ background: 'linear-gradient(180deg, #f6f4f1 0%, #ffffff 220px)' }}>
       <div className="max-w-4xl mx-auto px-6 py-8">
 
         {paymentRequired && (
@@ -299,8 +310,16 @@ export default function ErsatzteileView() {
         )}
 
         {!loading && !result && (
-          <div className="text-center py-16 text-gray-400">
-            <PackageSearch size={40} className="mx-auto mb-3 opacity-40" />
+          <div className="flex flex-col items-center justify-center text-center min-h-[320px] py-10 text-gray-400">
+            {/* Warmes Halo greift den Orange-Glow des Heros auf → visueller Bezug nach oben */}
+            <div className="relative mb-4">
+              <div
+                aria-hidden
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)' }}
+              />
+              <PackageSearch size={40} className="relative mx-auto opacity-40" />
+            </div>
             <p className="text-sm font-medium text-gray-500 mb-1">Noch keine Suche gestartet.</p>
             <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
               Fahrzeug und Bauteil eingeben — Vira vergleicht in Sekunden mehrere
@@ -347,6 +366,7 @@ export default function ErsatzteileView() {
             </p>
           </>
         )}
+      </div>
       </div>
     </div>
   )

@@ -73,11 +73,36 @@ const PLANS: PlanConfig[] = [
   },
 ]
 
+// Hover-Glow je Plan im jeweiligen Akzent-RGB — dieselbe Idee wie der
+// fahrzeugeigene Glow auf der Entdecken-Seite (car.glow), konsistent übernommen.
+const GLOW_RGB: Record<string, string> = {
+  light:     '59,130,246',   // blau
+  pro:       '249,115,22',   // orange
+  max:       '168,85,247',   // lila
+  einzelkauf: '17,24,39',    // neutral (grau-900)
+}
+
+// Hover-Signatur der Entdecken-Karten, konsistent übernommen (nicht stärker).
+const CARD_TRANSITION =
+  'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.32s ease, border-color 0.2s ease'
+
+function cardHoverStyle(id: string, hovered: boolean, restingShadow: string): React.CSSProperties {
+  return {
+    transform: hovered ? 'translateY(-6px) scale(1.02)' : 'translateY(0) scale(1)',
+    boxShadow: hovered
+      ? `0 24px 50px rgba(0,0,0,0.10), 0 0 40px rgba(${GLOW_RGB[id]},0.16)`
+      : restingShadow,
+    transition: CARD_TRANSITION,
+    willChange: 'transform',
+  }
+}
+
 export default function PricingView() {
   const { user, refreshUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
 
   const paymentParam = searchParams.get('payment')
 
@@ -182,11 +207,16 @@ export default function PricingView() {
             return (
               <div
                 key={plan.id}
-                className={`relative rounded-2xl border-2 p-6 flex flex-col transition-shadow ${
+                onMouseEnter={() => setHoveredCard(plan.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+                className={`relative rounded-2xl border-2 p-6 flex flex-col ${plan.border} bg-white`}
+                style={cardHoverStyle(
+                  plan.id,
+                  hoveredCard === plan.id,
                   istHighlight
-                    ? `${plan.border} shadow-md shadow-orange-100`
-                    : `${plan.border} hover:shadow-sm`
-                } bg-white`}
+                    ? '0 8px 24px rgba(249,115,22,0.10)'
+                    : '0 1px 3px rgba(0,0,0,0.05)',
+                )}
               >
                 {istHighlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full tracking-wide">
@@ -244,7 +274,12 @@ export default function PricingView() {
         </div>
 
         {/* Einzelkauf */}
-        <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-6">
+        <div
+          onMouseEnter={() => setHoveredCard('einzelkauf')}
+          onMouseLeave={() => setHoveredCard(null)}
+          className="bg-white border-2 border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-6"
+          style={cardHoverStyle('einzelkauf', hoveredCard === 'einzelkauf', '0 1px 3px rgba(0,0,0,0.05)')}
+        >
           <div className="w-11 h-11 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
             <ShoppingCart size={22} />
           </div>
