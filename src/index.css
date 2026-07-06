@@ -280,8 +280,22 @@
   animation: ez-shimmer 1.4s ease-in-out infinite;
 }
 
+/* Ruhiger KI-Puls des Command-Glyphs — signalisiert "hier ist etwas wach". */
+@keyframes ez-pulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.08); }
+}
+.ez-pulse { animation: ez-pulse 2.6s ease-in-out infinite; }
+
+/* Analyse-Pipeline: Quellen leuchten nacheinander auf ("wird durchsucht"). */
+@keyframes ez-scan {
+  0%, 100% { opacity: 0.3; border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+  50%      { opacity: 1; border-color: rgba(249,115,22,0.4); color: rgba(251,146,60,0.95); }
+}
+.ez-scan { animation: ez-scan 1.8s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .ez-rise, .ez-aurora, .ez-skeleton { animation: none; }
+  .ez-rise, .ez-aurora, .ez-skeleton, .ez-pulse, .ez-scan { animation: none; }
   .ez-card { transition: none; }
   .ez-card:hover { transform: none; }
 }

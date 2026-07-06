@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Search, Sparkles, ExternalLink, Tag, AlertCircle, X, Zap, Crown, Star,
-  TrendingDown, ShieldCheck, ArrowRight,
+  Sparkles, ExternalLink, Tag, AlertCircle, X, Zap, Crown, Star,
+  TrendingDown, ShieldCheck, ArrowRight, ChevronRight,
 } from 'lucide-react'
 import {
   apiErsatzteilSuche, PaymentRequiredError,
@@ -172,9 +172,7 @@ export default function ErsatzteileView() {
     : -1
 
   const hatErgebnisansicht = loading || !!result || paymentRequired || !!error
-  const kontingentText = quota === null
-    ? 'Unbegrenzte Suchen'
-    : `${verbleibend} von ${quota} Suchen übrig`
+  const kannSuchen = !!fahrzeug.trim() && !!bauteil.trim() && !loading
 
   // ── Kontingent-Pille (oben rechts) ──────────────────────────────────────
   const KontingentPille = user ? (
@@ -193,82 +191,109 @@ export default function ErsatzteileView() {
       )}
       <span className="inline-flex items-center gap-1.5 text-[11px] text-white/45 whitespace-nowrap px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.03]">
         <span className={`w-1.5 h-1.5 rounded-full ${quota === null || verbleibend > 0 ? 'bg-emerald-400' : 'bg-red-400'}`} />
-        {kontingentText}
+        {quota === null ? 'Unbegrenzt' : `${verbleibend} / ${quota}`}
       </span>
     </div>
   ) : null
 
-  // ── Such-Command-Card (das Zentrum) ─────────────────────────────────────
-  // condensed=true → schlanke Sticky-Variante über den Ergebnissen.
-  const SearchCommand = ({ condensed }: { condensed: boolean }) => (
+  // ── Command-Bar: EIN Werkzeug, kein Formular ────────────────────────────
+  // Zwei randlose Felder + KI-Glyph + Aktion in einer durchgehenden Glasfläche,
+  // die beim Fokus als Ganzes "erwacht" (focus-within). condensed = Sticky-Variante.
+  const CommandBar = ({ condensed }: { condensed: boolean }) => (
     <form
       onSubmit={handleSearch}
-      className="relative rounded-[26px] overflow-hidden"
+      className="relative rounded-[24px] transition-all duration-300 focus-within:ring-2 focus-within:ring-orange-500/30"
       style={{
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.03) 100%)',
         border: '1px solid rgba(255,255,255,0.1)',
         boxShadow: condensed
-          ? '0 16px 40px -12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)'
-          : '0 48px 90px -30px rgba(0,0,0,0.85), 0 0 60px -20px rgba(249,115,22,0.18), inset 0 1px 0 rgba(255,255,255,0.1)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+          ? '0 16px 40px -14px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)'
+          : '0 50px 100px -34px rgba(0,0,0,0.9), 0 0 70px -30px rgba(249,115,22,0.22), inset 0 1px 0 rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(22px)',
+        WebkitBackdropFilter: 'blur(22px)',
       }}
     >
-      <div className={`flex flex-col md:flex-row md:items-stretch ${condensed ? 'p-2.5 gap-2.5' : 'p-3 gap-3'}`}>
-        {/* Fahrzeug */}
-        <div className="flex-1 relative">
-          {!condensed && (
-            <label className="block text-[10px] font-semibold text-white/35 mb-1.5 ml-3.5 uppercase tracking-[0.15em]">Fahrzeug</label>
-          )}
-          <input
-            value={fahrzeug}
-            onChange={e => setFahrzeug(e.target.value)}
-            placeholder="Fahrzeug — z. B. BMW M3 E92"
-            aria-label="Fahrzeug"
-            className="w-full px-4 py-3.5 rounded-2xl text-sm text-white placeholder-white/30 bg-white/[0.04] border border-white/[0.08] focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/40 focus:bg-white/[0.06] transition-all"
-          />
-        </div>
+      <div className={`flex flex-col md:flex-row md:items-center ${condensed ? 'p-2 md:pl-3.5' : 'p-2.5 md:pl-5'}`}>
+        {/* KI-Glyph (Desktop) — signalisiert: hier arbeitet eine KI */}
+        {!condensed && (
+          <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl shrink-0 mr-4 text-orange-300"
+            style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.22)' }}>
+            <Sparkles size={19} className="ez-pulse" />
+          </div>
+        )}
 
-        {/* Trennlinie (nur Desktop) */}
-        <div className="hidden md:flex items-center" style={{ marginTop: condensed ? 0 : 22 }}>
-          <span className="w-px h-8 self-center" style={{ background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.14), transparent)' }} />
-        </div>
+        {/* Feld: Fahrzeug */}
+        <input
+          value={fahrzeug}
+          onChange={e => setFahrzeug(e.target.value)}
+          placeholder="Welches Fahrzeug?"
+          aria-label="Fahrzeug"
+          className={`flex-1 min-w-0 bg-transparent text-white placeholder-white/30 focus:outline-none px-4 ${
+            condensed ? 'py-2.5 text-sm' : 'py-3.5 text-[15px]'
+          }`}
+        />
 
-        {/* Bauteil */}
-        <div className="flex-1 relative">
-          {!condensed && (
-            <label className="block text-[10px] font-semibold text-white/35 mb-1.5 ml-3.5 uppercase tracking-[0.15em]">Bauteil</label>
-          )}
-          <input
-            value={bauteil}
-            onChange={e => setBauteil(e.target.value)}
-            placeholder="Bauteil — z. B. Bremsscheiben vorne"
-            aria-label="Bauteil"
-            className="w-full px-4 py-3.5 rounded-2xl text-sm text-white placeholder-white/30 bg-white/[0.04] border border-white/[0.08] focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/40 focus:bg-white/[0.06] transition-all"
-          />
+        {/* Trenner: Chevron (Desktop) / Linie (Mobile) */}
+        <div className="hidden md:flex items-center px-1 text-white/20 shrink-0">
+          <ChevronRight size={16} />
         </div>
+        <div className="md:hidden h-px mx-3 my-0.5" style={{ background: 'rgba(255,255,255,0.08)' }} />
+
+        {/* Feld: Bauteil */}
+        <input
+          value={bauteil}
+          onChange={e => setBauteil(e.target.value)}
+          placeholder="Welches Bauteil?"
+          aria-label="Bauteil"
+          className={`flex-1 min-w-0 bg-transparent text-white placeholder-white/30 focus:outline-none px-4 ${
+            condensed ? 'py-2.5 text-sm' : 'py-3.5 text-[15px]'
+          }`}
+        />
 
         {/* Aktion */}
-        <div className="md:self-stretch flex" style={{ marginTop: !condensed ? 22 : 0 }}>
-          <button
-            type="submit"
-            disabled={loading || !fahrzeug.trim() || !bauteil.trim()}
-            className="group w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:saturate-50"
-            style={{
-              background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)',
-              boxShadow: '0 10px 26px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
-            }}
-          >
-            {loading ? (
-              <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Search size={16} />
-            )}
-            <span>Analysieren</span>
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={!kannSuchen}
+          aria-label="Analysieren"
+          className={`group shrink-0 flex items-center justify-center gap-2 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:saturate-50 mt-2 md:mt-0 md:ml-2 w-full md:w-auto ${
+            condensed ? 'px-5 py-2.5 text-sm' : 'px-6 py-3.5 text-[15px]'
+          }`}
+          style={{
+            background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)',
+            boxShadow: '0 10px 26px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
+          }}
+        >
+          {loading ? (
+            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <span>Analysieren</span>
+              <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+            </>
+          )}
+        </button>
       </div>
     </form>
+  )
+
+  // ── Quellen-Zeile: erzählt "welche Quellen, gleichzeitig" ohne Marketing ──
+  const QuellenZeile = ({ scanning = false }: { scanning?: boolean }) => (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-[12px]">
+      <span className="text-white/30 mr-0.5">
+        {scanning ? 'Durchsucht' : 'Durchsucht gleichzeitig'}
+      </span>
+      {QUELLEN.map((q, i) => (
+        <span
+          key={q}
+          className={`px-2.5 py-1 rounded-full border font-medium ${
+            scanning ? 'ez-scan' : 'border-white/[0.08] bg-white/[0.03] text-white/55'
+          }`}
+          style={scanning ? { animationDelay: `${i * 220}ms` } : undefined}
+        >
+          {q}
+        </span>
+      ))}
+    </div>
   )
 
   return (
@@ -279,7 +304,7 @@ export default function ErsatzteileView() {
           'radial-gradient(120% 80% at 50% -8%, #1b1512 0%, #0d0b0a 42%, #070605 100%)',
       }}
     >
-      {/* ── Lichtführung: eine ruhige warme Quelle oben, ein kühler Bodenschein, Vignette ── */}
+      {/* ── Lichtführung: eine ruhige warme Quelle oben, kühler Bodenschein, Vignette ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[820px] h-[520px] rounded-full"
@@ -287,7 +312,7 @@ export default function ErsatzteileView() {
         />
         <div
           className="absolute -bottom-56 left-1/4 w-[620px] h-[420px] rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(56,110,220,0.07) 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(56,110,220,0.06) 0%, transparent 70%)' }}
         />
         <div
           className="absolute inset-0"
@@ -297,54 +322,42 @@ export default function ErsatzteileView() {
 
       <div className="relative min-h-full flex flex-col">
 
-        {/* ══ ZUSTAND 1: Ruhende Bühne (Empty / Landing) ══════════════════════ */}
+        {/* ══ ZUSTAND 1: Ruhende Bühne (Landing) ══════════════════════════════ */}
         {!hatErgebnisansicht && (
-          <div className="flex-1 flex flex-col justify-center px-6 py-14">
+          <div className="flex-1 flex flex-col justify-center px-6 py-16">
             <div className="w-full max-w-3xl mx-auto">
               {/* Kopf */}
-              <div className="flex items-start justify-between gap-4 mb-8">
-                <div className="flex items-center gap-2.5 text-orange-400/90">
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/20">
-                    <Search size={12} />
+              <div className="flex items-center justify-between gap-4 mb-9">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/20 text-orange-400">
+                    <Sparkles size={12} />
                   </span>
-                  <span className="text-[11px] font-bold tracking-[0.25em] uppercase">Preisvergleich</span>
+                  <span className="text-[11px] font-bold tracking-[0.25em] uppercase text-white/45">
+                    Vira · Ersatzteil-Intelligenz
+                  </span>
                 </div>
                 {KontingentPille}
               </div>
 
-              <h1 className="text-3xl sm:text-[2.6rem] font-bold text-white tracking-[-0.02em] leading-[1.08] mb-3">
-                Das richtige Ersatzteil.
+              {/* Headline — mutig, kurz */}
+              <h1 className="text-[2.5rem] sm:text-6xl font-bold text-white tracking-[-0.035em] leading-[0.98] mb-5">
+                Das beste Teil.
                 <br />
-                <span className="text-white/45">Zum besten Preis.</span>
+                <span className="text-white/40">Ehrlich verglichen.</span>
               </h1>
-              <p className="text-sm sm:text-[15px] text-white/45 mb-9 max-w-xl leading-relaxed">
-                Gib Fahrzeug und Bauteil ein — Vira durchsucht mehrere Shops gleichzeitig
-                und sagt dir ehrlich, welches Teil sich wirklich lohnt.
-              </p>
 
-              {/* Command-Card — das Zentrum */}
-              <div className="ez-rise">
-                <SearchCommand condensed={false} />
+              {/* Command-Bar — das Zentrum */}
+              <div className="ez-rise" style={{ animationDelay: '60ms' }}>
+                <CommandBar condensed={false} />
               </div>
 
-              {/* Quellen-Signatur + Beispiel */}
-              <div className="mt-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] text-white/30 mr-1">Durchsucht</span>
-                  {QUELLEN.map(q => (
-                    <span
-                      key={q}
-                      className="text-[11px] font-medium text-white/55 px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03]"
-                    >
-                      {q}
-                    </span>
-                  ))}
-                </div>
+              {/* Quellen + Beispiel */}
+              <div className="mt-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ez-rise" style={{ animationDelay: '140ms' }}>
+                <QuellenZeile />
                 <button
                   onClick={fillBeispiel}
                   className="group inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-orange-400 transition-colors shrink-0"
                 >
-                  <Sparkles size={12} className="text-orange-400/70" />
                   <span>Beispiel: <span className="text-white/60">{BEISPIEL.fahrzeug} · {BEISPIEL.bauteil}</span></span>
                   <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
                 </button>
@@ -353,10 +366,10 @@ export default function ErsatzteileView() {
           </div>
         )}
 
-        {/* ══ ZUSTAND 2: Analyse-Ansicht (Sticky-Search + Ergebnisse) ═════════ */}
+        {/* ══ ZUSTAND 2: Analyse-Ansicht (Sticky-Command + Ergebnisse) ════════ */}
         {hatErgebnisansicht && (
           <>
-            {/* Sticky-Search */}
+            {/* Sticky-Command */}
             <div
               className="sticky top-0 z-30 px-4 sm:px-6 pt-5 pb-4"
               style={{
@@ -367,18 +380,18 @@ export default function ErsatzteileView() {
             >
               <div className="max-w-5xl mx-auto">
                 <div className="flex items-center justify-between gap-4 mb-3">
-                  <div className="flex items-center gap-2 text-orange-400/90">
-                    <Search size={13} />
-                    <span className="text-[11px] font-bold tracking-[0.22em] uppercase">Preisvergleich</span>
+                  <div className="flex items-center gap-2 text-white/45">
+                    <Sparkles size={13} className="text-orange-400" />
+                    <span className="text-[11px] font-bold tracking-[0.22em] uppercase">Ersatzteil-Intelligenz</span>
                   </div>
                   {KontingentPille}
                 </div>
-                <SearchCommand condensed={true} />
+                <CommandBar condensed={true} />
               </div>
             </div>
 
             {/* Inhalt */}
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 pt-2">
+            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16 pt-2">
 
               {paymentRequired && (
                 <div className="ez-rise flex items-center gap-3 px-4 py-3.5 rounded-2xl mb-6 text-sm border border-amber-400/25 bg-amber-400/[0.07] text-amber-200">
@@ -403,16 +416,26 @@ export default function ErsatzteileView() {
                 </div>
               )}
 
+              {/* Loading = Analyse-Pipeline: erzählt "was jetzt passiert" durch Bewegung */}
               {loading && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4, 5, 6].map(i => (
-                    <div
-                      key={i}
-                      className="ez-skeleton h-52 rounded-2xl border border-white/[0.06]"
-                      style={{ animationDelay: `${i * 90}ms` }}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="ez-rise flex flex-col items-center text-center py-8 mb-2">
+                    <div className="flex items-center gap-2.5 mb-4 text-white/80">
+                      <Sparkles size={16} className="ez-pulse text-orange-400" />
+                      <span className="text-sm font-semibold tracking-wide">Vira analysiert das beste Angebot</span>
+                    </div>
+                    <QuellenZeile scanning />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <div
+                        key={i}
+                        className="ez-skeleton h-52 rounded-2xl border border-white/[0.06]"
+                        style={{ animationDelay: `${i * 90}ms` }}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
 
               {!loading && result && (
