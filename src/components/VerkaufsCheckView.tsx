@@ -110,14 +110,14 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
         <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.09) 0%, transparent 68%)' }} />
       </div>
 
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
         {/* Hero */}
         <div className="mb-8">
           <div className="flex items-center gap-2.5 mb-5">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-green-500/10 border border-green-400/25 text-green-600">
               <TrendingUp size={12} />
             </span>
             <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Verkaufs-Check</span>
@@ -131,14 +131,14 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
 
         {/* Banner für gespeicherten Check */}
         {savedCheck && (
-          <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-orange-700">
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-green-700">
               <History size={15} />
               <span>Gespeicherter Check</span>
             </div>
             <button
               onClick={onClearSaved}
-              className="text-sm font-medium text-orange-600 hover:text-orange-800 transition-colors whitespace-nowrap"
+              className="text-sm font-medium text-green-600 hover:text-green-800 transition-colors whitespace-nowrap"
             >
               Neue Prüfung →
             </button>
@@ -189,11 +189,11 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                   <button key={opt.value} type="button" onClick={() => set('zustand', opt.value)}
                     className={`text-left p-3 rounded-xl border text-sm transition-colors ${
                       form.zustand === opt.value
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        ? 'border-green-500 bg-green-50 text-green-700'
                         : 'border-[#e6e1da] hover:border-gray-300 text-gray-700'
                     }`}>
                     <p className="font-medium">{opt.label}</p>
-                    <p className={`text-xs mt-0.5 ${form.zustand === opt.value ? 'text-orange-500/80' : 'text-gray-400'}`}>
+                    <p className={`text-xs mt-0.5 ${form.zustand === opt.value ? 'text-green-600/80' : 'text-gray-400'}`}>
                       {opt.desc}
                     </p>
                   </button>
@@ -204,7 +204,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
             <button
               type="button"
               onClick={() => setShowMore((v) => !v)}
-              className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 font-medium"
+              className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium"
             >
               <ChevronDown size={15} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
               Weitere Angaben (optional)
@@ -304,7 +304,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           {!savedCheck && (
             <button type="submit" disabled={loading}
               className="w-full py-3.5 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:saturate-50 flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 10px 24px -8px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
+              style={{ background: 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)', boxShadow: '0 10px 24px -8px rgba(22,163,74,0.5), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
               {loading
                 ? <><Loader2 size={16} className="animate-spin" /> Berechne Preisspanne…</>
                 : <><TrendingUp size={16} /> Verkaufswert ermitteln</>}
@@ -365,19 +365,19 @@ function PriceCard({
         : 'bg-[#faf7f3] border border-[#e6e1da] text-gray-700'
     }`}
       style={variant === 'primary'
-        ? { background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 14px 30px -12px rgba(249,115,22,0.55)' }
+        ? { background: 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)', boxShadow: '0 14px 30px -12px rgba(22,163,74,0.55)' }
         : undefined}>
-      <p className={`text-xs font-medium mb-1 ${variant === 'primary' ? 'text-orange-100' : 'text-gray-500'}`}>
+      <p className={`text-xs font-medium mb-1 ${variant === 'primary' ? 'text-green-100' : 'text-gray-500'}`}>
         {label}
       </p>
       <p className={`text-lg font-bold ${variant === 'primary' ? 'text-white' : 'text-gray-900'}`}>
         {price ? `${price.toLocaleString('de-DE')} €` : '–'}
       </p>
-      <p className={`text-xs mt-0.5 ${variant === 'primary' ? 'text-orange-100/90' : 'text-gray-400'}`}>
+      <p className={`text-xs mt-0.5 ${variant === 'primary' ? 'text-green-100/90' : 'text-gray-400'}`}>
         {subtitle}
       </p>
       {days && (
-        <p className={`text-xs mt-1 flex items-center justify-center gap-0.5 ${variant === 'primary' ? 'text-orange-100/80' : 'text-gray-400'}`}>
+        <p className={`text-xs mt-1 flex items-center justify-center gap-0.5 ${variant === 'primary' ? 'text-green-100/80' : 'text-gray-400'}`}>
           <Clock size={10} /> ~{days} Tage
         </p>
       )}
@@ -386,7 +386,7 @@ function PriceCard({
 }
 
 const inputCls =
-  'w-full text-sm bg-white border border-[#e6e1da] rounded-xl px-3 py-2.5 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60 transition-colors placeholder-gray-400'
+  'w-full text-sm bg-white border border-[#e6e1da] rounded-xl px-3 py-2.5 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-200/70 transition-colors placeholder-gray-400'
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
