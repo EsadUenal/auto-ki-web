@@ -237,7 +237,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
       }}
     >
       {/* ── Header ── */}
-      <div className="max-w-7xl mx-auto px-6 pt-12 pb-10">
+      <div className="ez-rise max-w-7xl mx-auto px-6 pt-12 pb-10">
         <p
           className="text-[10px] font-semibold tracking-[0.25em] uppercase mb-4"
           style={{ color: 'rgba(255,255,255,0.2)' }}
@@ -264,7 +264,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
       </div>
 
       {/* ── Grid ── */}
-      <div className="max-w-7xl mx-auto px-6 pb-14">
+      <div className="ez-rise max-w-7xl mx-auto px-6 pb-14">
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-5">
           {MODELLE.map((car) => {
             const hovered = hoveredId === car.id

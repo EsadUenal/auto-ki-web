@@ -16,11 +16,11 @@ const LANG_LABELS: Record<Lang, string> = { de: 'Deutsch', en: 'English' }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border border-gray-100 rounded-2xl overflow-hidden">
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+    <div className="bg-white border border-[#e6e1da] rounded-2xl overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+      <div className="px-6 py-4 bg-[#faf7f3] border-b border-[#ece7e0]">
         <h2 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">{title}</h2>
       </div>
-      <div className="divide-y divide-gray-100">{children}</div>
+      <div className="divide-y divide-[#f0ebe4]">{children}</div>
     </div>
   )
 }
@@ -137,11 +137,25 @@ export default function SettingsView() {
     new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
-    <div className="h-full overflow-y-auto bg-white">
-      <div className="ez-rise max-w-2xl mx-auto px-6 py-8 space-y-6">
+    <div
+      className="relative h-full overflow-y-auto scrollbar-thin"
+      style={{ background: 'radial-gradient(120% 60% at 50% 0%, #fdfaf6 0%, #faf7f3 40%, #f4f0ea 100%)' }}
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden">
+        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[680px] h-[420px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 68%)' }} />
+      </div>
+
+      <div className="ez-rise relative max-w-2xl mx-auto px-6 py-10 space-y-6">
 
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">Einstellungen</h1>
+          <div className="flex items-center gap-2.5 mb-4">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+              <Star size={12} />
+            </span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Einstellungen</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.02em] mb-1">Einstellungen</h1>
           <p className="text-sm text-gray-500">Konto, Abo und Darstellung verwalten</p>
         </div>
 
@@ -150,7 +164,7 @@ export default function SettingsView() {
 
           <Row>
             <Label>E-Mail-Adresse</Label>
-            <p className="text-sm text-gray-900 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 w-fit">
+            <p className="text-sm text-gray-900 bg-[#faf7f3] rounded-lg px-3 py-2 border border-[#ece7e0] w-fit">
               {user.email}
             </p>
           </Row>
@@ -172,7 +186,7 @@ export default function SettingsView() {
                     onChange={e => set(e.target.value)}
                     required
                     autoComplete="off"
-                    className="w-full max-w-xs px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
+                    className="w-full max-w-xs px-3 py-2 text-sm bg-white border border-[#e6e1da] rounded-lg focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200/70"
                   />
                 </div>
               ))}
@@ -356,7 +370,8 @@ export default function SettingsView() {
               </p>
               <button
                 onClick={() => navigate('/pricing')}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 8px 18px -6px rgba(249,115,22,0.5)' }}
               >
                 Jetzt upgraden <ChevronRight size={14} />
               </button>
