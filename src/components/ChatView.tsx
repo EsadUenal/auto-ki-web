@@ -32,15 +32,34 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
 
   const abortRef      = useRef<AbortController | null>(null)
   const bottomRef     = useRef<HTMLDivElement>(null)
+  const scrollRef     = useRef<HTMLDivElement>(null)
+  // Ob automatisch ans Ende gescrollt werden darf. Sobald der Nutzer nach oben
+  // scrollt (Nachlesen), wird das pausiert, bis er wieder ans Ende kommt.
+  const stickToBottomRef = useRef(true)
   const textareaRef   = useRef<HTMLTextAreaElement>(null)
   const autoSentRef   = useRef(false)
   // Always hold a ref to the latest handleSend to avoid stale closure in the auto-send effect
   const handleSendRef = useRef<(override?: string) => Promise<void>>(async () => {})
 
-  // Auto-Scroll wenn neue Tokens ankommen
+  // Nutzer-Scroll beobachten: nahe genug am Ende → automatisch nachscrollen erlaubt.
+  function handleScroll() {
+    const el = scrollRef.current
+    if (!el) return
+    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }
+
+  // Auto-Scroll beim Streaming/neuen Nachrichten — nur wenn der Nutzer am Ende ist
+  // (sonst reißt jedes Token ihn beim Nachlesen nach unten). Instant statt smooth,
+  // damit schnelle Token-Folgen keine konkurrierenden Scroll-Animationen auslösen.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (stickToBottomRef.current) bottomRef.current?.scrollIntoView({ block: 'end' })
   }, [liveText, conversation.messages])
+
+  // Konversationswechsel: immer ans Ende springen.
+  useEffect(() => {
+    stickToBottomRef.current = true
+    bottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [conversation.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep ref current so the auto-send effect always calls the latest handleSend
   handleSendRef.current = handleSend
@@ -99,6 +118,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
     const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: '', streaming: true }
     const baseMessages = [...priorMessages, userMsg, assistantMsg]
 
+    stickToBottomRef.current = true   // beim Senden immer ans Ende scrollen
     onMessagesUpdate(baseMessages)
     setIsStreaming(true)
     accumRef.current    = ''
@@ -205,7 +225,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
       className="ez-rise flex flex-col h-full"
       style={{ background: 'radial-gradient(120% 80% at 50% -8%, #fefdfb 0%, #faf7f3 42%, #f3efe9 100%)' }}
     >
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto scrollbar-thin">
         {conversation.carContext && (
           <CarPanels
             car={conversation.carContext}
@@ -221,7 +241,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
           />
         )}
         {!isEmpty && (
-          <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+          <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
             {displayMessages.map((msg) => (
               <MessageBubble
                 key={msg.id}
@@ -241,7 +261,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
       </div>
 
       <div className="px-4 pt-2 pb-3">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           {imagePreview && (
             <div className="relative inline-block mb-2">
               <img
@@ -382,10 +402,10 @@ function MessageBubble({
       <div className="flex-1 min-w-0">
         {message.streaming && message.statusText && !message.content ? (
           <div className="flex items-center gap-2 text-sm text-gray-400 py-1">
-            <span className="inline-flex gap-1">
-              <span className="animate-bounce [animation-delay:0ms]">·</span>
-              <span className="animate-bounce [animation-delay:150ms]">·</span>
-              <span className="animate-bounce [animation-delay:300ms]">·</span>
+            <span className="inline-flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:300ms]" />
             </span>
             <span>{message.statusText}</span>
           </div>
@@ -580,7 +600,7 @@ function WelcomeScreen({ onSuggestion }: { onSuggestion: (text: string) => void 
           <button
             key={s}
             onClick={() => onSuggestion(s)}
-            className="text-left text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 transition-colors leading-snug"
+            className="text-left text-sm text-gray-600 bg-white hover:bg-[#faf7f3] border border-[#e6e1da] rounded-xl px-4 py-3 transition-colors leading-snug"
           >
             {s}
           </button>

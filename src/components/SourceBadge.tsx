@@ -11,7 +11,7 @@ export default function SourceBadge({ meta }: SourceBadgeProps) {
   const links = extractLinks(meta.belege)
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
+    <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-[#ece7e0]">
       <SourceChip source={meta.source} />
 
       {links.map((link, i) => (
@@ -20,9 +20,10 @@ export default function SourceBadge({ meta }: SourceBadgeProps) {
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-blue-500 hover:underline truncate max-w-[180px]"
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-orange-600 hover:border-orange-200 bg-white border border-[#e6e1da] rounded-full pl-1.5 pr-2.5 py-0.5 transition-colors max-w-[200px]"
         >
-          {safeHostname(link)}
+          <Globe size={11} className="shrink-0 text-gray-400" />
+          <span className="truncate">{safeHostname(link)}</span>
         </a>
       ))}
     </div>
