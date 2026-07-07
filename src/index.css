@@ -240,7 +240,8 @@
 /* ── Ersatzteile-Redesign ("Spotlight Command") ────────────────────────────
    Scoped Utilities (Präfix ez-) — nur auf der Ersatzteile-Seite verwendet.   */
 
-/* Sanftes Aufsteigen einzelner Elemente (Ergebnis-Karten, Empty State). */
+/* Sanftes Aufsteigen beim Erscheinen — app-weit für den Seiten-Eintritt
+   (Ersatzteile-Elemente + Content-Wrapper von Chat, Checks, Preise, E-Books). */
 @keyframes ez-rise {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }

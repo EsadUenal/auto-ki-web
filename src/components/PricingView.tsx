@@ -153,7 +153,7 @@ export default function PricingView() {
           style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
       </div>
 
-      <div className="relative max-w-5xl mx-auto px-4 py-12">
+      <div className="ez-rise relative max-w-5xl mx-auto px-4 py-12">
 
         {/* Header */}
         <div className="text-center mb-10">

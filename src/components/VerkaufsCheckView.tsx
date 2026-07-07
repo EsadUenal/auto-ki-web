@@ -113,7 +113,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.09) 0%, transparent 68%)' }} />
       </div>
 
-      <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <div className="ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
         {/* Hero */}
         <div className="mb-8">
           <div className="flex items-center gap-2.5 mb-5">
