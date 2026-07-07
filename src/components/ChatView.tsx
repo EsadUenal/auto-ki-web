@@ -240,7 +240,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
         )}
       </div>
 
-      <div className="border-t border-gray-100 bg-white px-4 py-3">
+      <div className="px-4 pt-2 pb-3">
         <div className="max-w-4xl mx-auto">
           {imagePreview && (
             <div className="relative inline-block mb-2">
@@ -257,7 +257,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-300 transition-all">
+          <div className="flex items-end gap-2 bg-white border border-[#e6e1da] rounded-2xl px-3 py-2 shadow-[0_10px_30px_-16px_rgba(40,25,10,0.28)] focus-within:border-gray-300 focus-within:ring-2 focus-within:ring-orange-200/50 transition-all">
             <label className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer shrink-0 mb-0.5">
               <ImagePlus size={18} />
               <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
