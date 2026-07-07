@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, Compass } from 'lucide-react'
 
 type CarType = 'coupe' | 'suv' | 'hatch' | 'limousine' | 'kombi' | 'supercar'
 
@@ -231,40 +231,39 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
 
   return (
     <div
-      className="h-full overflow-y-auto"
+      className="relative h-full overflow-y-auto scrollbar-thin"
       style={{
-        background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #141b26 0%, #0a0c10 45%, #06080c 100%)',
+        background: 'radial-gradient(120% 70% at 50% -6%, #fefdfb 0%, #faf7f3 44%, #f3efe9 100%)',
       }}
     >
+      {/* Ruhige warme Lichtquelle oben */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
+        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-44 w-[900px] h-[480px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 68%)' }} />
+      </div>
+
       {/* ── Header ── */}
-      <div className="ez-rise max-w-7xl mx-auto px-6 pt-12 pb-10">
-        <p
-          className="text-[10px] font-semibold tracking-[0.25em] uppercase mb-4"
-          style={{ color: 'rgba(255,255,255,0.2)' }}
-        >
-          Vira · Showroom
-        </p>
+      <div className="ez-rise relative max-w-7xl mx-auto px-6 pt-12 pb-10">
+        <div className="flex items-center gap-2.5 mb-4">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+            <Compass size={12} />
+          </span>
+          <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Showroom</span>
+        </div>
         <h1
-          className="text-4xl font-bold mb-3"
-          style={{
-            color: 'rgba(255,255,255,0.95)',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1,
-          }}
+          className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3"
+          style={{ letterSpacing: '-0.03em', lineHeight: 1.04 }}
         >
           Entdecke.
         </h1>
-        <p
-          className="text-sm"
-          style={{ color: 'rgba(255,255,255,0.3)', maxWidth: 380 }}
-        >
+        <p className="text-sm text-gray-500" style={{ maxWidth: 380 }}>
           Wähle ein Fahrzeug — die KI analysiert sofort: Motorvarianten,
           Schwachstellen, Marktwert.
         </p>
       </div>
 
       {/* ── Grid ── */}
-      <div className="ez-rise max-w-7xl mx-auto px-6 pb-14">
+      <div className="ez-rise relative max-w-7xl mx-auto px-6 pb-14">
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-5">
           {MODELLE.map((car) => {
             const hovered = hoveredId === car.id
@@ -275,14 +274,13 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                 onClick={() => handleCardClick(car)}
                 onMouseEnter={() => setHoveredId(car.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                className="relative rounded-2xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                className="relative rounded-2xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/40"
                 style={{
-                  background:
-                    'linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-                  border: `1px solid ${hovered ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.07)'}`,
+                  background: 'linear-gradient(180deg, #ffffff 0%, #fdfbf9 100%)',
+                  border: `1px solid ${hovered ? '#ddd5c9' : '#e9e4dd'}`,
                   boxShadow: hovered
-                    ? `0 28px 64px rgba(0,0,0,0.75), 0 0 48px ${car.glow}1a, inset 0 1px 0 rgba(255,255,255,0.12)`
-                    : '0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    ? `0 26px 54px -18px rgba(40,25,10,0.3), 0 0 40px ${car.glow}22`
+                    : '0 10px 26px -18px rgba(40,25,10,0.2)',
                   transform: hovered ? 'translateY(-7px) scale(1.02)' : 'translateY(0) scale(1)',
                   transition:
                     'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.32s ease, border-color 0.2s ease',
@@ -293,8 +291,8 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                 <div
                   className="absolute inset-0 pointer-events-none rounded-2xl"
                   style={{
-                    background: `radial-gradient(ellipse at 50% 35%, ${car.glow}28 0%, transparent 68%)`,
-                    opacity: hovered ? 1 : 0.45,
+                    background: `radial-gradient(ellipse at 50% 35%, ${car.glow}16 0%, transparent 68%)`,
+                    opacity: hovered ? 1 : 0.35,
                     transition: 'opacity 0.32s ease',
                   }}
                 />
@@ -325,8 +323,8 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                         draggable={false}
                         style={{
                           filter: hovered
-                            ? `drop-shadow(0 6px 22px ${car.glow}70) brightness(1.1)`
-                            : `drop-shadow(0 3px 12px ${car.glow}42)`,
+                            ? `drop-shadow(0 8px 22px ${car.glow}55)`
+                            : `drop-shadow(0 4px 14px ${car.glow}33)`,
                           transform: hovered
                             ? 'scale(1.07) translateY(-4px)'
                             : 'scale(1) translateY(0)',
@@ -364,7 +362,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                 <div className="relative z-10 px-5 pt-3.5 pb-4">
                   <p
                     className="text-[10px] font-semibold tracking-[0.18em] uppercase mb-1"
-                    style={{ color: `${car.glow}bb` }}
+                    style={{ color: car.glow }}
                   >
                     {car.marke}
                   </p>
@@ -372,7 +370,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                     <p
                       className="text-base font-bold leading-tight"
                       style={{
-                        color: 'rgba(255,255,255,0.92)',
+                        color: '#1c1713',
                         letterSpacing: '-0.015em',
                       }}
                     >
@@ -381,9 +379,9 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                     <span
                       className="text-[9px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-full shrink-0 mb-px"
                       style={{
-                        color: 'rgba(255,255,255,0.3)',
-                        border: '1px solid rgba(255,255,255,0.09)',
-                        background: 'rgba(255,255,255,0.04)',
+                        color: '#a49c92',
+                        border: '1px solid #e6e1da',
+                        background: '#f6f2ec',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -401,7 +399,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
                     transition: 'opacity 0.18s ease, transform 0.18s ease',
                   }}
                 >
-                  <ArrowUpRight size={13} style={{ color: 'rgba(255,255,255,0.45)' }} />
+                  <ArrowUpRight size={13} style={{ color: 'rgba(0,0,0,0.4)' }} />
                 </div>
               </button>
             )
