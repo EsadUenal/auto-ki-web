@@ -122,7 +122,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
             </span>
             <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Verkaufs-Check</span>
           </div>
-          <h1 className="text-3xl sm:text-[2.6rem] font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
             Was dein Auto
             <br />
             <span className="text-gray-400">wirklich wert ist.</span>

@@ -205,7 +205,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
       className="ez-rise flex flex-col h-full"
       style={{ background: 'radial-gradient(120% 80% at 50% -8%, #fefdfb 0%, #faf7f3 42%, #f3efe9 100%)' }}
     >
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         {conversation.carContext && (
           <CarPanels
             car={conversation.carContext}
