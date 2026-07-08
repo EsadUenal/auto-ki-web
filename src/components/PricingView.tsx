@@ -29,7 +29,6 @@ const PLANS: PlanConfig[] = [
       '3 Kauf- oder Verkaufs-Checks',
       'Besserer KI-Chat (mehr Anfragen)',
       'Längere Chat-Nachrichten',
-      'Mehr Bilder im Chat',
     ],
     icon: <Zap size={22} />,
     farbe: 'text-blue-600',

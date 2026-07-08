@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Send, Square, ImagePlus, X, Pencil } from 'lucide-react'
+import { Send, Square, Pencil } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { streamChat } from '../api/client'
@@ -18,7 +18,6 @@ interface ChatViewProps {
 export default function ChatView({ conversation, onMessagesUpdate, onSaveExchange, autoMessage, onAutoMessageDone }: ChatViewProps) {
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [statusText, setStatusText] = useState('')
 
   // --- Lokaler Streaming-State (vermeidet React-18-Batching-Problem) ---
@@ -169,7 +168,6 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
     const text = (overrideText ?? input).trim()
     if (!text) return
     setInput('')
-    setImagePreview(null)
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     await handleSendWithHistory(text, conversation.messages)
   }
@@ -202,14 +200,6 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
       e.preventDefault()
       handleSend()
     }
-  }
-
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setImagePreview(reader.result as string)
-    reader.readAsDataURL(file)
   }
 
   const displayMessages = conversation.messages.map((m) =>
@@ -262,26 +252,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
 
       <div className="px-4 pt-2 pb-3">
         <div className="max-w-3xl mx-auto">
-          {imagePreview && (
-            <div className="relative inline-block mb-2">
-              <img
-                src={imagePreview}
-                className="h-16 rounded-lg border border-gray-200 object-cover"
-                alt="Upload"
-              />
-              <button
-                onClick={() => setImagePreview(null)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 rounded-full flex items-center justify-center"
-              >
-                <X size={11} className="text-white" />
-              </button>
-            </div>
-          )}
           <div className="flex items-end gap-2 bg-white border border-[#e6e1da] rounded-2xl px-3 py-2 shadow-[0_10px_30px_-16px_rgba(40,25,10,0.28)] focus-within:border-gray-300 focus-within:ring-2 focus-within:ring-orange-200/50 transition-all">
-            <label className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer shrink-0 mb-0.5">
-              <ImagePlus size={18} />
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            </label>
             <textarea
               ref={textareaRef}
               value={input}
