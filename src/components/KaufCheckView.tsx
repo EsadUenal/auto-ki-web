@@ -313,7 +313,44 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           )}
         </form>
 
+        {loading && !result && <ReportSkeleton kind="kauf" />}
         {result && <KaufCheckReport result={result} />}
+      </div>
+    </div>
+  )
+}
+
+function ReportSkeleton({ kind }: { kind: 'kauf' | 'verkauf' }) {
+  const cardCls =
+    'rounded-2xl border border-[#e6e1da] bg-white p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]'
+  return (
+    <div className="mt-10 space-y-4" aria-hidden="true">
+      <div className="ez-skeleton h-2.5 w-28 rounded" />
+      {kind === 'kauf' ? (
+        <div className={`${cardCls} flex items-start gap-4`}>
+          <div className="ez-skeleton w-10 h-10 rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2.5 pt-0.5">
+            <div className="ez-skeleton h-2.5 w-24 rounded" />
+            <div className="ez-skeleton h-6 w-48 rounded" />
+            <div className="ez-skeleton h-3 w-40 rounded" />
+          </div>
+        </div>
+      ) : (
+        <div className={`${cardCls} space-y-4`}>
+          <div className="ez-skeleton h-2.5 w-24 rounded" />
+          <div className="grid grid-cols-3 gap-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="ez-skeleton h-24 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={`${cardCls} space-y-3`}>
+        <div className="ez-skeleton h-2.5 w-32 rounded" />
+        <div className="ez-skeleton h-3 w-full rounded" />
+        <div className="ez-skeleton h-3 w-11/12 rounded" />
+        <div className="ez-skeleton h-3 w-full rounded" />
+        <div className="ez-skeleton h-3 w-4/5 rounded" />
       </div>
     </div>
   )
@@ -373,17 +410,20 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
   const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? result.preis_bewertung) : null
 
   return (
-    <div id="kauf-result" className="mt-8 space-y-4">
-      <h2 className="font-semibold text-gray-900 text-lg">Ergebnis</h2>
+    <div id="kauf-result" className="mt-10 space-y-4">
+      <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
 
-      <div className={`rounded-2xl p-5 border flex items-start gap-4 ${recStyle.bg}`}>
+      <div className={`rounded-2xl p-6 border flex items-start gap-4 ${recStyle.bg}`}>
         {recStyle.icon}
-        <div>
-          <p className={`font-semibold text-sm uppercase tracking-wide mb-1 ${recStyle.label_cls}`}>
-            Empfehlung: {recStyle.label}
+        <div className="min-w-0">
+          <p className={`text-[11px] font-bold uppercase tracking-[0.18em] mb-1.5 opacity-80 ${recStyle.label_cls}`}>
+            Empfehlung
+          </p>
+          <p className={`text-2xl font-bold tracking-[-0.01em] leading-tight ${recStyle.label_cls}`}>
+            {recStyle.label}
           </p>
           {preisLabel && (
-            <p className={`text-sm font-medium mb-1 ${recStyle.label_cls}`}>
+            <p className={`text-sm font-medium mt-2 opacity-90 ${recStyle.label_cls}`}>
               Preisbewertung: {preisLabel}
             </p>
           )}
@@ -391,7 +431,7 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
       </div>
 
       {(result.marktpreis_min || result.marktpreis_max) && (
-        <div className="bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+        <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Marktpreis-Einschätzung</p>
           <p className="text-xl font-semibold text-gray-900">
             {result.marktpreis_min?.toLocaleString('de-DE')} € – {result.marktpreis_max?.toLocaleString('de-DE')} €

@@ -312,7 +312,33 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           )}
         </form>
 
+        {loading && !result && <ReportSkeleton />}
         {result && <VerkaufsReport result={result} />}
+      </div>
+    </div>
+  )
+}
+
+function ReportSkeleton() {
+  const cardCls =
+    'rounded-2xl border border-[#e6e1da] bg-white p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]'
+  return (
+    <div className="mt-10 space-y-4" aria-hidden="true">
+      <div className="ez-skeleton h-2.5 w-28 rounded" />
+      <div className={`${cardCls} space-y-4`}>
+        <div className="ez-skeleton h-2.5 w-24 rounded" />
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="ez-skeleton h-24 rounded-xl" />
+          ))}
+        </div>
+      </div>
+      <div className={`${cardCls} space-y-3`}>
+        <div className="ez-skeleton h-2.5 w-32 rounded" />
+        <div className="ez-skeleton h-3 w-full rounded" />
+        <div className="ez-skeleton h-3 w-11/12 rounded" />
+        <div className="ez-skeleton h-3 w-full rounded" />
+        <div className="ez-skeleton h-3 w-4/5 rounded" />
       </div>
     </div>
   )
@@ -322,8 +348,8 @@ function VerkaufsReport({ result }: { result: VerkaufsCheckResult }) {
   const hasPreise = result.schnellverkaufs_preis || result.empfohlener_preis || result.maximal_preis
 
   return (
-    <div id="verk-result" className="mt-8 space-y-4">
-      <h2 className="font-semibold text-gray-900 text-lg">Ergebnis</h2>
+    <div id="verk-result" className="mt-10 space-y-4">
+      <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
 
       {hasPreise && (
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
@@ -359,7 +385,7 @@ function PriceCard({
   label: string; subtitle: string; price?: number; days?: number; variant: 'primary' | 'muted'
 }) {
   return (
-    <div className={`rounded-xl p-4 text-center ${
+    <div className={`rounded-xl p-3 sm:p-4 text-center ${
       variant === 'primary'
         ? 'text-white'
         : 'bg-[#faf7f3] border border-[#e6e1da] text-gray-700'
@@ -370,7 +396,7 @@ function PriceCard({
       <p className={`text-xs font-medium mb-1 ${variant === 'primary' ? 'text-green-100' : 'text-gray-500'}`}>
         {label}
       </p>
-      <p className={`text-lg font-bold ${variant === 'primary' ? 'text-white' : 'text-gray-900'}`}>
+      <p className={`text-base sm:text-lg font-bold whitespace-nowrap ${variant === 'primary' ? 'text-white' : 'text-gray-900'}`}>
         {price ? `${price.toLocaleString('de-DE')} €` : '–'}
       </p>
       <p className={`text-xs mt-0.5 ${variant === 'primary' ? 'text-green-100/90' : 'text-gray-400'}`}>
