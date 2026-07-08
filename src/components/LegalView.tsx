@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Scale, ShieldCheck, FileText, RotateCcw, Clock } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Footer from './Footer'
+import { DATENSCHUTZ_MARKDOWN } from '../legal/datenschutz'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Technisches Gerüst für die Rechtsseiten. Enthält BEWUSST KEINE juristischen
@@ -14,8 +17,9 @@ interface LegalConfig {
   title: string
   subtitle: string
   icon: React.ElementType
-  intro: string        // sichtbarer Platzhalter — KEIN Rechtstext
+  intro: string        // sichtbarer Platzhalter — KEIN Rechtstext (nur wenn content fehlt)
   sections: string[]   // strukturelle Gliederung (Inhaltsverzeichnis), kein Inhalt
+  content?: string     // finaler Rechtstext (Markdown). Gesetzt → ersetzt Platzhalter+Gliederung.
 }
 
 const CONFIG: Record<LegalPageKey, LegalConfig> = {
@@ -49,6 +53,7 @@ const CONFIG: Record<LegalPageKey, LegalConfig> = {
       'Cookies & lokale Speicherung',
       'Ihre Rechte',
     ],
+    content: DATENSCHUTZ_MARKDOWN,
   },
   agb: {
     title: 'Allgemeine Geschäftsbedingungen',
@@ -126,42 +131,53 @@ export default function LegalView({ page }: { page: LegalPageKey }) {
           <p className="text-sm text-gray-500">{cfg.subtitle}</p>
         </div>
 
-        {/* Platzhalter-Karte — unmissverständlich als Vorbereitung gekennzeichnet */}
-        <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-              <Clock size={17} className="text-amber-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-gray-900 mb-1">Text in Vorbereitung</p>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Diese Seite ist technisch vollständig eingebunden. Der finale,
-                rechtlich geprüfte Text wird vor dem Launch hier eingesetzt.
-              </p>
-              <p className="mt-3 text-sm text-gray-400 font-mono bg-[#faf7f3] border border-[#ece7e0] rounded-lg px-3 py-2">
-                [ {cfg.intro} ]
-              </p>
+        {cfg.content ? (
+          /* Finaler Rechtstext — via chat-prose (derselbe Markdown-Renderer wie Chat/Checks) */
+          <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 sm:p-8 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+            <div className="chat-prose">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{cfg.content}</ReactMarkdown>
             </div>
           </div>
-        </div>
-
-        {/* Vorgesehene Gliederung (Inhaltsverzeichnis-Gerüst, kein Rechtsinhalt) */}
-        <div className="bg-white border border-[#e6e1da] rounded-2xl overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-          <div className="px-6 py-4 bg-[#faf7f3] border-b border-[#ece7e0]">
-            <h2 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Vorgesehene Gliederung</h2>
-          </div>
-          <div className="divide-y divide-[#f0ebe4]">
-            {cfg.sections.map((s, i) => (
-              <div key={s} className="flex items-center gap-3 px-6 py-3.5">
-                <span className="text-[11px] font-semibold text-gray-300 tabular-nums w-5 shrink-0">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span className="text-sm text-gray-500 flex-1 min-w-0">{s}</span>
-                <span className="text-[10px] text-gray-300 italic shrink-0">in Vorbereitung</span>
+        ) : (
+          <>
+            {/* Platzhalter-Karte — unmissverständlich als Vorbereitung gekennzeichnet */}
+            <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Clock size={17} className="text-amber-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 mb-1">Text in Vorbereitung</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Diese Seite ist technisch vollständig eingebunden. Der finale,
+                    rechtlich geprüfte Text wird vor dem Launch hier eingesetzt.
+                  </p>
+                  <p className="mt-3 text-sm text-gray-400 font-mono bg-[#faf7f3] border border-[#ece7e0] rounded-lg px-3 py-2">
+                    [ {cfg.intro} ]
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+
+            {/* Vorgesehene Gliederung (Inhaltsverzeichnis-Gerüst, kein Rechtsinhalt) */}
+            <div className="bg-white border border-[#e6e1da] rounded-2xl overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+              <div className="px-6 py-4 bg-[#faf7f3] border-b border-[#ece7e0]">
+                <h2 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Vorgesehene Gliederung</h2>
+              </div>
+              <div className="divide-y divide-[#f0ebe4]">
+                {cfg.sections.map((s, i) => (
+                  <div key={s} className="flex items-center gap-3 px-6 py-3.5">
+                    <span className="text-[11px] font-semibold text-gray-300 tabular-nums w-5 shrink-0">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="text-sm text-gray-500 flex-1 min-w-0">{s}</span>
+                    <span className="text-[10px] text-gray-300 italic shrink-0">in Vorbereitung</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
       </div>
 
