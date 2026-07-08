@@ -25,7 +25,7 @@ export default function Footer() {
           </span>
         ))}
         <Dot />
-        <a href="mailto:support@getvira.de" className="hover:text-orange-600 transition-colors">Support</a>
+        <a href="mailto:kontakt.autotaskai@gmail.com" className="hover:text-orange-600 transition-colors">Support</a>
         <Dot />
         <span className="text-gray-300">v0.1.0</span>
       </div>

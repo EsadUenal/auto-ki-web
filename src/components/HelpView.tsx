@@ -116,12 +116,12 @@ export default function HelpView() {
               innerhalb von 24 Stunden an Werktagen.
             </p>
             <a
-              href="mailto:support@getvira.de"
+              href="mailto:kontakt.autotaskai@gmail.com"
               className="inline-flex items-center gap-2 px-4 py-2.5 text-white text-sm font-semibold rounded-xl transition-all hover:opacity-90"
               style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 8px 18px -6px rgba(249,115,22,0.5)' }}
             >
               <Mail size={15} />
-              support@getvira.de
+              kontakt.autotaskai@gmail.com
             </a>
           </div>
         </Section>
