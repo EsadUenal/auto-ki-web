@@ -12,6 +12,8 @@ import PricingView from './components/PricingView'
 import SettingsView from './components/SettingsView'
 import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
+import LegalView from './components/LegalView'
+import Footer from './components/Footer'
 import PrivateRoute from './components/PrivateRoute'
 import SplashScreen from './components/SplashScreen'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -360,6 +362,7 @@ function AppContent() {
           <Route path="/help" element={<HelpView />} />
         </Routes>
         </div>
+        <Footer />
       </main>
     </div>
   )
@@ -387,6 +390,12 @@ export default function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<LoginView />} />
+              {/* Rechtsseiten öffentlich (ohne Login) erreichbar — Impressum &
+                  Datenschutz müssen für jeden zugänglich sein. */}
+              <Route path="/impressum" element={<LegalView page="impressum" />} />
+              <Route path="/datenschutz" element={<LegalView page="datenschutz" />} />
+              <Route path="/agb" element={<LegalView page="agb" />} />
+              <Route path="/widerruf" element={<LegalView page="widerruf" />} />
               <Route
                 path="/*"
                 element={

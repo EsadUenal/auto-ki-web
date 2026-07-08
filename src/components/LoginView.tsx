@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -250,6 +250,18 @@ export default function LoginView() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Rechtliches — auch ohne Login erreichbar (Impressum/Datenschutz) */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs"
+          style={{ color: 'rgba(255,255,255,0.28)' }}>
+          <Link to="/impressum" className="hover:text-white/70 transition-colors">Impressum</Link>
+          <span className="select-none">·</span>
+          <Link to="/datenschutz" className="hover:text-white/70 transition-colors">Datenschutz</Link>
+          <span className="select-none">·</span>
+          <Link to="/agb" className="hover:text-white/70 transition-colors">AGB</Link>
+          <span className="select-none">·</span>
+          <Link to="/widerruf" className="hover:text-white/70 transition-colors">Widerruf</Link>
         </div>
       </div>
     </div>

@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { ChevronDown, Mail, Info, FileText } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ChevronDown, ChevronRight, Mail, Info, FileText } from 'lucide-react'
+
+const RECHTS_LINKS = [
+  { to: '/impressum', label: 'Impressum' },
+  { to: '/datenschutz', label: 'Datenschutzerklärung' },
+  { to: '/agb', label: 'Allgemeine Geschäftsbedingungen' },
+  { to: '/widerruf', label: 'Widerrufsbelehrung' },
+]
 
 const FAQ_ITEMS = [
   {
@@ -139,17 +147,18 @@ export default function HelpView() {
         <Section title="Rechtliches" icon={FileText}>
           <div className="px-6 py-5">
             <p className="text-xs text-gray-400 mb-4">
-              Die vollständigen rechtlichen Texte werden vor dem offiziellen Launch veröffentlicht.
+              Rechtliche Informationen zu Vira.
             </p>
-            <div className="space-y-2">
-              {['Impressum', 'Allgemeine Geschäftsbedingungen', 'Datenschutzerklärung'].map(label => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between py-2 border-b border-[#f0ebe4] last:border-0"
+            <div className="space-y-1">
+              {RECHTS_LINKS.map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="group flex items-center justify-between gap-4 py-2.5 border-b border-[#f0ebe4] last:border-0 transition-colors"
                 >
-                  <span className="text-sm text-gray-400">{label}</span>
-                  <span className="text-xs text-gray-300 italic">folgt</span>
-                </div>
+                  <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">{label}</span>
+                  <ChevronRight size={15} className="shrink-0 text-gray-300 group-hover:text-orange-500 transition-colors" />
+                </Link>
               ))}
             </div>
           </div>
