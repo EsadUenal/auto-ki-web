@@ -39,6 +39,11 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
   const autoSentRef   = useRef(false)
   // Always hold a ref to the latest handleSend to avoid stale closure in the auto-send effect
   const handleSendRef = useRef<(override?: string) => Promise<void>>(async () => {})
+  // Aktuell aktive Konversations-ID. Ein Stream, der nach einem Konversationswechsel
+  // fertig wird, darf sein Ergebnis NICHT auf die jetzt aktive (andere) Konversation
+  // schreiben — sonst landet die Antwort in der falschen Unterhaltung.
+  const convIdRef = useRef(conversation.id)
+  convIdRef.current = conversation.id
 
   // Nutzer-Scroll beobachten: nahe genug am Ende → automatisch nachscrollen erlaubt.
   function handleScroll() {
@@ -97,6 +102,9 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
   async function handleSendWithHistory(text: string, priorMessages: Message[]) {
     if (!text.trim() || isStreaming) return
 
+    // Konversation, für die dieser Stream gestartet wird — festhalten, damit ein
+    // spätes onDone/onError nur dann schreibt, wenn sie noch aktiv ist.
+    const startConvId = conversation.id
     const car = conversation.carContext
     const historyItems: VerlaufItem[] = priorMessages
       .filter((m) => m.content)
@@ -142,6 +150,8 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
         setLiveText('')
         setStatusText('')
         setIsStreaming(false)
+        // Konversation gewechselt → Ergebnis nicht auf die falsche schreiben.
+        if (convIdRef.current !== startConvId) return
         onMessagesUpdate(
           baseMessages.map((m) =>
             m.id === assistantMsg.id ? { ...m, content: finalContent, streaming: false, meta } : m
@@ -155,6 +165,8 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
         setLiveText('')
         setStatusText('')
         setIsStreaming(false)
+        // Konversation gewechselt → Fehler nicht auf die falsche schreiben.
+        if (convIdRef.current !== startConvId) return
         onMessagesUpdate(
           baseMessages.map((m) =>
             m.id === assistantMsg.id ? { ...m, content: `**Fehler:** ${err}`, streaming: false } : m
