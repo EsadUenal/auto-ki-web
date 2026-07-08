@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import Footer from './Footer'
 import { DATENSCHUTZ_MARKDOWN } from '../legal/datenschutz'
 import { AGB_MARKDOWN } from '../legal/agb'
+import { WIDERRUF_MARKDOWN } from '../legal/widerruf'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Technisches Gerüst für die Rechtsseiten. Enthält BEWUSST KEINE juristischen
@@ -86,6 +87,7 @@ const CONFIG: Record<LegalPageKey, LegalConfig> = {
       'Erlöschen bei digitalen Inhalten',
       'Muster-Widerrufsformular',
     ],
+    content: WIDERRUF_MARKDOWN,
   },
 }
 
