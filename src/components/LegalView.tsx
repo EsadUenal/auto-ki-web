@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Footer from './Footer'
 import { DATENSCHUTZ_MARKDOWN } from '../legal/datenschutz'
+import { AGB_MARKDOWN } from '../legal/agb'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Technisches Gerüst für die Rechtsseiten. Enthält BEWUSST KEINE juristischen
@@ -70,6 +71,7 @@ const CONFIG: Record<LegalPageKey, LegalConfig> = {
       'Haftung',
       'Schlussbestimmungen',
     ],
+    content: AGB_MARKDOWN,
   },
   widerruf: {
     title: 'Widerrufsbelehrung',
