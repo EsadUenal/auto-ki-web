@@ -251,10 +251,6 @@ export default function LoginView() {
             )}
           </div>
         </div>
-
-        <p className="text-center text-xs mt-6" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          Phase 2b · Ohne Bezahlung
-        </p>
       </div>
     </div>
   )
