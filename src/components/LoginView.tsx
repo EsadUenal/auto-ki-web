@@ -16,12 +16,14 @@ export default function LoginView() {
   const [showPw, setShowPw] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [agbAccepted, setAgbAccepted] = useState(false)
 
   function switchMode(m: Mode) {
     setMode(m)
     setError(null)
     setPassword('')
     setConfirmPassword('')
+    setAgbAccepted(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,13 +34,17 @@ export default function LoginView() {
       setError('Passwörter stimmen nicht überein.')
       return
     }
+    if (mode === 'register' && !agbAccepted) {
+      setError('Bitte akzeptiere die AGB und die Datenschutzerklärung.')
+      return
+    }
 
     setIsLoading(true)
     try {
       if (mode === 'login') {
         await login(email, password)
       } else {
-        await register(email, password)
+        await register(email, password, agbAccepted)
       }
       navigate('/chat')
     } catch (err) {
@@ -206,6 +212,24 @@ export default function LoginView() {
                   onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
                 />
               </div>
+            )}
+
+            {/* AGB / Datenschutz — Pflicht bei Registrierung */}
+            {mode === 'register' && (
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={agbAccepted}
+                  onChange={(e) => setAgbAccepted(e.target.checked)}
+                  className="mt-0.5 shrink-0 w-4 h-4 accent-orange-500"
+                />
+                <span className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  Ich akzeptiere die{' '}
+                  <Link to="/agb" className="underline hover:text-white/80">AGB</Link>
+                  {' '}und die{' '}
+                  <Link to="/datenschutz" className="underline hover:text-white/80">Datenschutzerklärung</Link>.
+                </span>
+              </label>
             )}
 
             {/* Submit */}

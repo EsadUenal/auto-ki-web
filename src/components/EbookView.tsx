@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { X, ShoppingBag, BookOpen, Mail, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import {
   apiListEbooks, apiEbookCheckout, apiListEbookBestellungen, apiDownloadEbook,
@@ -189,6 +190,8 @@ export default function EbookView() {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [agbChecked, setAgbChecked] = useState(false)
+  const [widerrufChecked, setWiderrufChecked] = useState(false)
   const [tab, setTab] = useState<'bibliothek' | 'meine'>('bibliothek')
   const [bestellungen, setBestellungen] = useState<ApiEbookBestellung[]>([])
   const [bestellungenLoading, setBestellungenLoading] = useState(false)
@@ -224,6 +227,12 @@ export default function EbookView() {
       .finally(() => setBestellungenLoading(false))
   }, [tab])
 
+  // Checkboxen zuruecksetzen, sobald ein anderes E-Book geoeffnet wird.
+  useEffect(() => {
+    setAgbChecked(false)
+    setWiderrufChecked(false)
+  }, [selected])
+
   async function handleDownload(ebook_id: string, titel: string) {
     setDownloadingId(ebook_id)
     setDownloadError(null)
@@ -237,11 +246,11 @@ export default function EbookView() {
   }
 
   async function handleCheckout() {
-    if (!selected) return
+    if (!selected || !agbChecked || !widerrufChecked) return
     setCheckoutLoading(true)
     setCheckoutError(null)
     try {
-      const { url } = await apiEbookCheckout(selected.id)
+      const { url } = await apiEbookCheckout(selected.id, agbChecked, widerrufChecked)
       window.location.href = url
     } catch (err) {
       setCheckoutError((err as Error).message || 'Checkout fehlgeschlagen.')
@@ -557,13 +566,34 @@ export default function EbookView() {
                 )}
                 <p className="text-xs text-gray-400 mb-4">inkl. MwSt. · sofort nach Kauf per E-Mail</p>
 
+                {/* Pflicht-Zustimmungen vor digitalem Kauf */}
+                <div className="space-y-2.5 mb-4">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" checked={agbChecked} onChange={(e) => setAgbChecked(e.target.checked)}
+                      className="mt-0.5 shrink-0 w-4 h-4 accent-gray-900" />
+                    <span className="text-xs text-gray-500 leading-relaxed">
+                      Ich akzeptiere die <Link to="/agb" className="underline hover:text-gray-900">AGB</Link>
+                      {' '}und die <Link to="/datenschutz" className="underline hover:text-gray-900">Datenschutzerklärung</Link>.
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" checked={widerrufChecked} onChange={(e) => setWiderrufChecked(e.target.checked)}
+                      className="mt-0.5 shrink-0 w-4 h-4 accent-gray-900" />
+                    <span className="text-xs text-gray-500 leading-relaxed">
+                      Ich stimme ausdrücklich zu, dass vor Ablauf der Widerrufsfrist mit der Ausführung des Vertrags
+                      begonnen wird. Mir ist bekannt, dass ich dadurch mein{' '}
+                      <Link to="/widerruf" className="underline hover:text-gray-900">Widerrufsrecht</Link> verliere.
+                    </span>
+                  </label>
+                </div>
+
                 {checkoutError && (
                   <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{checkoutError}</p>
                 )}
 
                 <button
                   onClick={handleCheckout}
-                  disabled={checkoutLoading}
+                  disabled={checkoutLoading || !agbChecked || !widerrufChecked}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {checkoutLoading ? (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { Check, Zap, Star, Crown, ShoppingCart, CheckCircle, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { apiCreateCheckoutSession } from '../api/client'
@@ -102,6 +102,9 @@ export default function PricingView() {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
+  const [agbChecked, setAgbChecked] = useState(false)
+  const [widerrufChecked, setWiderrufChecked] = useState(false)
+  const consentOk = agbChecked && widerrufChecked
 
   const paymentParam = searchParams.get('payment')
 
@@ -117,10 +120,11 @@ export default function PricingView() {
   }, [paymentParam, refreshUser, setSearchParams])
 
   async function handleAbo(aboTyp: 'light' | 'pro' | 'max') {
+    if (!consentOk) return
     setLoading(aboTyp)
     setError(null)
     try {
-      const { url } = await apiCreateCheckoutSession('abo', aboTyp)
+      const { url } = await apiCreateCheckoutSession('abo', aboTyp, agbChecked, widerrufChecked)
       window.location.href = url
     } catch (e) {
       setError((e as Error).message)
@@ -129,10 +133,11 @@ export default function PricingView() {
   }
 
   async function handleEinzelkauf() {
+    if (!consentOk) return
     setLoading('einzelkauf')
     setError(null)
     try {
-      const { url } = await apiCreateCheckoutSession('einzelkauf')
+      const { url } = await apiCreateCheckoutSession('einzelkauf', undefined, agbChecked, widerrufChecked)
       window.location.href = url
     } catch (e) {
       setError((e as Error).message)
@@ -213,6 +218,27 @@ export default function PricingView() {
           </div>
         )}
 
+        {/* Pflicht-Zustimmungen — gelten für alle Käufe (Abo + Einzelkauf) */}
+        <div className="max-w-2xl mx-auto mb-8 bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)] space-y-3">
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input type="checkbox" checked={agbChecked} onChange={(e) => setAgbChecked(e.target.checked)}
+              className="mt-0.5 shrink-0 w-4 h-4 accent-orange-500" />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              Ich akzeptiere die <Link to="/agb" className="underline hover:text-orange-600">AGB</Link>
+              {' '}und die <Link to="/datenschutz" className="underline hover:text-orange-600">Datenschutzerklärung</Link>.
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input type="checkbox" checked={widerrufChecked} onChange={(e) => setWiderrufChecked(e.target.checked)}
+              className="mt-0.5 shrink-0 w-4 h-4 accent-orange-500" />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              Ich stimme ausdrücklich zu, dass vor Ablauf der Widerrufsfrist mit der Ausführung des Vertrags
+              begonnen wird. Mir ist bekannt, dass ich dadurch mein{' '}
+              <Link to="/widerruf" className="underline hover:text-orange-600">Widerrufsrecht</Link> verliere.
+            </span>
+          </label>
+        </div>
+
         {/* Abo-Karten */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
           {PLANS.map((plan) => {
@@ -268,7 +294,7 @@ export default function PricingView() {
                 {/* CTA */}
                 <button
                   onClick={() => handleAbo(plan.id)}
-                  disabled={!!loading || istAktuell}
+                  disabled={!!loading || istAktuell || !consentOk}
                   className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     istAktuell
                       ? 'bg-gray-100 text-gray-400 cursor-default border border-transparent'
@@ -307,7 +333,7 @@ export default function PricingView() {
           </div>
           <button
             onClick={handleEinzelkauf}
-            disabled={!!loading}
+            disabled={!!loading || !consentOk}
             className="shrink-0 px-6 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold transition-colors disabled:opacity-60 whitespace-nowrap"
           >
             {loading === 'einzelkauf' ? 'Weiterleitung…' : '1 Check kaufen'}

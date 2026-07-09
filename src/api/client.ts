@@ -50,8 +50,11 @@ function extractMessage(data: unknown): string {
   return 'Unbekannter Fehler'
 }
 
-export async function authRegister(email: string, password: string): Promise<AuthUser> {
-  const res = await authFetch('/register', { method: 'POST', body: JSON.stringify({ email, password }) })
+export async function authRegister(email: string, password: string, agbAkzeptiert: boolean): Promise<AuthUser> {
+  const res = await authFetch('/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, agb_akzeptiert: agbAkzeptiert }),
+  })
   const data = await res.json()
   if (!res.ok) throw new Error(extractMessage(data))
   return data as AuthUser
@@ -361,11 +364,17 @@ export interface PaymentStatus {
 
 export async function apiCreateCheckoutSession(
   typ: 'abo' | 'einzelkauf',
-  abo_typ?: 'light' | 'pro' | 'max',
+  abo_typ: 'light' | 'pro' | 'max' | undefined,
+  agbAkzeptiert: boolean,
+  widerrufVerzicht: boolean,
 ): Promise<{ url: string }> {
   const res = await paymentFetch('/checkout-session', {
     method: 'POST',
-    body: JSON.stringify({ typ, abo_typ }),
+    body: JSON.stringify({
+      typ, abo_typ,
+      agb_akzeptiert: agbAkzeptiert,
+      widerruf_verzicht: widerrufVerzicht,
+    }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(extractMessage(data))
@@ -421,10 +430,18 @@ export async function apiListEbooks(): Promise<ApiEbook[]> {
   return res.json()
 }
 
-export async function apiEbookCheckout(ebook_id: string): Promise<{ url: string }> {
+export async function apiEbookCheckout(
+  ebook_id: string,
+  agbAkzeptiert: boolean,
+  widerrufVerzicht: boolean,
+): Promise<{ url: string }> {
   const res = await ebookFetch('/checkout', {
     method: 'POST',
-    body: JSON.stringify({ ebook_id }),
+    body: JSON.stringify({
+      ebook_id,
+      agb_akzeptiert: agbAkzeptiert,
+      widerruf_verzicht: widerrufVerzicht,
+    }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(extractMessage(data))
