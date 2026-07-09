@@ -1,0 +1,24 @@
+# ── Secrets — NIEMALS ins Image ────────────────────────────────────────────
+.env
+.env.*
+!.env.local.example
+
+# ── Build-Output (wird im Image frisch erzeugt) ──────────────────────────────
+dist/
+
+# ── Abhängigkeiten (werden im Image via npm ci neu installiert) ─────────────
+node_modules/
+
+# ── Git / IDE ──────────────────────────────────────────────────────────────
+.git/
+.gitignore
+.vscode/
+.idea/
+.claude/
+
+# ── Entwicklungs-/Diagnose-Artefakte (nicht im Prod-Image nötig) ────────────
+vite-err.txt
+vite-out.txt
+autocrop_cars.py
+DATEN_REPORT.md
+*.md
