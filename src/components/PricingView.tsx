@@ -44,7 +44,7 @@ const PLANS: PlanConfig[] = [
     features: [
       '10 Kauf- oder Verkaufs-Checks',
       'Alle LIGHT-Features',
-      'Poster-Features (Inserat-Optimierung)',
+      '10% Rabatt auf E-Books',
       'Prioritäts-Support',
     ],
     icon: <Star size={22} />,
