@@ -403,11 +403,19 @@ const PREIS_LABEL: Record<string, string> = {
   unbekannt: 'Unbekannt',
 }
 
+// Falls das Backend einen von PREIS_LABEL nicht erfassten Wert liefert (z.B. eine
+// unbekannte Kategorie), wird nie der rohe Snake-Case-Schlüssel angezeigt, sondern
+// eine lesbare Notlösung ("guter_deal" -> "Guter deal").
+function formatUnbekannterPreiswert(wert: string): string {
+  const lesbar = wert.replace(/_/g, ' ')
+  return lesbar.charAt(0).toUpperCase() + lesbar.slice(1)
+}
+
 function KaufCheckReport({ result }: { result: KaufCheckResult }) {
   const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
   const recStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
   const preisKey = result.preis_bewertung?.toLowerCase()
-  const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? result.preis_bewertung) : null
+  const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey)) : null
 
   return (
     <div id="kauf-result" className="mt-10 space-y-4">

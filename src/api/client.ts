@@ -640,8 +640,8 @@ export async function runKaufCheck(
 
   if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    throw new Error(`Kauf-Check fehlgeschlagen (${response.status}): ${text}`)
+    const data = await response.json().catch(() => null)
+    throw new Error(extractMessage(data))
   }
 
   return response.json() as Promise<KaufCheckResult>

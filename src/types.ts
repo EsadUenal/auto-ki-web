@@ -66,8 +66,8 @@ export interface KaufCheckForm {
 // Exact backend response shape
 export interface KaufCheckResult {
   bericht: string
-  empfehlung: 'kaufen' | 'verhandeln' | 'finger_weg' | 'unbekannt' | string
-  preis_bewertung: 'guter_deal' | 'fair' | 'zu_teuer' | 'unbekannt' | string
+  empfehlung: 'kaufen' | 'kaufen_nach_besichtigung' | 'nur_mit_werkstattpruefung' | 'preis_nachverhandeln' | 'hohes_risiko' | 'finger_weg' | 'unbekannt' | string
+  preis_bewertung: 'extrem_guenstig' | 'guenstig' | 'marktgerecht' | 'teuer' | 'extrem_teuer' | 'unbekannt' | string
   marktpreis_min?: number
   marktpreis_max?: number
   baureihe_erkannt?: string
