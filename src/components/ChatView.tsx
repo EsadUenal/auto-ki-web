@@ -360,7 +360,7 @@ function MessageBubble({
     return (
       <div className="flex justify-end group/msg">
         <div className="relative">
-          <div className="max-w-[88%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="inline-block max-w-[min(88vw,560px)] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
             {message.content}
           </div>
           {!editDisabled && !message.streaming && (
