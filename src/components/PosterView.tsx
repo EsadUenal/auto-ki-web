@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X, ShoppingBag, ZoomIn, Package, ArrowLeft, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react'
 import {
   apiListPosters, apiPosterCheckout, apiListBestellungen,
-  apiGetAdresse, apiSaveAdresse,
+  apiGetAdresse, apiSaveAdresse, apiVerifyPayment,
   type ApiPoster, type ApiAdresse, type ApiBestellung,
 } from '../api/client'
 
@@ -80,9 +80,19 @@ export default function PosterView() {
 
     const params = new URLSearchParams(window.location.search)
     const payment = params.get('payment')
+    const sessionId = params.get('session_id')
     if (payment === 'success' || payment === 'cancelled') {
       setBanner(payment)
-      if (payment === 'success') setTab('bestellungen')
+      if (payment === 'success') {
+        setTab('bestellungen')
+        // Fallback zum Webhook: Freischaltung serverseitig verifizieren, dann
+        // Bestellungen neu laden.
+        if (sessionId) {
+          apiVerifyPayment(sessionId)
+            .catch(() => {})
+            .finally(() => { apiListBestellungen().then(setBestellungen).catch(() => {}) })
+        }
+      }
       window.history.replaceState({}, '', '/poster')
     }
   }, [])

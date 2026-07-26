@@ -391,6 +391,24 @@ export async function apiPaymentStatus(): Promise<PaymentStatus | null> {
   }
 }
 
+/**
+ * Fallback zum Stripe-Webhook: verifiziert nach Rückkehr von Stripe die
+ * Checkout-Session serverseitig und schaltet frei, falls der Webhook noch nicht
+ * angekommen ist. Best-effort — Fehler werden vom Aufrufer bewusst ignoriert,
+ * da der Webhook die Freischaltung ohnehin (verzögert) nachholt.
+ */
+export async function apiVerifyPayment(
+  sessionId: string,
+): Promise<{ ok: boolean; freigeschaltet?: boolean }> {
+  const res = await paymentFetch('/verify-session', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as { ok: boolean; freigeschaltet?: boolean }
+}
+
 // ── E-Books ───────────────────────────────────────────────────────────────────
 
 export interface ApiEbook {

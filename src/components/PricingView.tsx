@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Check, Zap, Star, Crown, ShoppingCart, CheckCircle, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { apiCreateCheckoutSession } from '../api/client'
+import { apiCreateCheckoutSession, apiVerifyPayment } from '../api/client'
 
 interface PlanConfig {
   id: 'light' | 'pro' | 'max'
@@ -107,17 +107,22 @@ export default function PricingView() {
   const consentOk = agbChecked && widerrufChecked
 
   const paymentParam = searchParams.get('payment')
+  const sessionIdParam = searchParams.get('session_id')
 
-  // Nach erfolgreicher Zahlung User-Daten aktualisieren
+  // Nach erfolgreicher Zahlung: Freischaltung serverseitig verifizieren (Fallback
+  // zum Webhook), dann User-Daten aktualisieren.
   useEffect(() => {
     if (paymentParam === 'success') {
-      refreshUser()
+      const verify = sessionIdParam
+        ? apiVerifyPayment(sessionIdParam).catch(() => {})
+        : Promise.resolve()
+      verify.finally(() => refreshUser())
       const t = setTimeout(() => {
         setSearchParams({}, { replace: true })
       }, 5000)
       return () => clearTimeout(t)
     }
-  }, [paymentParam, refreshUser, setSearchParams])
+  }, [paymentParam, sessionIdParam, refreshUser, setSearchParams])
 
   async function handleAbo(aboTyp: 'light' | 'pro' | 'max') {
     if (!consentOk) return

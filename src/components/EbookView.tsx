@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { X, ShoppingBag, BookOpen, Mail, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import {
   apiListEbooks, apiEbookCheckout, apiListEbookBestellungen, apiDownloadEbook,
+  apiVerifyPayment,
   type ApiEbook, type ApiEbookBestellung,
 } from '../api/client'
 
@@ -219,9 +220,19 @@ export default function EbookView() {
 
     const params = new URLSearchParams(window.location.search)
     const payment = params.get('payment')
+    const sessionId = params.get('session_id')
     if (payment === 'success' || payment === 'cancelled') {
       setBanner(payment as 'success' | 'cancelled')
-      if (payment === 'success') setTab('meine')
+      if (payment === 'success') {
+        setTab('meine')
+        // Fallback zum Webhook: Freischaltung serverseitig verifizieren (falls der
+        // Webhook noch nicht durch ist), dann Bestellungen neu laden.
+        if (sessionId) {
+          apiVerifyPayment(sessionId)
+            .catch(() => {})
+            .finally(() => { apiListEbookBestellungen().then(setBestellungen).catch(() => {}) })
+        }
+      }
       window.history.replaceState({}, '', '/ebooks')
     }
   }, [])
