@@ -325,7 +325,7 @@ export default function PricingView() {
             <ShoppingCart size={22} />
           </div>
           <div className="flex-1">
-            <h2 className="text-base font-bold text-gray-900 mb-1">Einzelkauf — 12,99 €</h2>
+            <h2 className="text-base font-bold text-gray-900 mb-1">Einzelkauf: 12,99 €</h2>
             <p className="text-sm text-gray-500">
               Kein Abo nötig. Kaufe einen einzelnen Kauf- oder Verkaufs-Check als Einmalzahlung.
               Ideal für gelegentliche Nutzung.
@@ -342,7 +342,7 @@ export default function PricingView() {
 
         {/* Hinweis */}
         <p className="text-center text-xs text-gray-400 mt-6">
-          Alle Preise inkl. MwSt. · Testmodus — keine echten Zahlungen · Abo monatlich kündbar
+          Alle Preise inkl. MwSt. · Testmodus: keine echten Zahlungen · Abo monatlich kündbar
         </p>
       </div>
     </div>

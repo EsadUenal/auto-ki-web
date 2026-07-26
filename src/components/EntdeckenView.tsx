@@ -257,7 +257,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
           Entdecke.
         </h1>
         <p className="text-sm text-gray-500" style={{ maxWidth: 380 }}>
-          Wähle ein Fahrzeug — die KI analysiert sofort: Motorvarianten,
+          Wähle ein Fahrzeug, die KI analysiert sofort: Motorvarianten,
           Schwachstellen, Marktwert.
         </p>
       </div>

@@ -474,7 +474,7 @@ export default function ErsatzteileView() {
                   )}
 
                   <p className="text-center text-[11px] text-gray-400 mt-10">
-                    Beta — Ergebnisse werden laufend verbessert. Für garantierte Verfügbarkeit direkt beim Händler prüfen.
+                    Beta: Ergebnisse werden laufend verbessert. Für garantierte Verfügbarkeit direkt beim Händler prüfen.
                   </p>
                 </>
               )}

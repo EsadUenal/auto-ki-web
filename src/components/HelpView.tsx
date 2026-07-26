@@ -13,22 +13,22 @@ const FAQ_ITEMS = [
   {
     frage: 'Wie funktioniert ein Kauf-Check?',
     antwort:
-      'Du gibst die Fahrzeugdaten ein (Marke, Modell, Baujahr, Kilometerstand, Preis) — entweder manuell oder als Freitext aus einem Inserat. Die KI analysiert den Zustand, prüft bekannte Schwachstellen der Baureihe, vergleicht den Preis mit dem Markt und gibt dir eine klare Empfehlung: kaufen, verhandeln oder Finger weg.',
+      'Du gibst die Fahrzeugdaten ein (Marke, Modell, Baujahr, Kilometerstand, Preis), entweder manuell oder als Freitext aus einem Inserat. Die KI analysiert den Zustand, prüft bekannte Schwachstellen der Baureihe, vergleicht den Preis mit dem Markt und gibt dir eine klare Empfehlung: kaufen, verhandeln oder Finger weg.',
   },
   {
     frage: 'Was ist im Abo enthalten?',
     antwort:
-      'Das Light-Abo enthält 3 Kauf- oder Verkaufs-Checks pro Monat. Das Pro-Abo gibt dir 10 Checks. Das Max-Abo bietet unbegrenzte Checks plus zukünftige Premium-Funktionen. Alle Abos nutzen dieselbe KI-Analyse — der Unterschied liegt nur im Volumen.',
+      'Das Light-Abo enthält 3 Kauf- oder Verkaufs-Checks pro Monat. Das Pro-Abo gibt dir 10 Checks. Das Max-Abo bietet unbegrenzte Checks plus zukünftige Premium-Funktionen. Alle Abos nutzen dieselbe KI-Analyse, der Unterschied liegt nur im Volumen.',
   },
   {
     frage: 'Wie kündige ich mein Abo?',
     antwort:
-      'Gehe zu Einstellungen → Abo verwalten → Abo kündigen. Das Abo läuft bis zum Ende der bezahlten Periode weiter — du verlierst nichts, was du schon bezahlt hast. Danach wechselst du automatisch zurück auf den kostenlosen Plan.',
+      'Gehe zu Einstellungen → Abo verwalten → Abo kündigen. Das Abo läuft bis zum Ende der bezahlten Periode weiter, du verlierst nichts, was du schon bezahlt hast. Danach wechselst du automatisch zurück auf den kostenlosen Plan.',
   },
   {
     frage: 'Wie läuft ein Poster-Kauf ab?',
     antwort:
-      'Wähle ein Poster in der Galerie, klicke auf "Kaufen" und gib deine Lieferadresse ein. Du wirst zu Stripe weitergeleitet (sichere Zahlung per Karte). Nach der Zahlung erscheint die Bestellung unter "Meine Bestellungen". Druck und Versand folgen in einer späteren Version — du wirst informiert.',
+      'Wähle ein Poster in der Galerie, klicke auf "Kaufen" und gib deine Lieferadresse ein. Du wirst zu Stripe weitergeleitet (sichere Zahlung per Karte). Nach der Zahlung erscheint die Bestellung unter "Meine Bestellungen". Druck und Versand folgen in einer späteren Version. Du wirst informiert.',
   },
   {
     frage: 'Welche Zahlungsmethoden werden akzeptiert?',
@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
   {
     frage: 'Sind meine Daten sicher?',
     antwort:
-      'Passwörter werden mit bcrypt gehasht und niemals im Klartext gespeichert. Zahlungen laufen ausschließlich über Stripe — wir sehen keine Kartendaten. Deine Chat-Verläufe und Checks sind nur für dich sichtbar.',
+      'Passwörter werden mit bcrypt gehasht und niemals im Klartext gespeichert. Zahlungen laufen ausschließlich über Stripe. Wir sehen keine Kartendaten. Deine Chat-Verläufe und Checks sind nur für dich sichtbar.',
   },
 ]
 
@@ -137,7 +137,7 @@ export default function HelpView() {
               <p className="text-sm text-gray-600 leading-relaxed">
                 Vira ist ein KI-gestützter Assistent für Autokäufer und -verkäufer.
                 Die App analysiert Fahrzeuginserate, prüft bekannte Schwachstellen und
-                hilft dir, den richtigen Preis zu finden — schnell, neutral und datenbasiert.
+                hilft dir, den richtigen Preis zu finden: schnell, neutral und datenbasiert.
               </p>
             </div>
           </div>

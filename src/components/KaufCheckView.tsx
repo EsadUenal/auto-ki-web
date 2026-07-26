@@ -194,7 +194,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <Field label="Inserat-Text / Beschreibung">
               <textarea className={inputCls + ' resize-none'} rows={4} value={form.beschreibung}
                 onChange={(e) => set('beschreibung', e.target.value)}
-                placeholder="Text aus dem Inserat einfügen — je mehr, desto besser…" />
+                placeholder="Text aus dem Inserat einfügen, je mehr, desto besser…" />
             </Field>
 
             <button

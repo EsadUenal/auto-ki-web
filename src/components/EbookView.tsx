@@ -549,7 +549,7 @@ export default function EbookView() {
               <div className="flex items-start gap-2 mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
                 <Download size={14} className="text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Digitales Produkt — nach dem Kauf erhältst du den Download-Link per E-Mail.
+                  Digitales Produkt: nach dem Kauf erhältst du den Download-Link per E-Mail.
                 </p>
               </div>
 

@@ -292,7 +292,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
             )}
           </div>
           <p className="text-center text-xs text-gray-400 mt-2">
-            KI-Antworten können Fehler enthalten — wichtige Entscheidungen bitte prüfen.
+            KI-Antworten können Fehler enthalten. Wichtige Entscheidungen bitte prüfen.
           </p>
         </div>
       </div>
@@ -575,7 +575,7 @@ function WelcomeScreen({ onSuggestion }: { onSuggestion: (text: string) => void 
       </div>
       <h1 className="text-2xl font-semibold text-gray-900 mb-2">Vira</h1>
       <p className="text-gray-500 text-sm max-w-sm mb-8">
-        Intelligente Beratung rund ums Auto — Kauf, Verkauf, technische Fragen.
+        Intelligente Beratung rund ums Auto: Kauf, Verkauf, technische Fragen.
         Transparente Quellen, ehrliche Einschätzungen.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
