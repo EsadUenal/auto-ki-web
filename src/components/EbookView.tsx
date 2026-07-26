@@ -8,7 +8,7 @@ import {
 
 // ── E-Book Cover — inline SVG, skaliert via viewBox auf jede Containergröße ──
 
-const COMING_SOON_IDS = new Set(['dein-erstes-auto', 'elektro-oder-verbrenner'])
+const COMING_SOON_IDS = new Set(['elektro-oder-verbrenner'])
 
 function EbookCover({
   id,
@@ -62,7 +62,19 @@ function EbookCover({
     )
   }
 
-  // Book 2: "Dein erstes Auto" — Bald erhältlich, grüner Teaser mit Sanduhr
+  // Book 2: echtes Cover-Bild, SVG-Teaser als Fallback
+  if (id === 'dein-erstes-auto' && !imgFailed) {
+    return (
+      <img
+        src="/ebooks/cover-ebook2.png"
+        alt="Dein erstes Auto"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        onError={() => setImgFailed(true)}
+      />
+    )
+  }
+
+  // Book 2 SVG-Fallback (falls Bild fehlt)
   if (id === 'dein-erstes-auto') {
     return (
       <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style={{ display: 'block' }}>
