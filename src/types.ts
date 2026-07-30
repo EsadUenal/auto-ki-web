@@ -42,6 +42,7 @@ export interface SavedKaufCheck {
 }
 
 export interface SavedVerkaufsCheck {
+  id: number
   eingabe: VerkaufsCheckForm
   ergebnis: VerkaufsCheckResult
 }

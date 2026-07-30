@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
+import AnalyseFrageChat from './AnalyseFrageChat'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
 const ZUSTAND_OPTIONS = [
@@ -43,6 +44,10 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
   const [error, setError] = useState<string | null>(null)
   const [paymentRequired, setPaymentRequired] = useState(false)
   const [showMore, setShowMore] = useState(false)
+  // Check-ID für die Persistenz der Analyse-Rückfragen (analog Kauf-Check):
+  // frisch erstellt → ID trifft nach dem Speichern ein; runId hält den Chat stabil.
+  const [freshCheckId, setFreshCheckId] = useState<number | undefined>(undefined)
+  const [runId, setRunId] = useState(0)
 
   // Gespeicherten Check laden
   useEffect(() => {
@@ -80,6 +85,8 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
     setError(null)
     setResult(null)
     setPaymentRequired(false)
+    setFreshCheckId(undefined)   // neue Prüfung → alte Check-ID verwerfen
+    setRunId((n) => n + 1)        // frischen Chat-Kontext erzwingen
     try {
       const res = await runVerkaufsCheck(form, images)
       setResult(res)
@@ -87,10 +94,13 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
         () => document.getElementById('verk-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
-      // Im Backend speichern (fire & forget — Fotos werden nicht gespeichert)
+      // Im Backend speichern; die zurückgegebene ID koppelt die Analyse-Rückfragen.
       const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
       apiSaveCheck('verkauf', titel, form, res)
-        .then(() => onCheckSaved?.())
+        .then((saved) => {
+          setFreshCheckId(saved.id)
+          onCheckSaved?.()
+        })
         .catch(() => {})
     } catch (err) {
       if (err instanceof PaymentRequiredError) {
@@ -313,7 +323,13 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
         </form>
 
         {loading && !result && <ReportSkeleton />}
-        {result && <VerkaufsReport result={result} />}
+        {result && (
+          <VerkaufsReport
+            result={result}
+            checkId={savedCheck ? savedCheck.id : freshCheckId}
+            chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
+          />
+        )}
       </div>
     </div>
   )
@@ -344,7 +360,15 @@ function ReportSkeleton() {
   )
 }
 
-function VerkaufsReport({ result }: { result: VerkaufsCheckResult }) {
+function VerkaufsReport({
+  result,
+  checkId,
+  chatKey,
+}: {
+  result: VerkaufsCheckResult
+  checkId?: number
+  chatKey: string
+}) {
   const hasPreise = result.schnellverkaufs_preis || result.empfohlener_preis || result.maximal_preis
 
   return (
@@ -375,8 +399,40 @@ function VerkaufsReport({ result }: { result: VerkaufsCheckResult }) {
       </div>
 
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
+
+      <AnalyseFrageChat
+        key={chatKey}
+        analyseKontext={buildAnalyseKontext(result)}
+        checkId={checkId}
+        checkTyp="verkauf"
+      />
     </div>
   )
+}
+
+// Baut den Analysetext, den die kontextgebundenen Rückfragen als Grundlage bekommen:
+// Preisspanne (Schnellverkauf/Empfohlen/Maximum) + Marktreferenz + Detailbericht.
+function buildAnalyseKontext(result: VerkaufsCheckResult): string {
+  const eur = (n?: number) => (n != null ? `${n.toLocaleString('de-DE')} €` : null)
+  const preise = [
+    result.empfohlener_preis != null ? `Empfohlener Preis: ${eur(result.empfohlener_preis)}` : '',
+    result.schnellverkaufs_preis != null ? `Schnellverkauf: ${eur(result.schnellverkaufs_preis)}` : '',
+    result.maximal_preis != null ? `Maximum: ${eur(result.maximal_preis)}` : '',
+  ].filter(Boolean).join(' | ')
+  const marktpreis =
+    result.marktpreis_min || result.marktpreis_max
+      ? `Marktpreis-Spanne (Referenz): ${result.marktpreis_min?.toLocaleString('de-DE') ?? '?'} – ${result.marktpreis_max?.toLocaleString('de-DE') ?? '?'} €`
+      : null
+
+  return [
+    preise,
+    marktpreis,
+    '',
+    '--- Detailbericht & Tipps ---',
+    result.bericht,
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 function PriceCard({

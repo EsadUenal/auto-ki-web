@@ -182,6 +182,7 @@ function AppContent() {
         navigate('/kaufcheck')
       } else {
         setSavedVerkaufsCheck({
+          id: full.id,
           eingabe: full.eingabe as unknown as VerkaufsCheckForm,
           ergebnis: full.ergebnis as unknown as VerkaufsCheckResult,
         })
