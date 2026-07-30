@@ -51,6 +51,11 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   const [error, setError] = useState<string | null>(null)
   const [paymentRequired, setPaymentRequired] = useState(false)
   const [showMore, setShowMore] = useState(false)
+  // Check-ID für die Persistenz der Analyse-Rückfragen. Bei einem frisch
+  // erstellten Check trifft sie erst nach dem Speichern ein. runId hält den
+  // AnalyseFrageChat über die ID-Zuweisung hinweg stabil (kein Remount).
+  const [freshCheckId, setFreshCheckId] = useState<number | undefined>(undefined)
+  const [runId, setRunId] = useState(0)
 
   // Gespeicherten Check laden
   useEffect(() => {
@@ -79,6 +84,8 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
     setError(null)
     setResult(null)
     setPaymentRequired(false)
+    setFreshCheckId(undefined)   // neue Prüfung → alte Check-ID verwerfen
+    setRunId((n) => n + 1)        // frischen Chat-Kontext erzwingen
     try {
       const res = await runKaufCheck(form, screenshot)
       setResult(res)
@@ -86,10 +93,13 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
-      // Im Backend speichern (fire & forget — Screenshot wird nicht gespeichert)
+      // Im Backend speichern; die zurückgegebene ID koppelt die Analyse-Rückfragen.
       const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
       apiSaveCheck('kauf', titel, form, res)
-        .then(() => onCheckSaved?.())
+        .then((saved) => {
+          setFreshCheckId(saved.id)
+          onCheckSaved?.()
+        })
         .catch(() => {})
     } catch (err) {
       if (err instanceof PaymentRequiredError) {
@@ -315,7 +325,13 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         </form>
 
         {loading && !result && <ReportSkeleton kind="kauf" />}
-        {result && <KaufCheckReport result={result} />}
+        {result && (
+          <KaufCheckReport
+            result={result}
+            checkId={savedCheck ? savedCheck.id : freshCheckId}
+            chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
+          />
+        )}
       </div>
     </div>
   )
@@ -412,7 +428,15 @@ function formatUnbekannterPreiswert(wert: string): string {
   return lesbar.charAt(0).toUpperCase() + lesbar.slice(1)
 }
 
-function KaufCheckReport({ result }: { result: KaufCheckResult }) {
+function KaufCheckReport({
+  result,
+  checkId,
+  chatKey,
+}: {
+  result: KaufCheckResult
+  checkId?: number
+  chatKey: string
+}) {
   const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
   const recStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
   const preisKey = result.preis_bewertung?.toLowerCase()
@@ -460,7 +484,12 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
 
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
 
-      <AnalyseFrageChat analyseKontext={buildAnalyseKontext(result)} checkTyp="kauf" />
+      <AnalyseFrageChat
+        key={chatKey}
+        analyseKontext={buildAnalyseKontext(result)}
+        checkId={checkId}
+        checkTyp="kauf"
+      />
     </div>
   )
 }

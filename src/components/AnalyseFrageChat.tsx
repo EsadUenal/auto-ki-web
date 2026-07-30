@@ -1,8 +1,13 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Send, Loader2, MessageCircleQuestion } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { streamAnalyseFrage, type VerlaufItem } from '../api/client'
+import {
+  streamAnalyseFrage,
+  apiListCheckFragen,
+  apiSaveCheckFrage,
+  type VerlaufItem,
+} from '../api/client'
 
 interface QA {
   frage: string
@@ -11,14 +16,21 @@ interface QA {
 
 /**
  * Kontextgebundener Analyse-Chat: erscheint unter einem Check-Ergebnis und
- * beantwortet ausschließlich Fragen zur vorliegenden Analyse. Multi-Turn —
- * jede Frage schickt die bisherigen Q&A-Paare als Verlauf mit.
+ * beantwortet ausschließlich Fragen zur vorliegenden Analyse. Multi-Turn.
+ *
+ * Persistenz: Ist eine `checkId` bekannt, werden abgeschlossene Q&A-Paare am Check
+ * gespeichert und beim erneuten Öffnen wiederhergestellt. Bei einem frisch
+ * erstellten Check kann die ID erst kurz nach dem Absenden eintreffen — fertige,
+ * noch nicht gespeicherte Paare warten in `pendingRef` und werden nachgereicht,
+ * sobald die ID da ist.
  */
 export default function AnalyseFrageChat({
   analyseKontext,
+  checkId,
   checkTyp = 'kauf',
 }: {
   analyseKontext: string
+  checkId?: number
   checkTyp?: 'kauf' | 'verkauf' | 'ersatzteil'
 }) {
   const [qas, setQas] = useState<QA[]>([])
@@ -26,6 +38,47 @@ export default function AnalyseFrageChat({
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  const checkIdRef = useRef<number | undefined>(checkId)
+  const pendingRef = useRef<QA[]>([])  // fertige, noch nicht gespeicherte Paare
+
+  // Speichert alle noch offenen Paare, sobald eine checkId vorhanden ist.
+  const flush = useCallback(async () => {
+    const id = checkIdRef.current
+    if (id == null) return
+    while (pendingRef.current.length > 0) {
+      const qa = pendingRef.current[0]
+      try {
+        await apiSaveCheckFrage(id, qa.frage, qa.antwort)
+        pendingRef.current.shift()
+      } catch {
+        break  // beim nächsten flush erneut versuchen
+      }
+    }
+  }, [])
+
+  // checkId aktuell halten und offene Paare nachreichen, wenn die ID eintrifft.
+  useEffect(() => {
+    checkIdRef.current = checkId
+    void flush()
+  }, [checkId, flush])
+
+  // Einmaliges Laden der gespeicherten Q&A beim Öffnen eines gespeicherten Checks.
+  useEffect(() => {
+    const id = checkIdRef.current
+    if (id == null) return
+    let cancelled = false
+    apiListCheckFragen(id)
+      .then((items) => {
+        if (!cancelled) setQas(items.map((it) => ({ frage: it.frage, antwort: it.antwort })))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // Nur beim Mount — die Komponente wird pro Check via key neu gemountet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -48,16 +101,19 @@ export default function AnalyseFrageChat({
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
+    let answer = ''
     await streamAnalyseFrage(
       analyseKontext,
       frage,
       verlauf,
       checkTyp,
       {
-        onToken: (t) =>
+        onToken: (t) => {
+          answer += t
           setQas((prev) =>
             prev.map((qa, i) => (i === idx ? { ...qa, antwort: qa.antwort + t } : qa)),
-          ),
+          )
+        },
         onError: (err) => setError(err),
         onDone: () => {},
       },
@@ -66,6 +122,12 @@ export default function AnalyseFrageChat({
 
     setStreaming(false)
     abortRef.current = null
+
+    // Fertiges Paar zum Speichern vormerken und (falls checkId da) sofort sichern.
+    if (answer.trim()) {
+      pendingRef.current.push({ frage, antwort: answer })
+      void flush()
+    }
   }
 
   return (

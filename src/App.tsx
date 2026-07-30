@@ -174,6 +174,7 @@ function AppContent() {
       const full = await apiGetCheck(id)
       if (typ === 'kauf') {
         setSavedKaufCheck({
+          id: full.id,
           eingabe: full.eingabe as unknown as KaufCheckForm,
           ergebnis: full.ergebnis as unknown as KaufCheckResult,
         })

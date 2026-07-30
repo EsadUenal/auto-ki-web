@@ -36,6 +36,7 @@ export interface Conversation {
 
 // ---- Gespeicherte Checks ----
 export interface SavedKaufCheck {
+  id: number
   eingabe: KaufCheckForm
   ergebnis: KaufCheckResult
 }

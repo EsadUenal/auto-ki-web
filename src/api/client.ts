@@ -163,6 +163,35 @@ export async function apiDeleteCheck(id: number): Promise<void> {
   await checkFetch(`/${id}`, { method: 'DELETE' })
 }
 
+// ---- Analyse-Rückfragen (Q&A) pro Check (Persistenz) ----
+export interface ApiCheckFrage {
+  frage: string
+  antwort: string
+  created_at: string
+}
+
+export async function apiListCheckFragen(checkId: number): Promise<ApiCheckFrage[]> {
+  try {
+    const res = await checkFetch(`/${checkId}/fragen`)
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
+  }
+}
+
+export async function apiSaveCheckFrage(
+  checkId: number,
+  frage: string,
+  antwort: string,
+): Promise<void> {
+  const res = await checkFetch(`/${checkId}/fragen`, {
+    method: 'POST',
+    body: JSON.stringify({ frage, antwort }),
+  })
+  if (!res.ok) throw new Error('Frage konnte nicht gespeichert werden')
+}
+
 // ── Conversations (Phase 2c) ──────────────────────────────────────────────────
 
 export interface ApiConversation {
