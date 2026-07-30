@@ -346,6 +346,89 @@ export async function streamChat(
   )
 }
 
+// ---- Analyse-Rückfragen (kontextgebundener Chat nach einem Check) ----
+export interface AnalyseFrageCallbacks {
+  onToken: (token: string) => void
+  onDone: () => void
+  onError: (err: string) => void
+}
+
+/**
+ * Streamt die Antwort auf eine kontextgebundene Rückfrage zu einer Check-Analyse.
+ * Der Analysetext wird als `analyseKontext` mitgeschickt; `verlauf` enthält die
+ * bisherigen Frage/Antwort-Paare (Multi-Turn). Verbraucht kein Check-Kontingent.
+ */
+export async function streamAnalyseFrage(
+  analyseKontext: string,
+  frage: string,
+  verlauf: VerlaufItem[],
+  checkTyp: 'kauf' | 'verkauf' | 'ersatzteil',
+  callbacks: AnalyseFrageCallbacks,
+  signal?: AbortSignal,
+): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch(`${BASE_URL}/api/v1/analyse-frage`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        analyse_kontext: analyseKontext,
+        frage,
+        verlauf,
+        check_typ: checkTyp,
+      }),
+      signal,
+    })
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return
+    callbacks.onError(`Verbindung zum Backend fehlgeschlagen. Läuft der Server auf ${BASE_URL}?`)
+    return
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    callbacks.onError(`Server-Fehler ${response.status}: ${text}`)
+    return
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) {
+    callbacks.onError('Kein Stream vom Server.')
+    return
+  }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue
+        const raw = line.slice(5).trim()
+        if (!raw || raw === '[DONE]') continue
+        try {
+          const parsed = JSON.parse(raw) as Record<string, unknown>
+          if (typeof parsed.delta === 'string') callbacks.onToken(parsed.delta)
+        } catch {
+          callbacks.onToken(raw)  // Kein JSON → roher Text-Token (Fallback)
+        }
+      }
+    }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return
+    callbacks.onError((e as Error).message)
+    return
+  } finally {
+    reader.releaseLock()
+  }
+
+  callbacks.onDone()
+}
+
 // ── Payments (Phase 2d) ───────────────────────────────────────────────────────
 
 async function paymentFetch(path: string, init?: RequestInit): Promise<Response> {

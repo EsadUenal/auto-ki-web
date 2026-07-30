@@ -18,6 +18,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { runKaufCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
+import AnalyseFrageChat from './AnalyseFrageChat'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -458,8 +459,34 @@ function KaufCheckReport({ result }: { result: KaufCheckResult }) {
       </div>
 
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
+
+      <AnalyseFrageChat analyseKontext={buildAnalyseKontext(result)} checkTyp="kauf" />
     </div>
   )
+}
+
+// Baut den Analysetext, den die kontextgebundenen Rückfragen als Grundlage bekommen:
+// Verdikt (Empfehlung/Preisbewertung/Marktpreis) + der vollständige Detailbericht.
+function buildAnalyseKontext(result: KaufCheckResult): string {
+  const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
+  const empfLabel = (EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt).label
+  const preisKey = result.preis_bewertung?.toLowerCase()
+  const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey)) : null
+  const marktpreis =
+    result.marktpreis_min || result.marktpreis_max
+      ? `${result.marktpreis_min?.toLocaleString('de-DE') ?? '?'} – ${result.marktpreis_max?.toLocaleString('de-DE') ?? '?'} €`
+      : null
+
+  return [
+    `Empfehlung: ${empfLabel}`,
+    preisLabel ? `Preisbewertung: ${preisLabel}` : '',
+    marktpreis ? `Marktpreis-Einschätzung: ${marktpreis}` : '',
+    '',
+    '--- Detailbericht ---',
+    result.bericht,
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 const inputCls =
