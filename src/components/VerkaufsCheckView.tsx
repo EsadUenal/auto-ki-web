@@ -7,6 +7,7 @@ import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/cli
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds, stripEvidenceIds } from './EvidenceWhy'
+import KeyFindings from './KeyFindings'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
 const ZUSTAND_OPTIONS = [
@@ -402,6 +403,9 @@ function VerkaufsReport({
           <EvidenceWhy label="Warum dieser Preis?" insights={preisInsights} />
         </div>
       )}
+
+      {/* Phase 2: verdichtete Kern-Erkenntnisse — vor dem langen Detailbericht. */}
+      <KeyFindings findings={result.key_findings} insights={result.insights} />
 
       <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht & Tipps</p>

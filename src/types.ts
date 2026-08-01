@@ -92,6 +92,21 @@ export interface Insight {
   marktanalyse?: Marktanalyse | null
 }
 
+// Phase 2 — verdichtete Kern-Erkenntnis ("Das solltest du wissen"). Alle Felder
+// optional an den Results, damit alte gespeicherte Checks weiter funktionieren.
+export interface KeyFinding {
+  id: string
+  kategorie: string
+  stufe: 'kritisch' | 'warnung' | 'chance' | 'info' | string
+  icon?: string | null
+  titel: string
+  beschreibung: string
+  wert?: string | null
+  aktion?: string | null
+  evidence_ids: string[]
+  prioritaet: number
+}
+
 // ---- Gespeicherte Checks ----
 export interface SavedKaufCheck {
   id: number
@@ -140,6 +155,8 @@ export interface KaufCheckResult {
   empfehlung_evidence_ids?: string[]
   preis_evidence_ids?: string[]
   risiko_evidence_ids?: string[]
+  // Phase 2 (optional; alte Checks besitzen dieses Feld nicht)
+  key_findings?: KeyFinding[]
 }
 
 // ---- Verkaufs-Check ----
@@ -177,4 +194,6 @@ export interface VerkaufsCheckResult {
   preis_evidence_ids?: string[]
   strategie_evidence_ids?: string[]
   argument_evidence_ids?: string[]
+  // Phase 2 (optional; alte Checks besitzen dieses Feld nicht)
+  key_findings?: KeyFinding[]
 }

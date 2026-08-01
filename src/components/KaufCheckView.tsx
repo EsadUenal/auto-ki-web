@@ -20,6 +20,7 @@ import { runKaufCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds, stripEvidenceIds } from './EvidenceWhy'
+import KeyFindings from './KeyFindings'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -487,6 +488,9 @@ function KaufCheckReport({
           )}
         </div>
       )}
+
+      {/* Phase 2: verdichtete Kern-Erkenntnisse — vor dem langen Detailbericht. */}
+      <KeyFindings findings={result.key_findings} insights={result.insights} />
 
       <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht</p>
