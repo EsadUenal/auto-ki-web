@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Send, Loader2, MessageCircleQuestion } from 'lucide-react'
+import { Send, Loader2, MessageCircleQuestion, ChevronDown, ArrowDown } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -37,7 +37,10 @@ export default function AnalyseFrageChat({
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState(false)   // Chat-Inhalt zu-/aufklappbar
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const bottomRef = useRef<HTMLDivElement | null>(null)
 
   const checkIdRef = useRef<number | undefined>(checkId)
   const pendingRef = useRef<QA[]>([])  // fertige, noch nicht gespeicherte Paare
@@ -79,6 +82,26 @@ export default function AnalyseFrageChat({
     // Nur beim Mount — die Komponente wird pro Check via key neu gemountet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // "Nach unten"-Pfeil einblenden, solange bei aufgeklapptem, nicht-leerem Chat
+  // das Chat-Ende nicht im sichtbaren Bereich liegt.
+  useEffect(() => {
+    const el = bottomRef.current
+    if (!el || collapsed || qas.length === 0) {
+      setShowScrollBtn(false)
+      return
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowScrollBtn(!entry.isIntersecting),
+      { threshold: 0 },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [collapsed, qas.length])
+
+  function scrollToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -132,66 +155,91 @@ export default function AnalyseFrageChat({
 
   return (
     <div className="mt-8 pt-8 border-t border-[#e6e1da]">
-      <div className="flex items-center gap-2 mb-4">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 mb-4 text-left"
+      >
         <MessageCircleQuestion size={16} className="text-blue-600" />
         <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">
           Fragen zur Analyse
         </p>
-      </div>
-
-      {qas.length > 0 && (
-        <div className="space-y-4 mb-4">
-          {qas.map((qa, i) => (
-            <div key={i} className="space-y-2">
-              {/* Frage (rechts) */}
-              <div className="flex justify-end">
-                <div className="inline-block max-w-[min(88vw,520px)] bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 text-sm leading-relaxed">
-                  {qa.frage}
-                </div>
-              </div>
-              {/* Antwort (links) */}
-              <div className="flex justify-start">
-                <div className="inline-block max-w-[min(88vw,560px)] bg-white border border-[#e6e1da] rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-gray-800 shadow-[0_8px_24px_-20px_rgba(40,25,10,0.3)]">
-                  {qa.antwort ? (
-                    <div className="chat-prose">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{qa.antwort}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <Loader2 size={15} className="animate-spin text-gray-400" />
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>
-      )}
-
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={streaming}
-          placeholder="Frage zur Analyse…"
-          className="flex-1 text-sm bg-white border border-[#e6e1da] rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200/70 transition-colors placeholder-gray-400 disabled:opacity-60"
+        <ChevronDown
+          size={16}
+          className={`ml-auto text-[#a49c92] transition-transform ${collapsed ? '-rotate-90' : ''}`}
         />
-        <button
-          type="submit"
-          disabled={streaming || !input.trim()}
-          aria-label="Frage senden"
-          className="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl text-white transition-all disabled:opacity-40 disabled:saturate-50"
-          style={{ background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)', boxShadow: '0 8px 18px -8px rgba(37,99,235,0.5)' }}
-        >
-          {streaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-        </button>
-      </form>
+      </button>
 
-      <p className="text-[11px] text-gray-400 mt-2.5">
-        Beantwortet nur Fragen zu dieser Analyse. Für allgemeine Fragen den KI-Chat nutzen.
-      </p>
+      {!collapsed && (
+        <>
+          {qas.length > 0 && (
+            <div className="space-y-4 mb-4">
+              {qas.map((qa, i) => (
+                <div key={i} className="space-y-2">
+                  {/* Frage (rechts) */}
+                  <div className="flex justify-end">
+                    <div className="inline-block max-w-[min(88vw,520px)] bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 text-sm leading-relaxed">
+                      {qa.frage}
+                    </div>
+                  </div>
+                  {/* Antwort (links) */}
+                  <div className="flex justify-start">
+                    <div className="inline-block max-w-[min(88vw,560px)] bg-white border border-[#e6e1da] rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-gray-800 shadow-[0_8px_24px_-20px_rgba(40,25,10,0.3)]">
+                      {qa.antwort ? (
+                        <div className="chat-prose">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{qa.antwort}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <Loader2 size={15} className="animate-spin text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex items-center gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={streaming}
+              placeholder="Frage zur Analyse…"
+              className="flex-1 text-sm bg-white border border-[#e6e1da] rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200/70 transition-colors placeholder-gray-400 disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={streaming || !input.trim()}
+              aria-label="Frage senden"
+              className="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl text-white transition-all disabled:opacity-40 disabled:saturate-50"
+              style={{ background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)', boxShadow: '0 8px 18px -8px rgba(37,99,235,0.5)' }}
+            >
+              {streaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
+          </form>
+
+          <p className="text-[11px] text-gray-400 mt-2.5">
+            Beantwortet nur Fragen zu dieser Analyse. Für allgemeine Fragen den KI-Chat nutzen.
+          </p>
+          <div ref={bottomRef} aria-hidden="true" />
+        </>
+      )}
+
+      {showScrollBtn && (
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          aria-label="Zum Ende des Chats scrollen"
+          className="fixed bottom-6 right-6 z-40 w-11 h-11 flex items-center justify-center rounded-full bg-white border border-[#e6e1da] text-blue-600 shadow-[0_8px_24px_-8px_rgba(40,25,10,0.35)] hover:bg-blue-50 transition-colors"
+        >
+          <ArrowDown size={18} />
+        </button>
+      )}
     </div>
   )
 }
