@@ -45,6 +45,36 @@ export interface EvidenceQuelle {
   qualitaet?: string | null
 }
 
+// Marktvergleich 2.0 — deterministisch berechnete Preisbewertung. Nur am
+// Marktvergleich-Insight gesetzt. Alle Felder optional/backward-compatible.
+export interface Preisbeobachtung {
+  preis_eur: number
+  kilometerstand?: number | null
+  baujahr?: number | null
+  quelle_domain?: string | null
+  quelle_url?: string | null
+  vergleichbarkeit: string   // "sehr_aehnlich" | "aehnlich" | "bedingt" | "ungeeignet"
+  gruende: string[]
+}
+
+export interface Marktanalyse {
+  gefunden: number
+  verwendet: number
+  anzahl_sehr_aehnlich: number
+  anzahl_aehnlich: number
+  anzahl_bedingt: number
+  median_eur?: number | null
+  spanne_min_eur?: number | null
+  spanne_max_eur?: number | null
+  angebot_eur?: number | null
+  differenz_eur?: number | null
+  differenz_pct?: number | null
+  datenqualitaet: string
+  methode?: string | null
+  quellen_domains: string[]
+  beobachtungen: Preisbeobachtung[]
+}
+
 export interface Insight {
   id: string
   kategorie: string
@@ -54,7 +84,12 @@ export interface Insight {
   quellen: EvidenceQuelle[]
   confidence: string
   schweregrad?: string | null
+  // Nur Rückrufe: wie sicher der Rückruf GENAU DIESES Fahrzeug betrifft.
+  // "exakt" | "wahrscheinlich" | "unklar" — getrennt von confidence & schweregrad.
+  applicability?: string | null
   einfluss?: string | null
+  // Nur Marktvergleich-Insight: strukturierter deterministischer Marktvergleich.
+  marktanalyse?: Marktanalyse | null
 }
 
 // ---- Gespeicherte Checks ----
