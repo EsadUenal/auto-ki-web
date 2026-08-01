@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TrendingUp, ImagePlus, X, Loader2, Clock, History, Lock, ChevronDown } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
-import EvidenceWhy, { insightsByIds, stripEvidenceIds } from './EvidenceWhy'
+import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
+import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport } from './ResultSummary'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
 const ZUSTAND_OPTIONS = [
@@ -377,24 +376,27 @@ function VerkaufsReport({
   const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
   const strategieInsights = insightsByIds(result.insights, result.strategie_evidence_ids)
   const argumentInsights = insightsByIds(result.insights, result.argument_evidence_ids)
+  const marktanalyse = marktanalyseOf(result.insights)
 
   return (
     <div id="verk-result" className="mt-10 space-y-4">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
 
+      {/* Phase 3: Preisstrategie kompakt — Spanne + Marktmedian + Datenqualität. */}
       {hasPreise && (
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preisspanne</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preisstrategie</p>
+          <div className="grid grid-cols-3 gap-3">
             <PriceCard label="Schnellverkauf" subtitle="Sofort verkaufen" price={result.schnellverkaufs_preis} days={result.verkaufsdauer_tage_schnell} variant="muted" />
             <PriceCard label="Empfohlen" subtitle="Bester Kompromiss" price={result.empfohlener_preis} variant="primary" />
             <PriceCard label="Maximum" subtitle="Geduld nötig" price={result.maximal_preis} days={result.verkaufsdauer_tage_maximal} variant="muted" />
           </div>
           {(result.marktpreis_min || result.marktpreis_max) && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 mt-4">
               Marktpreis-Spanne (Referenz): {result.marktpreis_min?.toLocaleString('de-DE')} € – {result.marktpreis_max?.toLocaleString('de-DE')} €
             </p>
           )}
+          <VerkaufMarketMetrics marktanalyse={marktanalyse} />
         </div>
       )}
 
@@ -404,15 +406,14 @@ function VerkaufsReport({
         </div>
       )}
 
-      {/* Phase 2: verdichtete Kern-Erkenntnisse — vor dem langen Detailbericht. */}
+      {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
       <KeyFindings findings={result.key_findings} insights={result.insights} />
 
-      <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht & Tipps</p>
-        <div className="chat-prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripEvidenceIds(result.bericht)}</ReactMarkdown>
-        </div>
-      </div>
+      {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
+      <NextSteps findings={result.key_findings} />
+
+      {/* Vollständiger Bericht & Tipps — unverändert, standardmäßig eingeklappt. */}
+      <CollapsibleReport bericht={result.bericht} title="Vollständige Analyse & Tipps anzeigen" />
 
       {(strategieInsights.length > 0 || argumentInsights.length > 0) && (
         <div className="space-y-2 px-1">

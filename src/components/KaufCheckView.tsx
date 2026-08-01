@@ -14,13 +14,14 @@ import {
   Lock,
   ChevronDown,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { runKaufCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
-import EvidenceWhy, { insightsByIds, stripEvidenceIds } from './EvidenceWhy'
+import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
+import {
+  marktanalyseOf, MarketMetrics, RiskOverview, NextSteps, CollapsibleReport,
+} from './ResultSummary'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -448,26 +449,35 @@ function KaufCheckReport({
   const empfehlungInsights = insightsByIds(result.insights, result.empfehlung_evidence_ids)
   const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
   const risikoInsights = insightsByIds(result.insights, result.risiko_evidence_ids)
+  const marktanalyse = marktanalyseOf(result.insights)
 
   return (
     <div id="kauf-result" className="mt-10 space-y-4">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
 
-      <div className={`rounded-2xl p-6 border flex items-start gap-4 ${recStyle.bg}`}>
-        {recStyle.icon}
-        <div className="min-w-0">
-          <p className={`text-[11px] font-bold uppercase tracking-[0.18em] mb-1.5 opacity-80 ${recStyle.label_cls}`}>
-            Empfehlung
-          </p>
-          <p className={`text-2xl font-bold tracking-[-0.01em] leading-tight ${recStyle.label_cls}`}>
-            {recStyle.label}
-          </p>
-          {preisLabel && (
-            <p className={`text-sm font-medium mt-2 opacity-90 ${recStyle.label_cls}`}>
-              Preisbewertung: {preisLabel}
+      {/* Phase 3: kompakter Entscheidungsbereich — Empfehlung + Markt-Kennzahlen in EINER Karte. */}
+      <div className={`rounded-2xl p-5 sm:p-6 border ${recStyle.bg}`}>
+        <div className="flex items-start gap-3.5">
+          {recStyle.icon}
+          <div className="min-w-0 flex-1">
+            <p className={`text-[11px] font-bold uppercase tracking-[0.18em] mb-1 opacity-80 ${recStyle.label_cls}`}>
+              Entscheidung
             </p>
+            <p className={`text-xl sm:text-2xl font-bold tracking-[-0.01em] leading-tight ${recStyle.label_cls}`}>
+              {recStyle.label}
+            </p>
+          </div>
+          {preisLabel && (
+            <span className={`shrink-0 mt-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/60 ${recStyle.label_cls}`}>
+              Preis: {preisLabel}
+            </span>
           )}
         </div>
+        <MarketMetrics
+          marktpreisMin={result.marktpreis_min}
+          marktpreisMax={result.marktpreis_max}
+          marktanalyse={marktanalyse}
+        />
       </div>
 
       {(empfehlungInsights.length > 0 || preisInsights.length > 0) && (
@@ -477,33 +487,27 @@ function KaufCheckReport({
         </div>
       )}
 
-      {(result.marktpreis_min || result.marktpreis_max) && (
-        <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Marktpreis-Einschätzung</p>
-          <p className="text-xl font-semibold text-gray-900">
-            {result.marktpreis_min?.toLocaleString('de-DE')} € – {result.marktpreis_max?.toLocaleString('de-DE')} €
-          </p>
-          {result.baureihe_erkannt && (
-            <p className="text-xs text-gray-400 mt-1">Baureihe: {result.baureihe_erkannt}</p>
-          )}
-        </div>
-      )}
-
-      {/* Phase 2: verdichtete Kern-Erkenntnisse — vor dem langen Detailbericht. */}
-      <KeyFindings findings={result.key_findings} insights={result.insights} />
-
-      <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht</p>
-        <div className="chat-prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripEvidenceIds(result.bericht)}</ReactMarkdown>
-        </div>
-      </div>
-
+      {/* Risiko-Kurzüberblick (deterministisch, "Unklar" ohne Datenbasis). */}
+      <RiskOverview
+        insights={result.insights}
+        marktanalyse={marktanalyse}
+        baureiheErkannt={result.baureihe_erkannt}
+        preisBewertung={result.preis_bewertung}
+      />
       {risikoInsights.length > 0 && (
         <div className="px-1">
           <EvidenceWhy label="Warum diese Risiken?" insights={risikoInsights} />
         </div>
       )}
+
+      {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
+      <KeyFindings findings={result.key_findings} insights={result.insights} />
+
+      {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
+      <NextSteps findings={result.key_findings} />
+
+      {/* Vollständiger Bericht — unverändert, standardmäßig eingeklappt. */}
+      <CollapsibleReport bericht={result.bericht} title="Vollständige Analyse anzeigen" />
 
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
 
