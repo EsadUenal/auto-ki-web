@@ -34,6 +34,29 @@ export interface Conversation {
   carContext?: CarContext  // gesetzt wenn aus Entdecken geöffnet
 }
 
+// ---- Provenance / Evidence (Phase 1) ----
+// Spiegelt app/models.py (EvidenceQuelle / Insight). Alle Felder optional an den
+// Check-Results, damit ALTE gespeicherte Checks ohne Evidence weiter funktionieren.
+export interface EvidenceQuelle {
+  typ: string
+  ref?: string | null
+  url?: string | null
+  titel?: string | null
+  qualitaet?: string | null
+}
+
+export interface Insight {
+  id: string
+  kategorie: string
+  titel: string
+  beschreibung: string
+  quellen_typen: string[]
+  quellen: EvidenceQuelle[]
+  confidence: string
+  schweregrad?: string | null
+  einfluss?: string | null
+}
+
 // ---- Gespeicherte Checks ----
 export interface SavedKaufCheck {
   id: number
@@ -77,6 +100,11 @@ export interface KaufCheckResult {
   quelle: string
   vertrauen: string
   belege: unknown[]
+  // Phase 1 (optional; alte Checks besitzen diese Felder nicht)
+  insights?: Insight[]
+  empfehlung_evidence_ids?: string[]
+  preis_evidence_ids?: string[]
+  risiko_evidence_ids?: string[]
 }
 
 // ---- Verkaufs-Check ----
@@ -109,4 +137,9 @@ export interface VerkaufsCheckResult {
   quelle: string
   vertrauen: string
   belege: unknown[]
+  // Phase 1 (optional; alte Checks besitzen diese Felder nicht)
+  insights?: Insight[]
+  preis_evidence_ids?: string[]
+  strategie_evidence_ids?: string[]
+  argument_evidence_ids?: string[]
 }

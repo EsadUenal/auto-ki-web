@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
+import EvidenceWhy, { insightsByIds, stripEvidenceIds } from './EvidenceWhy'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
 const ZUSTAND_OPTIONS = [
@@ -371,6 +372,11 @@ function VerkaufsReport({
 }) {
   const hasPreise = result.schnellverkaufs_preis || result.empfohlener_preis || result.maximal_preis
 
+  // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).
+  const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
+  const strategieInsights = insightsByIds(result.insights, result.strategie_evidence_ids)
+  const argumentInsights = insightsByIds(result.insights, result.argument_evidence_ids)
+
   return (
     <div id="verk-result" className="mt-10 space-y-4">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
@@ -391,12 +397,25 @@ function VerkaufsReport({
         </div>
       )}
 
+      {preisInsights.length > 0 && (
+        <div className="px-1">
+          <EvidenceWhy label="Warum dieser Preis?" insights={preisInsights} />
+        </div>
+      )}
+
       <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht & Tipps</p>
         <div className="chat-prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.bericht}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripEvidenceIds(result.bericht)}</ReactMarkdown>
         </div>
       </div>
+
+      {(strategieInsights.length > 0 || argumentInsights.length > 0) && (
+        <div className="space-y-2 px-1">
+          <EvidenceWhy label="Warum diese Strategie?" insights={strategieInsights} />
+          <EvidenceWhy label="Warum diese Verkaufsargumente?" insights={argumentInsights} />
+        </div>
+      )}
 
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
 

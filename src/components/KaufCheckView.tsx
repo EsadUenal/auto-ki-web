@@ -19,6 +19,7 @@ import remarkGfm from 'remark-gfm'
 import { runKaufCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
+import EvidenceWhy, { insightsByIds, stripEvidenceIds } from './EvidenceWhy'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -442,6 +443,11 @@ function KaufCheckReport({
   const preisKey = result.preis_bewertung?.toLowerCase()
   const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey)) : null
 
+  // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).
+  const empfehlungInsights = insightsByIds(result.insights, result.empfehlung_evidence_ids)
+  const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
+  const risikoInsights = insightsByIds(result.insights, result.risiko_evidence_ids)
+
   return (
     <div id="kauf-result" className="mt-10 space-y-4">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
@@ -463,6 +469,13 @@ function KaufCheckReport({
         </div>
       </div>
 
+      {(empfehlungInsights.length > 0 || preisInsights.length > 0) && (
+        <div className="space-y-2 px-1">
+          <EvidenceWhy label="Warum diese Empfehlung?" insights={empfehlungInsights} />
+          <EvidenceWhy label="Warum diese Preisbewertung?" insights={preisInsights} />
+        </div>
+      )}
+
       {(result.marktpreis_min || result.marktpreis_max) && (
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Marktpreis-Einschätzung</p>
@@ -478,9 +491,15 @@ function KaufCheckReport({
       <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Detailbericht</p>
         <div className="chat-prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.bericht}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripEvidenceIds(result.bericht)}</ReactMarkdown>
         </div>
       </div>
+
+      {risikoInsights.length > 0 && (
+        <div className="px-1">
+          <EvidenceWhy label="Warum diese Risiken?" insights={risikoInsights} />
+        </div>
+      )}
 
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
 
