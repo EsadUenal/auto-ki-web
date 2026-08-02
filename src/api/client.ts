@@ -33,7 +33,8 @@ export interface AuthUser {
   checks_verbleibend: number
   ersatzteil_suchen_verbleibend: number
   abo_kuendigt_zum?: string | null
-  ist_haendler?: boolean   // Phase 5: schaltet den Dealer-Bereich frei
+  ist_haendler?: boolean    // manueller DB-Override (Testaccounts/Support/Sonderfälle)
+  dealer_access?: boolean   // effektive Berechtigung: abo_typ==="max" ODER ist_haendler
 }
 
 async function authFetch(path: string, init?: RequestInit): Promise<Response> {

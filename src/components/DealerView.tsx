@@ -47,7 +47,7 @@ export default function DealerView() {
   }, [vehicles, statusFilter, sort])
 
   // Nicht-Dealer sollten hier gar nicht landen (Guard in App.tsx) — doppelt absichern.
-  if (user && !user.ist_haendler) {
+  if (user && !user.dealer_access) {
     return <div className="p-8 text-sm text-gray-500">Dieser Bereich ist nur für VIRA-Dealer-Konten.</div>
   }
 

@@ -355,15 +355,15 @@ function AppContent() {
               onClearSaved={() => setSavedVerkaufsCheck(null)}
             />
           } />
-          {/* Phase 5: Dealer-Bereich nur für freigeschaltete Händler (§15/§28).
-              Backend erzwingt zusätzlich 403 — Frontend-Guard ist nur Komfort. */}
+          {/* Phase 5: Dealer-Bereich nur bei effektiver Berechtigung (MAX-Tarif ODER
+              manueller Override). Backend erzwingt zusätzlich 403 — Guard ist Komfort. */}
           <Route
             path="/dealer"
-            element={user?.ist_haendler ? <DealerView /> : <Navigate to="/chat" replace />}
+            element={user?.dealer_access ? <DealerView /> : <Navigate to="/chat" replace />}
           />
           <Route
             path="/dealer/:id"
-            element={user?.ist_haendler ? <DealerVehicleView onOpenCheck={handleSelectCheck} /> : <Navigate to="/chat" replace />}
+            element={user?.dealer_access ? <DealerVehicleView onOpenCheck={handleSelectCheck} /> : <Navigate to="/chat" replace />}
           />
           <Route
             path="/entdecken"

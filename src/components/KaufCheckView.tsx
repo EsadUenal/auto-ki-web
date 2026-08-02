@@ -444,7 +444,7 @@ function DealerAddButton({ checkId }: { checkId?: number }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!user?.ist_haendler || !checkId) return null
+  if (!user?.dealer_access || !checkId) return null
 
   async function handleAdd() {
     if (vehicleId != null) { navigate(`/dealer/${vehicleId}`); return }

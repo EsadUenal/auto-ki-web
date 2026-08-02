@@ -61,6 +61,7 @@ const PLANS: PlanConfig[] = [
     checks: 'Unbegrenzte Checks',
     features: [
       'Unbegrenzte Kauf- & Verkaufs-Checks',
+      'VIRA Dealer – Bestand, Margen & Fahrzeugverwaltung',
       'Alle PRO-Features',
       'Frühzugang zu neuen Features',
       'Direkter Support',
