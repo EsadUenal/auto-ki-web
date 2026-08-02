@@ -159,6 +159,34 @@ export interface KaufCheckResult {
   key_findings?: KeyFinding[]
 }
 
+// Phase 4 — Inseratsanalyse & optimierte Version. Alle Felder optional an den
+// Results, damit ALTE gespeicherte Checks ohne diese Daten weiter funktionieren.
+export interface FehlendeAngabe {
+  feld: string
+  wichtigkeit: 'kritisch' | 'wichtig' | 'optional' | string
+}
+
+export interface ListingAnalyse {
+  qualitaet: 'sehr_gut' | 'gut' | 'verbesserbar' | 'unvollstaendig' | string
+  vorhanden: number
+  gesamt: number
+  staerken: string[]
+  verkaufsargumente: string[]
+  fehlende_angaben: FehlendeAngabe[]
+  probleme: string[]
+  verbesserungen: string[]
+  preis_hinweis?: string | null
+  titel_vorschlag?: string | null
+  evidence_ids: string[]
+}
+
+export interface InseratOptimierung {
+  titel: string
+  beschreibung: string
+  generiert_am?: string | null
+  entfernte_behauptungen: string[]
+}
+
 // ---- Verkaufs-Check ----
 export interface VerkaufsCheckForm {
   marke: string
@@ -168,7 +196,13 @@ export interface VerkaufsCheckForm {
   motor: string
   ausstattung: string
   zustand: string
-  // Zusätzliche Angaben (optional) — verbessern die Preiseinschätzung
+  // Zusätzliche Angaben (optional) — verbessern Preiseinschätzung & Inseratsanalyse
+  kraftstoff: string
+  getriebe: string
+  farbe: string
+  preisVorstellung: number | ''
+  maengel: string          // kommagetrennt → split vor dem Senden
+  inseratText: string      // tatsächlicher Beschreibungstext des Inserats
   unfallfrei: '' | 'ja' | 'nein' | 'unbekannt'
   vorbesitzer: number | ''
   tuevBis: string
@@ -196,4 +230,7 @@ export interface VerkaufsCheckResult {
   argument_evidence_ids?: string[]
   // Phase 2 (optional; alte Checks besitzen dieses Feld nicht)
   key_findings?: KeyFinding[]
+  // Phase 4 (optional; alte Checks besitzen diese Felder nicht)
+  listing_analyse?: ListingAnalyse | null
+  inserat_optimierung?: InseratOptimierung | null
 }

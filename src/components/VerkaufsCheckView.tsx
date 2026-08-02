@@ -6,6 +6,7 @@ import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
+import InseratPanel from './InseratPanel'
 import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport } from './ResultSummary'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
@@ -24,6 +25,12 @@ const EMPTY: VerkaufsCheckForm = {
   motor: '',
   ausstattung: '',
   zustand: 'gut',
+  kraftstoff: '',
+  getriebe: '',
+  farbe: '',
+  preisVorstellung: '',
+  maengel: '',
+  inseratText: '',
   unfallfrei: '',
   vorbesitzer: '',
   tuevBis: '',
@@ -53,7 +60,9 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
   // Gespeicherten Check laden
   useEffect(() => {
     if (savedCheck) {
-      setForm(savedCheck.eingabe)
+      // Alte Checks besitzen die neuen (Phase-4-)Felder nicht -> mit EMPTY mergen,
+      // damit alle Inputs kontrolliert bleiben (kein undefined -> React-Warnung).
+      setForm({ ...EMPTY, ...savedCheck.eingabe })
       setResult(savedCheck.ergebnis)
       setError(null)
       setTimeout(
@@ -189,6 +198,36 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                 onChange={(e) => set('motor', e.target.value)}
                 placeholder="z. B. 2.0 TSI 245 PS, Benzin, DSG" />
             </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Kraftstoff">
+                <select className={inputCls} value={form.kraftstoff}
+                  onChange={(e) => set('kraftstoff', e.target.value)}>
+                  <option value="">Nicht angegeben</option>
+                  <option value="Benzin">Benzin</option>
+                  <option value="Diesel">Diesel</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="Elektro">Elektro</option>
+                  <option value="LPG/CNG">LPG/CNG</option>
+                </select>
+              </Field>
+              <Field label="Getriebe">
+                <select className={inputCls} value={form.getriebe}
+                  onChange={(e) => set('getriebe', e.target.value)}>
+                  <option value="">Nicht angegeben</option>
+                  <option value="Automatik">Automatik</option>
+                  <option value="Schaltgetriebe">Schaltgetriebe</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Deine Preisvorstellung">
+              <div className="relative">
+                <input className={inputCls + ' pr-8'} type="number" min={0}
+                  value={form.preisVorstellung}
+                  onChange={(e) => set('preisVorstellung', e.target.value ? parseInt(e.target.value) : '')}
+                  placeholder="z. B. 25.900" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">€</span>
+              </div>
+            </Field>
             <Field label="Ausstattung">
               <textarea className={inputCls + ' resize-none'} rows={2} value={form.ausstattung}
                 onChange={(e) => set('ausstattung', e.target.value)}
@@ -242,12 +281,31 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                     onChange={(e) => set('tuevBis', e.target.value)}
                     placeholder="z. B. 06/2027" />
                 </Field>
+                <Field label="Farbe">
+                  <input className={inputCls} value={form.farbe}
+                    onChange={(e) => set('farbe', e.target.value)}
+                    placeholder="z. B. Obsidianschwarz" />
+                </Field>
                 <div className="flex items-end pb-2.5">
                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                     <input type="checkbox" checked={form.scheckheft}
                       onChange={(e) => set('scheckheft', e.target.checked)} />
                     Scheckheftgepflegt
                   </label>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Bekannte Mängel">
+                    <input className={inputCls} value={form.maengel}
+                      onChange={(e) => set('maengel', e.target.value)}
+                      placeholder="z. B. Kratzer Heckstoßstange, Steuerkette (kommagetrennt)" />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Beschreibungstext deines Inserats">
+                    <textarea className={inputCls + ' resize-none'} rows={3} value={form.inseratText}
+                      onChange={(e) => set('inseratText', e.target.value)}
+                      placeholder="Falls du schon einen Beschreibungstext hast — hier einfügen. VIRA prüft ihn auf Widersprüche und Vollständigkeit." />
+                  </Field>
                 </div>
               </div>
             )}
@@ -327,6 +385,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
         {result && (
           <VerkaufsReport
             result={result}
+            form={form}
             checkId={savedCheck ? savedCheck.id : freshCheckId}
             chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
           />
@@ -363,10 +422,12 @@ function ReportSkeleton() {
 
 function VerkaufsReport({
   result,
+  form,
   checkId,
   chatKey,
 }: {
   result: VerkaufsCheckResult
+  form: VerkaufsCheckForm
   checkId?: number
   chatKey: string
 }) {
@@ -411,6 +472,14 @@ function VerkaufsReport({
 
       {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
       <NextSteps findings={result.key_findings} />
+
+      {/* Phase 4: "Dein Inserat" — deterministische Qualität + on-demand Optimierung. */}
+      <InseratPanel
+        analyse={result.listing_analyse}
+        form={form}
+        checkId={checkId}
+        initial={result.inserat_optimierung}
+      />
 
       {/* Vollständiger Bericht & Tipps — unverändert, standardmäßig eingeklappt. */}
       <CollapsibleReport bericht={result.bericht} title="Vollständige Analyse & Tipps anzeigen" />

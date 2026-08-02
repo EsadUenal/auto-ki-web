@@ -1,4 +1,5 @@
 import type {
+  InseratOptimierung,
   KaufCheckForm,
   KaufCheckResult,
   SourceMeta,
@@ -785,27 +786,39 @@ const ZUSTAND_TEXT: Record<string, string> = {
   bastler: 'Bastlerfahrzeug, starke Mängel oder nicht fahrbereit',
 }
 
-export async function runVerkaufsCheck(
-  form: VerkaufsCheckForm,
-  images: string[]
-): Promise<VerkaufsCheckResult> {
-  const ausstattungListe = form.ausstattung
-    .split(/[,\n]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-
-  const body = {
+// Baut den Backend-Request-Body aus dem Verkaufs-Formular. Wird von runVerkaufsCheck
+// UND der Inserats-Optimierung genutzt, damit beide EXAKT dieselben Fakten senden
+// (der Fakten-Schutz im Backend prüft gegen genau diese Angaben).
+function verkaufsBody(form: VerkaufsCheckForm): Record<string, unknown> {
+  const liste = (s: string) =>
+    s.split(/[,\n]+/).map((x) => x.trim()).filter(Boolean)
+  return {
     marke: form.marke || undefined,
     modell: form.modell || undefined,
     baujahr: form.baujahr || undefined,
     kilometerstand: form.kilometerstand || undefined,
     motor: form.motor || undefined,
-    ausstattung: ausstattungListe,
+    kraftstoff: form.kraftstoff || undefined,
+    getriebe: form.getriebe || undefined,
+    farbe: form.farbe || undefined,
+    ausstattung: liste(form.ausstattung),
     beschreibung: ZUSTAND_TEXT[form.zustand] ?? form.zustand,
+    inserat_text: form.inseratText || undefined,
+    maengel: form.maengel ? liste(form.maengel) : [],
+    preis_vorstellung: form.preisVorstellung || undefined,
     unfallfrei: form.unfallfrei || undefined,
     vorbesitzer: form.vorbesitzer || undefined,
     tuev_bis: form.tuevBis || undefined,
     scheckheftgepflegt: form.scheckheft || undefined,
+  }
+}
+
+export async function runVerkaufsCheck(
+  form: VerkaufsCheckForm,
+  images: string[]
+): Promise<VerkaufsCheckResult> {
+  const body = {
+    ...verkaufsBody(form),
     bild_base64: images[0] ?? undefined,  // Backend nimmt aktuell ein Bild
   }
 
@@ -823,4 +836,22 @@ export async function runVerkaufsCheck(
   }
 
   return response.json() as Promise<VerkaufsCheckResult>
+}
+
+/**
+ * Erzeugt on-demand die optimierte Inseratsversion (Titel + Beschreibung) zu einem
+ * gespeicherten Verkaufscheck. Idempotent: liegt bereits eine Version am Check,
+ * gibt das Backend sie ohne neuen LLM-Aufruf zurück. Verbraucht kein Check-Kontingent.
+ */
+export async function optimiereInserat(
+  checkId: number,
+  form: VerkaufsCheckForm,
+): Promise<InseratOptimierung> {
+  const res = await checkFetch(`/${checkId}/inserat-optimierung`, {
+    method: 'POST',
+    body: JSON.stringify(verkaufsBody(form)),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(extractMessage(data))
+  return data as InseratOptimierung
 }
