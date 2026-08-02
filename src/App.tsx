@@ -5,6 +5,8 @@ import Sidebar from './components/Sidebar'
 import ChatView from './components/ChatView'
 import KaufCheckView from './components/KaufCheckView'
 import VerkaufsCheckView from './components/VerkaufsCheckView'
+import DealerView from './components/DealerView'
+import DealerVehicleView from './components/DealerVehicleView'
 import EntdeckenView from './components/EntdeckenView'
 import EbookView from './components/EbookView'
 import ErsatzteileView from './components/ErsatzteileView'
@@ -353,6 +355,16 @@ function AppContent() {
               onClearSaved={() => setSavedVerkaufsCheck(null)}
             />
           } />
+          {/* Phase 5: Dealer-Bereich nur für freigeschaltete Händler (§15/§28).
+              Backend erzwingt zusätzlich 403 — Frontend-Guard ist nur Komfort. */}
+          <Route
+            path="/dealer"
+            element={user?.ist_haendler ? <DealerView /> : <Navigate to="/chat" replace />}
+          />
+          <Route
+            path="/dealer/:id"
+            element={user?.ist_haendler ? <DealerVehicleView onOpenCheck={handleSelectCheck} /> : <Navigate to="/chat" replace />}
+          />
           <Route
             path="/entdecken"
             element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}

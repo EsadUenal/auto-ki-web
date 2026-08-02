@@ -33,6 +33,7 @@ export interface AuthUser {
   checks_verbleibend: number
   ersatzteil_suchen_verbleibend: number
   abo_kuendigt_zum?: string | null
+  ist_haendler?: boolean   // Phase 5: schaltet den Dealer-Bereich frei
 }
 
 async function authFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -191,6 +192,62 @@ export async function apiSaveCheckFrage(
     body: JSON.stringify({ frage, antwort }),
   })
   if (!res.ok) throw new Error('Frage konnte nicht gespeichert werden')
+}
+
+// ── Dealer (Phase 5) ──────────────────────────────────────────────────────────
+
+async function dealerFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1/dealer${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+}
+
+export async function apiDealerSummary(): Promise<import('../types').DealerSummary> {
+  const res = await dealerFetch('/summary')
+  if (!res.ok) throw new Error(extractMessage(await res.json().catch(() => null)))
+  return res.json()
+}
+
+export async function apiDealerVehicles(): Promise<import('../types').DealerVehicle[]> {
+  const res = await dealerFetch('/vehicles')
+  if (!res.ok) throw new Error(extractMessage(await res.json().catch(() => null)))
+  return res.json()
+}
+
+export async function apiDealerVehicle(id: number): Promise<import('../types').DealerVehicle> {
+  const res = await dealerFetch(`/vehicles/${id}`)
+  if (!res.ok) throw new Error(extractMessage(await res.json().catch(() => null)))
+  return res.json()
+}
+
+export async function apiDealerCreate(
+  body: import('../types').DealerVehicleCreate,
+): Promise<import('../types').DealerVehicle> {
+  const res = await dealerFetch('/vehicles', { method: 'POST', body: JSON.stringify(body) })
+  if (!res.ok) throw new Error(extractMessage(await res.json().catch(() => null)))
+  return res.json()
+}
+
+export async function apiDealerUpdate(
+  id: number,
+  body: import('../types').DealerVehicleUpdate,
+): Promise<import('../types').DealerVehicle> {
+  const res = await dealerFetch(`/vehicles/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+  if (!res.ok) throw new Error(extractMessage(await res.json().catch(() => null)))
+  return res.json()
+}
+
+export async function apiDealerDelete(id: number): Promise<void> {
+  const res = await dealerFetch(`/vehicles/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Löschen fehlgeschlagen')
+}
+
+export async function apiDealerFromCheck(checkId: number): Promise<import('../types').DealerVehicle> {
+  const res = await dealerFetch(`/vehicles/from-check/${checkId}`, { method: 'POST' })
+  if (!res.ok) throw new Error(extractMessage(await res.json().catch(() => null)))
+  return res.json()
 }
 
 // ── Conversations (Phase 2c) ──────────────────────────────────────────────────

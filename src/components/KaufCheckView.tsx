@@ -13,8 +13,11 @@ import {
   History,
   Lock,
   ChevronDown,
+  Store,
+  ArrowRight,
 } from 'lucide-react'
-import { runKaufCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
+import { runKaufCheck, apiSaveCheck, apiDealerFromCheck, PaymentRequiredError } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
@@ -431,6 +434,54 @@ function formatUnbekannterPreiswert(wert: string): string {
   return lesbar.charAt(0).toUpperCase() + lesbar.slice(1)
 }
 
+// Phase 5: übernimmt den (gespeicherten) Kaufcheck in den Händlerbestand. Nur für
+// Dealer-Konten sichtbar. Idempotent: mehrfaches Hinzufügen erzeugt kein Duplikat —
+// ist der Check bereits verknüpft, führt der Button direkt in den Händlerbereich.
+function DealerAddButton({ checkId }: { checkId?: number }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [vehicleId, setVehicleId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!user?.ist_haendler || !checkId) return null
+
+  async function handleAdd() {
+    if (vehicleId != null) { navigate(`/dealer/${vehicleId}`); return }
+    setLoading(true); setError(null)
+    try {
+      const v = await apiDealerFromCheck(checkId!)
+      setVehicleId(v.id)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="px-1">
+      <button
+        type="button"
+        onClick={handleAdd}
+        disabled={loading}
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-40"
+        style={{ background: 'linear-gradient(180deg,#111827,#000)' }}
+      >
+        {loading
+          ? <><Loader2 size={15} className="animate-spin" /> Wird übernommen…</>
+          : vehicleId != null
+            ? <><ArrowRight size={15} /> Im Händlerbereich öffnen</>
+            : <><Store size={15} /> Zum Händlerbereich hinzufügen</>}
+      </button>
+      {vehicleId != null && (
+        <p className="text-xs text-emerald-700 mt-1.5">Als Beobachtung im Händlerbestand angelegt.</p>
+      )}
+      {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
+    </div>
+  )
+}
+
 function KaufCheckReport({
   result,
   checkId,
@@ -479,6 +530,9 @@ function KaufCheckReport({
           marktanalyse={marktanalyse}
         />
       </div>
+
+      {/* Phase 5: Dealer-Übernahme — nur für Händler-Konten, nur bei gespeichertem Check. */}
+      <DealerAddButton checkId={checkId} />
 
       {(empfehlungInsights.length > 0 || preisInsights.length > 0) && (
         <div className="space-y-2 px-1">

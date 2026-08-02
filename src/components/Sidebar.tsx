@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
-  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench, Store,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import type { ApiCheckSummary } from '../api/client'
@@ -143,6 +143,8 @@ export default function Sidebar({
           { to: '/chat',          Icon: MessageSquare, label: 'KI-Chat' },
           { to: '/kaufcheck',     Icon: ShoppingCart,  label: 'Kauf-Check' },
           { to: '/verkaufscheck', Icon: TrendingUp,    label: 'Verkaufs-Check' },
+          // Dealer-Bereich nur für freigeschaltete Händler-Konten (§15/§16/§28).
+          ...(user?.ist_haendler ? [{ to: '/dealer', Icon: Store, label: 'Dealer' }] : []),
           { to: '/ersatzteile',   Icon: Wrench,        label: 'Ersatzteile' },
           { to: '/entdecken',     Icon: Compass,       label: 'Entdecken' },
           { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },

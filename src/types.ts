@@ -107,6 +107,115 @@ export interface KeyFinding {
   prioritaet: number
 }
 
+// ---- Phase 5: VIRA Dealer ----
+export type DealerStatus = 'beobachtung' | 'einkauf_geplant' | 'im_bestand' | 'verkauft'
+
+export interface DealerFinance {
+  einkaufspreis?: number | null
+  nebenkosten?: number | null
+  gesamteinsatz?: number | null
+  geplanter_verkaufspreis?: number | null
+  moegliche_bruttomarge?: number | null
+  moegliche_marge_pct?: number | null
+  tatsaechlicher_verkaufspreis?: number | null
+  realisierte_bruttomarge?: number | null
+  realisierte_marge_pct?: number | null
+  hinweis: string
+}
+
+export interface DealerViraKauf {
+  vorhanden: boolean
+  kaufcheck_id?: number | null
+  empfehlung?: string | null
+  preis_bewertung?: string | null
+  markt_median?: number | null
+  markt_min?: number | null
+  markt_max?: number | null
+  risiko_hinweise: string[]
+  key_findings_count: number
+}
+
+export interface DealerViraVerkauf {
+  vorhanden: boolean
+  verkaufscheck_id?: number | null
+  empfohlener_preis?: number | null
+  markt_median?: number | null
+  inserat_qualitaet?: string | null
+  hat_optimierung: boolean
+}
+
+export interface DealerTriage {
+  empfehlung: string   // kaufen | nach_pruefung | vorsicht | nicht_empfohlen | unklar
+  preis: string        // guenstig | marktgerecht | teuer | unklar
+  risiko: string       // gering | mittel | erhoeht | pruefen | unklar
+  marge_eur?: number | null
+}
+
+export interface DealerVehicle {
+  id: number
+  marke?: string | null
+  modell?: string | null
+  baureihe?: string | null
+  motor?: string | null
+  baujahr?: number | null
+  kilometerstand?: number | null
+  status: DealerStatus
+  interne_notiz?: string | null
+  kaufcheck_id?: number | null
+  verkaufscheck_id?: number | null
+  created_at?: string | null
+  updated_at?: string | null
+  sold_at?: string | null
+  finanzen: DealerFinance
+  vira: DealerViraKauf
+  verkauf: DealerViraVerkauf
+  triage: DealerTriage
+  braucht_aufmerksamkeit: boolean
+  aufmerksamkeit_gruende: string[]
+}
+
+export interface DealerSummary {
+  fahrzeuge_gesamt: number
+  beobachtung: number
+  einkauf_geplant: number
+  im_bestand: number
+  verkauft: number
+  gebundenes_kapital?: number | null
+  geplante_bruttomarge?: number | null
+  realisierte_bruttomarge?: number | null
+  braucht_aufmerksamkeit: number
+}
+
+export interface DealerVehicleCreate {
+  marke?: string
+  modell?: string
+  baureihe?: string
+  motor?: string
+  baujahr?: number
+  kilometerstand?: number
+  status?: DealerStatus
+  einkaufspreis?: number
+  nebenkosten?: number
+  geplanter_verkaufspreis?: number
+  interne_notiz?: string
+}
+
+export interface DealerVehicleUpdate {
+  marke?: string
+  modell?: string
+  baureihe?: string
+  motor?: string
+  baujahr?: number
+  kilometerstand?: number
+  status?: DealerStatus
+  einkaufspreis?: number | null
+  nebenkosten?: number | null
+  geplanter_verkaufspreis?: number | null
+  tatsaechlicher_verkaufspreis?: number | null
+  interne_notiz?: string | null
+  verkaufscheck_id?: number | null
+}
+
 // ---- Gespeicherte Checks ----
 export interface SavedKaufCheck {
   id: number
