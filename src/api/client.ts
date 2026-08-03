@@ -340,7 +340,8 @@ export async function streamChat(
   message: string,
   verlauf: VerlaufItem[],
   callbacks: ChatStreamCallbacks,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  fahrzeugKontext?: string,
 ): Promise<void> {
   let response: Response
   try {
@@ -351,6 +352,9 @@ export async function streamChat(
         message,
         verlauf,
         stream: true,  // muss explizit auf true gesetzt sein
+        // Discover-Fast-Path: ausgewähltes Fahrzeug mitgeben (Backend übernimmt die
+        // Baureihe deterministisch statt sie neu zu erraten).
+        fahrzeug_kontext: fahrzeugKontext || undefined,
       }),
       signal,
     })

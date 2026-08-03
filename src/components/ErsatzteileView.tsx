@@ -42,6 +42,110 @@ function fmtPreis(p: number | null) {
   return `${p.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €`
 }
 
+// ─── Command-Bar (MODULE-SCOPE, stabile Komponentenidentität) ───────────────
+// WICHTIG: Diese Komponente MUSS außerhalb der Render-Funktion von ErsatzteileView
+// stehen. Vorher war sie im Render definiert -> bei jedem Tastendruck (setState)
+// bekam sie eine neue Funktionsidentität, React unmountete den <input> und der
+// Fokus ging verloren (man musste pro Buchstabe neu hineinklicken). Als stabile
+// Top-Level-Komponente mit Props bleibt der DOM-Knoten erhalten -> Fokus bleibt.
+function CommandBar({
+  condensed, fahrzeug, bauteil, onFahrzeug, onBauteil, onSubmit, loading, kannSuchen,
+}: {
+  condensed: boolean
+  fahrzeug: string
+  bauteil: string
+  onFahrzeug: (v: string) => void
+  onBauteil: (v: string) => void
+  onSubmit: (e: React.FormEvent) => void
+  loading: boolean
+  kannSuchen: boolean
+}) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="relative rounded-[24px] bg-white transition-all duration-300 focus-within:ring-2 focus-within:ring-orange-500/25"
+      style={{
+        border: '1px solid #e6e1da',
+        boxShadow: condensed
+          ? '0 10px 26px -16px rgba(40,25,10,0.2)'
+          : '0 26px 50px -24px rgba(40,25,10,0.28), 0 2px 6px rgba(40,25,10,0.04)',
+      }}
+    >
+      <div className={`flex flex-col md:flex-row md:items-center ${condensed ? 'p-2 md:pl-3.5' : 'p-2.5 md:pl-5'}`}>
+        {!condensed && (
+          <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl shrink-0 mr-4 text-orange-500"
+            style={{ background: 'rgba(249,115,22,0.10)', border: '1px solid rgba(249,115,22,0.2)' }}>
+            <Sparkles size={19} className="ez-pulse" />
+          </div>
+        )}
+        <input
+          value={fahrzeug}
+          onChange={e => onFahrzeug(e.target.value)}
+          placeholder="Welches Fahrzeug?"
+          aria-label="Fahrzeug"
+          className={`flex-1 min-w-0 bg-transparent text-gray-900 placeholder-gray-400 focus:outline-none px-4 ${
+            condensed ? 'py-2.5 text-sm' : 'py-3.5 text-[15px]'
+          }`}
+        />
+        <div className="hidden md:flex items-center px-1 text-gray-300 shrink-0">
+          <ChevronRight size={16} />
+        </div>
+        <div className="md:hidden h-px mx-3 my-0.5" style={{ background: '#ece7e0' }} />
+        <input
+          value={bauteil}
+          onChange={e => onBauteil(e.target.value)}
+          placeholder="Welches Bauteil?"
+          aria-label="Bauteil"
+          className={`flex-1 min-w-0 bg-transparent text-gray-900 placeholder-gray-400 focus:outline-none px-4 ${
+            condensed ? 'py-2.5 text-sm' : 'py-3.5 text-[15px]'
+          }`}
+        />
+        <button
+          type="submit"
+          disabled={!kannSuchen}
+          aria-label="Analysieren"
+          className={`group shrink-0 flex items-center justify-center gap-2 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:saturate-50 mt-2 md:mt-0 md:ml-2 w-full md:w-auto ${
+            condensed ? 'px-5 py-2.5 text-sm' : 'px-6 py-3.5 text-[15px]'
+          }`}
+          style={{
+            background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)',
+            boxShadow: '0 8px 20px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
+          }}
+        >
+          {loading ? (
+            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <span>Analysieren</span>
+              <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+            </>
+          )}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// Quellen-Zeile (stateless) — ebenfalls Module-Scope (stabile Identität).
+function QuellenZeile({ scanning = false }: { scanning?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-[12px]">
+      <span className="text-gray-400 mr-0.5">{scanning ? 'Durchsucht' : 'Durchsucht gleichzeitig'}</span>
+      {QUELLEN.map((q, i) => (
+        <span
+          key={q}
+          className={`px-2.5 py-1 rounded-full border font-medium ${
+            scanning ? 'ez-scan bg-[#f4f0ea]' : 'border-[#e6e1da] bg-[#f2eee8] text-[#6d665c]'
+          }`}
+          style={scanning ? { animationDelay: `${i * 220}ms` } : undefined}
+        >
+          {q}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 // ─── Ergebnis-Karte (helles Papier) ─────────────────────────────────────────
 function ResultCard({
   ergebnis, isEmpfehlung, isGuenstigstes, index,
@@ -195,102 +299,12 @@ export default function ErsatzteileView() {
     </div>
   ) : null
 
-  // ── Command-Bar: EIN Werkzeug, kein Formular ────────────────────────────
-  // Zwei randlose Felder + KI-Glyph + Aktion in einer durchgehenden Fläche,
-  // die beim Fokus als Ganzes "erwacht" (focus-within). condensed = Sticky-Variante.
-  const CommandBar = ({ condensed }: { condensed: boolean }) => (
-    <form
-      onSubmit={handleSearch}
-      className="relative rounded-[24px] bg-white transition-all duration-300 focus-within:ring-2 focus-within:ring-orange-500/25"
-      style={{
-        border: '1px solid #e6e1da',
-        boxShadow: condensed
-          ? '0 10px 26px -16px rgba(40,25,10,0.2)'
-          : '0 26px 50px -24px rgba(40,25,10,0.28), 0 2px 6px rgba(40,25,10,0.04)',
-      }}
-    >
-      <div className={`flex flex-col md:flex-row md:items-center ${condensed ? 'p-2 md:pl-3.5' : 'p-2.5 md:pl-5'}`}>
-        {/* KI-Glyph (Desktop) — signalisiert: hier arbeitet eine KI */}
-        {!condensed && (
-          <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl shrink-0 mr-4 text-orange-500"
-            style={{ background: 'rgba(249,115,22,0.10)', border: '1px solid rgba(249,115,22,0.2)' }}>
-            <Sparkles size={19} className="ez-pulse" />
-          </div>
-        )}
-
-        {/* Feld: Fahrzeug */}
-        <input
-          value={fahrzeug}
-          onChange={e => setFahrzeug(e.target.value)}
-          placeholder="Welches Fahrzeug?"
-          aria-label="Fahrzeug"
-          className={`flex-1 min-w-0 bg-transparent text-gray-900 placeholder-gray-400 focus:outline-none px-4 ${
-            condensed ? 'py-2.5 text-sm' : 'py-3.5 text-[15px]'
-          }`}
-        />
-
-        {/* Trenner: Chevron (Desktop) / Linie (Mobile) */}
-        <div className="hidden md:flex items-center px-1 text-gray-300 shrink-0">
-          <ChevronRight size={16} />
-        </div>
-        <div className="md:hidden h-px mx-3 my-0.5" style={{ background: '#ece7e0' }} />
-
-        {/* Feld: Bauteil */}
-        <input
-          value={bauteil}
-          onChange={e => setBauteil(e.target.value)}
-          placeholder="Welches Bauteil?"
-          aria-label="Bauteil"
-          className={`flex-1 min-w-0 bg-transparent text-gray-900 placeholder-gray-400 focus:outline-none px-4 ${
-            condensed ? 'py-2.5 text-sm' : 'py-3.5 text-[15px]'
-          }`}
-        />
-
-        {/* Aktion */}
-        <button
-          type="submit"
-          disabled={!kannSuchen}
-          aria-label="Analysieren"
-          className={`group shrink-0 flex items-center justify-center gap-2 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:saturate-50 mt-2 md:mt-0 md:ml-2 w-full md:w-auto ${
-            condensed ? 'px-5 py-2.5 text-sm' : 'px-6 py-3.5 text-[15px]'
-          }`}
-          style={{
-            background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)',
-            boxShadow: '0 8px 20px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
-          }}
-        >
-          {loading ? (
-            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <span>Analysieren</span>
-              <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-            </>
-          )}
-        </button>
-      </div>
-    </form>
-  )
-
-  // ── Quellen-Zeile: erzählt "welche Quellen, gleichzeitig" ohne Marketing ──
-  const QuellenZeile = ({ scanning = false }: { scanning?: boolean }) => (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-[12px]">
-      <span className="text-gray-400 mr-0.5">
-        {scanning ? 'Durchsucht' : 'Durchsucht gleichzeitig'}
-      </span>
-      {QUELLEN.map((q, i) => (
-        <span
-          key={q}
-          className={`px-2.5 py-1 rounded-full border font-medium ${
-            scanning ? 'ez-scan bg-[#f4f0ea]' : 'border-[#e6e1da] bg-[#f2eee8] text-[#6d665c]'
-          }`}
-          style={scanning ? { animationDelay: `${i * 220}ms` } : undefined}
-        >
-          {q}
-        </span>
-      ))}
-    </div>
-  )
+  // Gemeinsame Props für die (nun modulweite) CommandBar — an beiden Einsatzorten identisch.
+  const commandBarProps = {
+    fahrzeug, bauteil,
+    onFahrzeug: setFahrzeug, onBauteil: setBauteil,
+    onSubmit: handleSearch, loading, kannSuchen,
+  }
 
   return (
     <div
@@ -340,7 +354,7 @@ export default function ErsatzteileView() {
 
               {/* Command-Bar — das Zentrum */}
               <div className="ez-rise" style={{ animationDelay: '60ms' }}>
-                <CommandBar condensed={false} />
+                <CommandBar condensed={false} {...commandBarProps} />
               </div>
 
               {/* Quellen + Beispiel */}
@@ -378,7 +392,7 @@ export default function ErsatzteileView() {
                   </div>
                   {KontingentPille}
                 </div>
-                <CommandBar condensed={true} />
+                <CommandBar condensed={true} {...commandBarProps} />
               </div>
             </div>
 

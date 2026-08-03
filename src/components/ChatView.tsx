@@ -173,7 +173,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
           )
         )
       },
-    }, ctrl.signal)
+    }, ctrl.signal, car?.titel)
   }
 
   async function handleSend(overrideText?: string) {
