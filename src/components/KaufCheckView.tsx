@@ -23,7 +23,7 @@ import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
 import {
-  marktanalyseOf, MarketMetrics, RiskOverview, NextSteps, CollapsibleReport,
+  marktanalyseOf, MarketMetrics, RiskOverview, NextSteps, CollapsibleReport, ResearchFailedCard, DeepeningStatus,
 } from './ResultSummary'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
@@ -86,6 +86,10 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    await runCheck()
+  }
+
+  async function runCheck() {
     setLoading(true)
     setError(null)
     setResult(null)
@@ -99,6 +103,9 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
+      // §4: Bei research_failed KEINEN Check speichern (Kontingent wurde erstattet,
+      // der Check gilt nicht als abgeschlossen).
+      if (res.research_status === 'research_failed') return
       // Im Backend speichern; die zurückgegebene ID koppelt die Analyse-Rückfragen.
       const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
       apiSaveCheck('kauf', titel, form, res)
@@ -330,13 +337,22 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           )}
         </form>
 
-        {loading && !result && <ReportSkeleton kind="kauf" />}
-        {result && (
-          <KaufCheckReport
-            result={result}
-            checkId={savedCheck ? savedCheck.id : freshCheckId}
-            chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
-          />
+        {loading && !result && (
+          <>
+            <DeepeningStatus />
+            <ReportSkeleton kind="kauf" />
+          </>
+        )}
+        {result && result.research_status === 'research_failed' ? (
+          <ResearchFailedCard nachricht={result.bericht} onRetry={runCheck} loading={loading} />
+        ) : (
+          result && (
+            <KaufCheckReport
+              result={result}
+              checkId={savedCheck ? savedCheck.id : freshCheckId}
+              chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
+            />
+          )
         )}
       </div>
     </div>
@@ -494,7 +510,14 @@ function KaufCheckReport({
   const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
   const recStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
   const preisKey = result.preis_bewertung?.toLowerCase()
-  const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey)) : null
+  // §6: das kanonische, differenziertere Label ("Oberes Marktsegment") bevorzugen —
+  // fällt auf das 5-stufige Legacy-Label zurück (alte Checks ohne price_assessment).
+  const preisLabel =
+    result.price_assessment && result.price_assessment.verdict !== 'unbekannt'
+      ? result.price_assessment.label
+      : preisKey
+        ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey))
+        : null
 
   // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).
   const empfehlungInsights = insightsByIds(result.insights, result.empfehlung_evidence_ids)
@@ -547,6 +570,7 @@ function KaufCheckReport({
         marktanalyse={marktanalyse}
         baureiheErkannt={result.baureihe_erkannt}
         preisBewertung={result.preis_bewertung}
+        priceAssessment={result.price_assessment}
       />
       {risikoInsights.length > 0 && (
         <div className="px-1">

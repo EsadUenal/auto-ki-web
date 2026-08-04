@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronDown, RefreshCw, SearchX, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { stripEvidenceIds } from './EvidenceWhy'
-import type { Insight, KeyFinding, Marktanalyse } from '../types'
+import type { Insight, KeyFinding, Marktanalyse, PriceAssessment } from '../types'
 
 /**
  * Phase 3 — Informationshierarchie. Reine Darstellungs-Bausteine, die ausschließlich
@@ -112,11 +112,21 @@ export function VerkaufMarketMetrics({ marktanalyse }: { marktanalyse?: Marktana
 
 type RiskRow = { k: string; label: string; tone: Tone }
 
+const VERDICT_ZU_PREIS_ROW: Record<string, RiskRow> = {
+  deutlich_unter: { k: 'Preis', label: 'Gut', tone: 'gut' },
+  unter: { k: 'Preis', label: 'Gut', tone: 'gut' },
+  marktgerecht: { k: 'Preis', label: 'Marktgerecht', tone: 'gut' },
+  oberes_segment: { k: 'Preis', label: 'Oberes Segment', tone: 'hoch' },
+  ueber: { k: 'Preis', label: 'Hoch', tone: 'hoch' },
+  deutlich_ueber: { k: 'Preis', label: 'Hoch', tone: 'hoch' },
+}
+
 function computeRiskRows(
   insights: Insight[],
   ma: Marktanalyse | undefined,
   baureiheErkannt: string | null | undefined,
   preisBewertung: string | undefined,
+  priceAssessment?: PriceAssessment | null,
 ): RiskRow[] {
   const has = (kat: string) => insights.filter((i) => i.kategorie === kat)
   const rueckrufe = has('rueckruf')
@@ -141,9 +151,13 @@ function computeRiskRows(
   else if (hatProfil) recalls = { k: 'Rückrufe', label: 'Keine', tone: 'gut' }
   else recalls = { k: 'Rückrufe', label: 'Unklar', tone: 'unklar' }
 
-  // Preis
+  // Preis — bevorzugt das KANONISCHE Preisurteil (§6: dieselbe Quelle wie Bericht,
+  // Zusammenfassung und Key Findings), damit die Risikoübersicht nie widerspricht.
   let preis: RiskRow
-  if (ma?.median_eur != null && ma.differenz_pct != null) {
+  const verdict = (priceAssessment?.verdict ?? '').toLowerCase()
+  if (verdict && verdict !== 'unbekannt' && VERDICT_ZU_PREIS_ROW[verdict]) {
+    preis = VERDICT_ZU_PREIS_ROW[verdict]
+  } else if (ma?.median_eur != null && ma.differenz_pct != null) {
     const p = ma.differenz_pct
     if (p <= -8) preis = { k: 'Preis', label: 'Gut', tone: 'gut' }
     else if (p >= 8) preis = { k: 'Preis', label: 'Hoch', tone: 'hoch' }
@@ -172,15 +186,17 @@ export function RiskOverview({
   marktanalyse,
   baureiheErkannt,
   preisBewertung,
+  priceAssessment,
 }: {
   insights: Insight[] | undefined
   marktanalyse?: Marktanalyse
   baureiheErkannt?: string | null
   preisBewertung?: string
+  priceAssessment?: PriceAssessment | null
 }) {
   // Alte Checks ohne strukturierte Insights: keinen (leeren) Dashboard-Bereich zeigen.
   if (!insights?.length) return null
-  const rows = computeRiskRows(insights, marktanalyse, baureiheErkannt, preisBewertung)
+  const rows = computeRiskRows(insights, marktanalyse, baureiheErkannt, preisBewertung, priceAssessment)
 
   return (
     <div className="bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
@@ -231,6 +247,85 @@ export function NextSteps({ findings }: { findings: KeyFinding[] | undefined }) 
 }
 
 // ── Detailbericht — standardmäßig eingeklappt, Inhalt UNVERÄNDERT ────────────
+
+// ── Fortschrittsstatus während der (vertiefenden) Marktrecherche (§14) ───────
+// Der Check läuft als EIN Request; während VIRA die Recherche bis zur Qualitäts-
+// schwelle vertieft, zeigen wir rotierende, ehrliche Status-Texte statt eines
+// stummen Spinners. Kein voreiliges "fertig".
+
+const DEEPENING_MESSAGES = [
+  'VIRA durchsucht den Gebrauchtwagenmarkt …',
+  'Vergleichbare Angebote werden gesammelt …',
+  'VIRA erweitert die Marktrecherche …',
+  'Weitere Vergleichsangebote werden geprüft …',
+  'Preisdaten werden validiert …',
+  'Marktwert und Preisbewertung werden berechnet …',
+]
+
+export function DeepeningStatus() {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % DEEPENING_MESSAGES.length), 2600)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className="mt-6 flex items-center gap-2.5 text-sm text-gray-500" aria-live="polite">
+      <Loader2 size={15} className="shrink-0 animate-spin text-gray-400" />
+      <span className="transition-opacity">{DEEPENING_MESSAGES[i]}</span>
+    </div>
+  )
+}
+
+// ── Research-Failure (§4/§14): kein niedriges Ergebnis, Kontingent NICHT verbraucht ──
+
+export function ResearchFailedCard({
+  nachricht,
+  onRetry,
+  loading,
+}: {
+  nachricht?: string
+  onRetry: () => void
+  loading?: boolean
+}) {
+  return (
+    <div id="kauf-result" className="mt-10">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-6 sm:p-7 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+        <div className="flex items-start gap-3.5">
+          <span className="shrink-0 mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+            <SearchX size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-700/80 mb-1">
+              Noch kein belastbares Ergebnis
+            </p>
+            <h3 className="text-lg font-bold text-amber-900 leading-tight">
+              VIRA konnte keinen zuverlässigen Marktwert ermitteln
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-amber-900/90">
+              {nachricht ||
+                'Für dieses Fahrzeug liegen aktuell zu wenige wirklich vergleichbare Angebote vor, um einen belastbaren Marktwert und eine verlässliche Preisbewertung zu erstellen.'}
+            </p>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Dieser Check wurde nicht abgeschlossen — dein Kontingent bleibt erhalten.
+            </div>
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 disabled:opacity-60"
+              >
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Recherche läuft …' : 'Erneut versuchen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function CollapsibleReport({ bericht, title }: { bericht: string; title: string }) {
   const [open, setOpen] = useState(false)

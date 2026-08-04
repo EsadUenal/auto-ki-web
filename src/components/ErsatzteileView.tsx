@@ -189,6 +189,21 @@ function ResultCard({
         {ergebnis.teilename}
       </h3>
 
+      {/* §5: Kompatibilitäts-Einstufung. "confirmed" darf empfohlen werden; "uncertain"
+          wird NIE empfohlen und trägt einen klaren FIN/OE-Prüfhinweis. */}
+      {ergebnis.kompatibilitaet === 'confirmed' && (
+        <div className="flex items-center gap-1.5 mt-2 text-[11px] font-medium text-emerald-700">
+          <ShieldCheck size={12} className="shrink-0" />
+          {ergebnis.passt_fahrzeug ? `Passend: ${ergebnis.passt_fahrzeug}` : 'Kompatibilität bestätigt'}
+        </div>
+      )}
+      {ergebnis.kompatibilitaet === 'uncertain' && (
+        <div className="flex items-start gap-1.5 mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-[11px] leading-snug text-amber-800">
+          <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-500" />
+          <span>{ergebnis.kompat_hinweis || 'Kompatibilität nicht bestätigt – vor Bestellung per FIN/OE-Nummer prüfen.'}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
         {ergebnis.anbieter}

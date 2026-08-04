@@ -7,7 +7,7 @@ import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
 import InseratPanel from './InseratPanel'
-import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport } from './ResultSummary'
+import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport, ResearchFailedCard, DeepeningStatus } from './ResultSummary'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 
 const ZUSTAND_OPTIONS = [
@@ -91,6 +91,10 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    await runCheck()
+  }
+
+  async function runCheck() {
     setLoading(true)
     setError(null)
     setResult(null)
@@ -104,6 +108,8 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
         () => document.getElementById('verk-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
+      // §4: Bei research_failed KEINEN Check speichern (Kontingent erstattet).
+      if (res.research_status === 'research_failed') return
       // Im Backend speichern; die zurückgegebene ID koppelt die Analyse-Rückfragen.
       const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
       apiSaveCheck('verkauf', titel, form, res)
@@ -381,14 +387,23 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           )}
         </form>
 
-        {loading && !result && <ReportSkeleton />}
-        {result && (
-          <VerkaufsReport
-            result={result}
-            form={form}
-            checkId={savedCheck ? savedCheck.id : freshCheckId}
-            chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
-          />
+        {loading && !result && (
+          <>
+            <DeepeningStatus />
+            <ReportSkeleton />
+          </>
+        )}
+        {result && result.research_status === 'research_failed' ? (
+          <ResearchFailedCard nachricht={result.bericht} onRetry={runCheck} loading={loading} />
+        ) : (
+          result && (
+            <VerkaufsReport
+              result={result}
+              form={form}
+              checkId={savedCheck ? savedCheck.id : freshCheckId}
+              chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
+            />
+          )
         )}
       </div>
     </div>
@@ -448,9 +463,9 @@ function VerkaufsReport({
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preisstrategie</p>
           <div className="grid grid-cols-3 gap-3">
-            <PriceCard label="Schnellverkauf" subtitle="Sofort verkaufen" price={result.schnellverkaufs_preis} days={result.verkaufsdauer_tage_schnell} variant="muted" />
-            <PriceCard label="Empfohlen" subtitle="Bester Kompromiss" price={result.empfohlener_preis} variant="primary" />
-            <PriceCard label="Maximum" subtitle="Geduld nötig" price={result.maximal_preis} days={result.verkaufsdauer_tage_maximal} variant="muted" />
+            <PriceCard label="Schnellverkauf" subtitle="Zügiger Verkauf" price={result.schnellverkaufs_preis} kategorie={result.verkaufsdauer_schnell} variant="muted" />
+            <PriceCard label="Empfohlen" subtitle="Bester Kompromiss" price={result.empfohlener_preis} kategorie={result.verkaufsdauer_empfohlen} variant="primary" />
+            <PriceCard label="Maximum" subtitle="Oberes Marktende" price={result.maximal_preis} kategorie={result.verkaufsdauer_maximal} variant="muted" />
           </div>
           {(result.marktpreis_min || result.marktpreis_max) && (
             <p className="text-xs text-gray-400 mt-4">
@@ -529,9 +544,9 @@ function buildAnalyseKontext(result: VerkaufsCheckResult): string {
 }
 
 function PriceCard({
-  label, subtitle, price, days, variant,
+  label, subtitle, price, kategorie, variant,
 }: {
-  label: string; subtitle: string; price?: number; days?: number; variant: 'primary' | 'muted'
+  label: string; subtitle: string; price?: number; kategorie?: string | null; variant: 'primary' | 'muted'
 }) {
   return (
     <div className={`rounded-xl p-3 sm:p-4 text-center ${
@@ -551,9 +566,9 @@ function PriceCard({
       <p className={`text-xs mt-0.5 ${variant === 'primary' ? 'text-green-100/90' : 'text-gray-400'}`}>
         {subtitle}
       </p>
-      {days && (
-        <p className={`text-xs mt-1 flex items-center justify-center gap-0.5 ${variant === 'primary' ? 'text-green-100/80' : 'text-gray-400'}`}>
-          <Clock size={10} /> ~{days} Tage
+      {kategorie && (
+        <p className={`text-xs mt-1 flex items-center justify-center gap-1 leading-tight ${variant === 'primary' ? 'text-green-100/80' : 'text-gray-400'}`}>
+          <Clock size={10} className="shrink-0" /> {kategorie}
         </p>
       )}
     </div>

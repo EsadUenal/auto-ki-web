@@ -75,6 +75,26 @@ export interface Marktanalyse {
   beobachtungen: Preisbeobachtung[]
 }
 
+// Reliability-Sprint: kanonisches, deterministisches Preisurteil (§6/§7/§13).
+// Genau EINE Quelle für alle Preis-Ausgaben (Zusammenfassung, Bericht, Findings).
+export interface PriceAssessment {
+  verdict: 'deutlich_unter' | 'unter' | 'marktgerecht' | 'oberes_segment' | 'ueber' | 'deutlich_ueber' | 'unbekannt' | string
+  label: string
+  median_eur?: number | null
+  lower_bound_eur?: number | null
+  upper_bound_eur?: number | null
+  difference_eur?: number | null
+  difference_percent?: number | null
+  position_in_range?: string
+  confidence?: string
+  recommendation?: string
+  begruendung?: string
+}
+
+// Reliability-Sprint: Ergebnis der Quality-Gate-Pipeline (§1/§14).
+// "research_failed" wird NICHT als abgeschlossener Check behandelt.
+export type ResearchStatus = 'completed_high' | 'completed_medium' | 'research_failed' | string
+
 export interface Insight {
   id: string
   kategorie: string
@@ -266,6 +286,9 @@ export interface KaufCheckResult {
   risiko_evidence_ids?: string[]
   // Phase 2 (optional; alte Checks besitzen dieses Feld nicht)
   key_findings?: KeyFinding[]
+  // Reliability-Sprint (optional; alte Checks besitzen diese Felder nicht)
+  price_assessment?: PriceAssessment | null
+  research_status?: ResearchStatus
 }
 
 // Phase 4 — Inseratsanalyse & optimierte Version. Alle Felder optional an den
@@ -323,8 +346,12 @@ export interface VerkaufsCheckResult {
   schnellverkaufs_preis?: number
   maximal_preis?: number
   empfohlener_preis?: number
-  verkaufsdauer_tage_schnell?: number
-  verkaufsdauer_tage_maximal?: number
+  verkaufsdauer_tage_schnell?: number | null
+  verkaufsdauer_tage_maximal?: number | null
+  // Reliability-Sprint §11: Vermarktungsdauer als Kategorie (keine erfundenen Tage).
+  verkaufsdauer_schnell?: string | null
+  verkaufsdauer_empfohlen?: string | null
+  verkaufsdauer_maximal?: string | null
   marktpreis_min?: number
   marktpreis_max?: number
   baureihe_erkannt?: string
@@ -339,6 +366,9 @@ export interface VerkaufsCheckResult {
   argument_evidence_ids?: string[]
   // Phase 2 (optional; alte Checks besitzen dieses Feld nicht)
   key_findings?: KeyFinding[]
+  // Reliability-Sprint (optional; alte Checks besitzen diese Felder nicht)
+  price_assessment?: PriceAssessment | null
+  research_status?: ResearchStatus
   // Phase 4 (optional; alte Checks besitzen diese Felder nicht)
   listing_analyse?: ListingAnalyse | null
   inserat_optimierung?: InseratOptimierung | null

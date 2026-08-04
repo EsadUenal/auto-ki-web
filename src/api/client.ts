@@ -768,6 +768,13 @@ export interface ApiErsatzteilErgebnis {
   qualitaetsstufe: string
   url: string
   hinweis: string
+  // Reliability-Sprint §5: strukturierte Kompatibilitäts-Einstufung.
+  // "confirmed" (darf empfohlen werden) | "uncertain" (nie empfohlen, FIN/OE prüfen).
+  // "rejected"-Treffer werden vom Backend gar nicht erst geliefert.
+  passt_fahrzeug?: string
+  kompatibilitaet?: 'confirmed' | 'uncertain' | string
+  kompat_grund?: string
+  kompat_hinweis?: string
 }
 
 export interface ApiErsatzteilSuche {
