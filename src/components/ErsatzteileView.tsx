@@ -148,11 +148,12 @@ function QuellenZeile({ scanning = false }: { scanning?: boolean }) {
 
 // ─── Ergebnis-Karte (helles Papier) ─────────────────────────────────────────
 function ResultCard({
-  ergebnis, isEmpfehlung, isGuenstigstes, index,
+  ergebnis, isEmpfehlung, isGuenstigstes, isGuenstigstesUnbestaetigt, index,
 }: {
   ergebnis: ApiErsatzteilErgebnis
   isEmpfehlung: boolean
   isGuenstigstes: boolean
+  isGuenstigstesUnbestaetigt: boolean
   index: number
 }) {
   const markeTyp = ergebnis.marke_typ in MARKE_LABEL ? ergebnis.marke_typ : 'unbekannt'
@@ -176,6 +177,17 @@ function ResultCard({
       {isGuenstigstes && !isEmpfehlung && (
         <span className="absolute -top-3 left-4 inline-flex items-center gap-1 bg-gray-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg">
           <TrendingDown size={10} /> Günstigstes Angebot
+        </span>
+      )}
+      {/* §Phase 11: Reliability-Sprint 4 — "Günstigstes Angebot" (schwarz, oben) darf
+          NUR unter kompatibilitaet==='confirmed'-Treffern vergeben werden (Backend
+          empfiehlt aus demselben Grund nur confirmed, siehe isEmpfehlung). Ist der
+          billigste sichtbare Treffer NUR 'uncertain' (kein confirmed vorhanden), gibt
+          es einen eigenen, visuell klar unterscheidbaren neutralen Hinweis statt des
+          irreführenden "Günstigstes Angebot"-Badges. */}
+      {isGuenstigstesUnbestaetigt && !isEmpfehlung && !isGuenstigstes && (
+        <span className="absolute -top-3 left-4 inline-flex items-center gap-1 bg-gray-400 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg">
+          <TrendingDown size={10} /> Günstigstes unbestätigtes Angebot
         </span>
       )}
 
@@ -285,15 +297,25 @@ export default function ErsatzteileView() {
     setBauteil(BEISPIEL.bauteil)
   }
 
-  const guenstigsteIdx = result?.ergebnisse.length
-    ? result.ergebnisse.reduce(
-        (bestIdx, r, i, arr) =>
-          r.preis_eur !== null && (arr[bestIdx].preis_eur === null || r.preis_eur < (arr[bestIdx].preis_eur ?? Infinity))
-            ? i
-            : bestIdx,
-        0,
-      )
-    : -1
+  // §Phase 11 (Reliability-Sprint 4): "Günstigstes Angebot" darf nur unter
+  // BESTÄTIGTEN Treffern berechnet werden (rejected sind serverseitig ohnehin
+  // nie sichtbar) — sonst kann ein billigeres, nur 'uncertain' klassifiziertes
+  // Teil (z.B. ein normales E92-Teil neben einem M3) fälschlich als sicheres
+  // Angebot wirken. Gibt es KEIN confirmed-Teil, wird stattdessen der billigste
+  // unter ALLEN sichtbaren (uncertain) Treffern separat markiert — mit eigenem,
+  // klar unterscheidbarem Badge (siehe ResultCard/isGuenstigstesUnbestaetigt).
+  function guenstigsterIndex(ergebnisse: ApiErsatzteilErgebnis[], nurConfirmed: boolean): number {
+    let bestIdx = -1
+    ergebnisse.forEach((r, i) => {
+      if (nurConfirmed && r.kompatibilitaet !== 'confirmed') return
+      if (r.preis_eur === null) return
+      if (bestIdx === -1 || r.preis_eur < (ergebnisse[bestIdx].preis_eur ?? Infinity)) bestIdx = i
+    })
+    return bestIdx
+  }
+  const guenstigsteIdx = result?.ergebnisse.length ? guenstigsterIndex(result.ergebnisse, true) : -1
+  const guenstigstesUnbestaetigtIdx =
+    result?.ergebnisse.length && guenstigsteIdx === -1 ? guenstigsterIndex(result.ergebnisse, false) : -1
 
   const hatErgebnisansicht = loading || !!result || paymentRequired || !!error
   const kannSuchen = !!fahrzeug.trim() && !!bauteil.trim() && !loading
@@ -503,6 +525,7 @@ export default function ErsatzteileView() {
                           ergebnis={r}
                           isEmpfehlung={result.empfohlener_index === i}
                           isGuenstigstes={i === guenstigsteIdx}
+                          isGuenstigstesUnbestaetigt={i === guenstigstesUnbestaetigtIdx}
                         />
                       ))}
                     </div>
