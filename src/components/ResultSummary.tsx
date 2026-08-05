@@ -130,8 +130,14 @@ function computeRiskRows(
 ): RiskRow[] {
   const has = (kat: string) => insights.filter((i) => i.kategorie === kat)
   const rueckrufe = has('rueckruf')
-  const relevantRecalls = rueckrufe.filter((i) => ['exakt', 'wahrscheinlich'].includes((i.applicability ?? '').toLowerCase()))
-  const unclearRecalls = rueckrufe.filter((i) => (i.applicability ?? '').toLowerCase() === 'unklar')
+  // Reliability-Sprint 3 (§27/§28): neue Werte + Alt-Werte (§36, alte gespeicherte
+  // Checks ohne Migration) — KEINE der Stufen ohne VIN-Prüfung als "sicher betroffen"
+  // behandeln, nur als "zu prüfen" (Label unten bleibt bewusst "Prüfen", nicht
+  // "Relevant"/"Betrifft").
+  const zuPruefenRecalls = rueckrufe.filter((i) =>
+    ['confirmed_by_vin', 'variant_match', 'series_only', 'exakt', 'wahrscheinlich']
+      .includes((i.applicability ?? '').toLowerCase()))
+  const unclearRecalls = rueckrufe.filter((i) => ['unclear', 'unklar'].includes((i.applicability ?? '').toLowerCase()))
   const schwHoch = has('schwachstelle').filter((i) => ['hoch', 'kritisch', 'sehr hoch'].includes((i.schweregrad ?? '').toLowerCase()))
   const schwMittel = has('schwachstelle').filter((i) => ['mittel', 'moderat'].includes((i.schweregrad ?? '').toLowerCase()))
   const motorprobleme = has('motorproblem')
@@ -146,7 +152,7 @@ function computeRiskRows(
 
   // Rückrufe
   let recalls: RiskRow
-  if (relevantRecalls.length) recalls = { k: 'Rückrufe', label: 'Prüfen', tone: 'pruefen' }
+  if (zuPruefenRecalls.length) recalls = { k: 'Rückrufe', label: 'Prüfen', tone: 'pruefen' }
   else if (unclearRecalls.length) recalls = { k: 'Rückrufe', label: 'Zu prüfen', tone: 'mittel' }
   else if (hatProfil) recalls = { k: 'Rückrufe', label: 'Keine', tone: 'gut' }
   else recalls = { k: 'Rückrufe', label: 'Unklar', tone: 'unklar' }

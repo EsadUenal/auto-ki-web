@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Sparkles, ExternalLink, Tag, AlertCircle, X, Zap, Crown, Star,
@@ -252,9 +252,14 @@ export default function ErsatzteileView() {
   const quota = user ? ABO_QUOTA[user.abo_typ] : null
   const verbleibend = user?.ersatzteil_suchen_verbleibend ?? 0
 
+  // §31: synchroner Re-Entrancy-Schutz — `loading` (React-State) wird erst nach dem
+  // nächsten Re-Render sichtbar, ein useRef-Flag wirkt sofort.
+  const submittingRef = useRef(false)
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    if (!fahrzeug.trim() || !bauteil.trim() || loading) return
+    if (!fahrzeug.trim() || !bauteil.trim() || submittingRef.current) return
+    submittingRef.current = true
 
     setLoading(true)
     setError(null)
@@ -271,6 +276,7 @@ export default function ErsatzteileView() {
       }
     } finally {
       setLoading(false)
+      submittingRef.current = false
     }
   }
 

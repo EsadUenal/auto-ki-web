@@ -39,9 +39,21 @@ const STUFE_STYLE: Record<string, { card: string; accent: string; badge: string;
   },
 }
 
-function FindingCard({ finding, insights }: { finding: KeyFinding; insights: Insight[] }) {
+function FindingCard({
+  finding, insights, shownInsightIds,
+}: {
+  finding: KeyFinding
+  insights: Insight[]
+  shownInsightIds: Set<string>
+}) {
   const style = STUFE_STYLE[finding.stufe] ?? STUFE_STYLE.info
   const evidenceInsights = insightsByIds(insights, finding.evidence_ids)
+  // §29: Insights, die bereits in einer eigenständigen "Warum"-Karte weiter oben auf
+  // der Seite stehen (Preisstrategie/Verkaufsstrategie), hier NICHT nochmal komplett
+  // rendern — nur ein kurzer Verweis, damit der Beleg trotzdem sichtbar bleibt, ohne
+  // die identische Marktvergleichs-Karte ein drittes Mal zu zeigen.
+  const neueInsights = evidenceInsights.filter((i) => !shownInsightIds.has(i.id))
+  const alleBereitsGezeigt = evidenceInsights.length > 0 && neueInsights.length === 0
 
   return (
     <div className={`rounded-xl border p-4 ${style.card}`}>
@@ -67,10 +79,13 @@ function FindingCard({ finding, insights }: { finding: KeyFinding; insights: Ins
             </p>
           )}
 
-          {evidenceInsights.length > 0 && (
+          {neueInsights.length > 0 && (
             <div className="mt-2">
-              <EvidenceWhy label="Warum?" insights={evidenceInsights} />
+              <EvidenceWhy label="Warum?" insights={neueInsights} />
             </div>
+          )}
+          {alleBereitsGezeigt && (
+            <p className="mt-2 text-[11px] text-gray-400">Begründung siehe oben.</p>
           )}
         </div>
       </div>
@@ -81,9 +96,14 @@ function FindingCard({ finding, insights }: { finding: KeyFinding; insights: Ins
 export default function KeyFindings({
   findings,
   insights,
+  shownInsightIds,
 }: {
   findings: KeyFinding[] | undefined
   insights: Insight[] | undefined
+  // §29: IDs der Insights, die bereits in eigenständigen "Warum"-Blöcken weiter oben
+  // (Preis-/Strategie-/Argument-Begründung) gerendert wurden. Optional — alte
+  // Aufrufstellen ohne diese Prop verhalten sich wie zuvor (keine Deduplizierung).
+  shownInsightIds?: Set<string>
 }) {
   if (!findings?.length) return null // alte Checks / kein Befund -> nichts rendern
 
@@ -92,7 +112,7 @@ export default function KeyFindings({
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Das solltest du wissen</p>
       <div className="grid gap-2.5 sm:grid-cols-2">
         {findings.map((f) => (
-          <FindingCard key={f.id} finding={f} insights={insights ?? []} />
+          <FindingCard key={f.id} finding={f} insights={insights ?? []} shownInsightIds={shownInsightIds ?? new Set()} />
         ))}
       </div>
     </div>

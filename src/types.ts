@@ -55,6 +55,10 @@ export interface Preisbeobachtung {
   quelle_url?: string | null
   vergleichbarkeit: string   // "sehr_aehnlich" | "aehnlich" | "bedingt" | "ungeeignet"
   gruende: string[]
+  // Reliability-Sprint 3 (§10-§13): Herkunftsart der Recherche-Seite — "listing"
+  // (Einzelinserat) | "category" (Such-/Übersichtsseite) | "unknown". Optional, da
+  // alte gespeicherte Checks das Feld nicht kennen.
+  source_type?: string
 }
 
 export interface Marktanalyse {
@@ -104,8 +108,11 @@ export interface Insight {
   quellen: EvidenceQuelle[]
   confidence: string
   schweregrad?: string | null
-  // Nur Rückrufe: wie sicher der Rückruf GENAU DIESES Fahrzeug betrifft.
-  // "exakt" | "wahrscheinlich" | "unklar" — getrennt von confidence & schweregrad.
+  // Nur Rückrufe: wie sicher der Rückruf GENAU DIESES Fahrzeug betrifft — getrennt
+  // von confidence & schweregrad. Reliability-Sprint 3 (§27/§28): "confirmed_by_vin"
+  // (aktuell nie erzeugt, keine VIN-Prüfung im System) | "variant_match" |
+  // "series_only" | "unclear" | "incompatible" (wird backend-seitig ausgeblendet).
+  // Alte gespeicherte Checks können noch "exakt"|"wahrscheinlich"|"unklar" enthalten.
   applicability?: string | null
   einfluss?: string | null
   // Nur Marktvergleich-Insight: strukturierter deterministischer Marktvergleich.

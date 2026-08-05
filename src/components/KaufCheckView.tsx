@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ShoppingCart,
@@ -89,7 +89,15 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
     await runCheck()
   }
 
-  async function runCheck() {
+  // §31: synchroner Re-Entrancy-Schutz. React-State (`loading`) wird erst nach dem
+  // nächsten Re-Render sichtbar — zwischen Klick/Enter und diesem Re-Render kann ein
+  // zweiter Aufruf (Doppelklick, Enter+Klick) durchrutschen und doppelt Kontingent
+  // verbrauchen. Ein useRef-Flag wirkt dagegen SOFORT, synchron.
+  const submittingRef = useRef(false)
+
+  async function runCheck(retry = false) {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setLoading(true)
     setError(null)
     setResult(null)
@@ -97,7 +105,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
     setFreshCheckId(undefined)   // neue Prüfung → alte Check-ID verwerfen
     setRunId((n) => n + 1)        // frischen Chat-Kontext erzwingen
     try {
-      const res = await runKaufCheck(form, screenshot)
+      const res = await runKaufCheck(form, screenshot, retry)
       setResult(res)
       setTimeout(
         () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
@@ -122,6 +130,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
       }
     } finally {
       setLoading(false)
+      submittingRef.current = false
     }
   }
 
@@ -344,7 +353,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           </>
         )}
         {result && result.research_status === 'research_failed' ? (
-          <ResearchFailedCard nachricht={result.bericht} onRetry={runCheck} loading={loading} />
+          <ResearchFailedCard nachricht={result.bericht} onRetry={() => runCheck(true)} loading={loading} />
         ) : (
           result && (
             <KaufCheckReport
@@ -524,6 +533,13 @@ function KaufCheckReport({
   const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
   const risikoInsights = insightsByIds(result.insights, result.risiko_evidence_ids)
   const marktanalyse = marktanalyseOf(result.insights)
+  // §29: IDs, die bereits in den eigenständigen "Warum"-Blöcken oben stehen — Key
+  // Findings rendern dieselbe Insight-Karte nicht nochmal komplett.
+  const shownInsightIds = new Set([
+    ...empfehlungInsights.map((i) => i.id),
+    ...preisInsights.map((i) => i.id),
+    ...risikoInsights.map((i) => i.id),
+  ])
 
   return (
     <div id="kauf-result" className="mt-10 space-y-4">
@@ -579,7 +595,7 @@ function KaufCheckReport({
       )}
 
       {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
-      <KeyFindings findings={result.key_findings} insights={result.insights} />
+      <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
 
       {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
       <NextSteps findings={result.key_findings} />

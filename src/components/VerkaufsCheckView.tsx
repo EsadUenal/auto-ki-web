@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TrendingUp, ImagePlus, X, Loader2, Clock, History, Lock, ChevronDown } from 'lucide-react'
 import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
@@ -94,7 +94,13 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
     await runCheck()
   }
 
-  async function runCheck() {
+  // §31: synchroner Re-Entrancy-Schutz — siehe KaufCheckView.tsx für Begründung
+  // (React-State `loading` wird erst nach dem nächsten Re-Render sichtbar).
+  const submittingRef = useRef(false)
+
+  async function runCheck(retry = false) {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setLoading(true)
     setError(null)
     setResult(null)
@@ -102,7 +108,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
     setFreshCheckId(undefined)   // neue Prüfung → alte Check-ID verwerfen
     setRunId((n) => n + 1)        // frischen Chat-Kontext erzwingen
     try {
-      const res = await runVerkaufsCheck(form, images)
+      const res = await runVerkaufsCheck(form, images, retry)
       setResult(res)
       setTimeout(
         () => document.getElementById('verk-result')?.scrollIntoView({ behavior: 'smooth' }),
@@ -126,6 +132,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
       }
     } finally {
       setLoading(false)
+      submittingRef.current = false
     }
   }
 
@@ -394,7 +401,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           </>
         )}
         {result && result.research_status === 'research_failed' ? (
-          <ResearchFailedCard nachricht={result.bericht} onRetry={runCheck} loading={loading} />
+          <ResearchFailedCard nachricht={result.bericht} onRetry={() => runCheck(true)} loading={loading} />
         ) : (
           result && (
             <VerkaufsReport
@@ -453,6 +460,10 @@ function VerkaufsReport({
   const strategieInsights = insightsByIds(result.insights, result.strategie_evidence_ids)
   const argumentInsights = insightsByIds(result.insights, result.argument_evidence_ids)
   const marktanalyse = marktanalyseOf(result.insights)
+  // §29: Key Findings rendern VOR "Warum diese Strategie?"/"Warum diese Verkaufs-
+  // argumente?" — hier zählt nur, was bereits im "Warum dieser Preis?"-Block darüber
+  // steht (Backend dedupt strategie_evidence_ids zusätzlich gegen preis_evidence_ids).
+  const shownInsightIds = new Set(preisInsights.map((i) => i.id))
 
   return (
     <div id="verk-result" className="mt-10 space-y-4">
@@ -483,7 +494,7 @@ function VerkaufsReport({
       )}
 
       {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
-      <KeyFindings findings={result.key_findings} insights={result.insights} />
+      <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
 
       {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
       <NextSteps findings={result.key_findings} />

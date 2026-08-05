@@ -808,7 +808,8 @@ export async function apiErsatzteilSuche(fahrzeug: string, bauteil: string): Pro
 // ---- Kauf-Check ----
 export async function runKaufCheck(
   form: KaufCheckForm,
-  screenshot: string | null
+  screenshot: string | null,
+  retry = false,
 ): Promise<KaufCheckResult> {
   const ausstattungListe = form.ausstattung
     .split(/[,\n]+/)
@@ -831,7 +832,10 @@ export async function runKaufCheck(
     bild_base64: screenshot ?? undefined,
   }
 
-  const response = await fetch(`${BASE_URL}/api/v1/kaufcheck`, {
+  // §22: "Erneut versuchen" nach research_failed erzwingt frische Tavily-Calls
+  // statt derselben ggf. dünnen gecachten Antwort.
+  const url = `${BASE_URL}/api/v1/kaufcheck${retry ? '?retry=true' : ''}`
+  const response = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),
     credentials: 'include',
@@ -884,14 +888,18 @@ function verkaufsBody(form: VerkaufsCheckForm): Record<string, unknown> {
 
 export async function runVerkaufsCheck(
   form: VerkaufsCheckForm,
-  images: string[]
+  images: string[],
+  retry = false,
 ): Promise<VerkaufsCheckResult> {
   const body = {
     ...verkaufsBody(form),
     bild_base64: images[0] ?? undefined,  // Backend nimmt aktuell ein Bild
   }
 
-  const response = await fetch(`${BASE_URL}/api/v1/verkaufscheck`, {
+  // §22: "Erneut versuchen" nach research_failed erzwingt frische Tavily-Calls
+  // statt derselben ggf. dünnen gecachten Antwort.
+  const url = `${BASE_URL}/api/v1/verkaufscheck${retry ? '?retry=true' : ''}`
+  const response = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),
     credentials: 'include',
