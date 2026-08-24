@@ -95,9 +95,131 @@ export interface PriceAssessment {
   begruendung?: string
 }
 
-// Reliability-Sprint: Ergebnis der Quality-Gate-Pipeline (§1/§14).
-// "research_failed" wird NICHT als abgeschlossener Check behandelt.
-export type ResearchStatus = 'completed_high' | 'completed_medium' | 'research_failed' | string
+// Reliability-Sprint / P0-1: Ergebnis der Quality-Gate-Pipeline.
+// Aktuell vom Backend ausgeliefert: "completed_high" | "completed_medium" |
+// "completed_no_market" (P0-1 — Check technisch vollständig, kein belastbarer
+// Marktpreis; KEIN Fehler). "research_failed" ist ein LEGACY-Wert: er kann in
+// alten gespeicherten Checks noch vorkommen, wird vom aktuellen Backend-Pfad für
+// den Kaufcheck aber praktisch nicht mehr ausgeliefert (siehe
+// app/routers/kaufcheck.py — der Zweig bleibt nur als Sicherheitsnetz stehen).
+// Frontend-Code darf sich NICHT mehr auf "research_failed" als Normalfall
+// verlassen — nur noch als defensiver Alt-Daten-Fall behandeln.
+export type ResearchStatus =
+  | 'completed_high'
+  | 'completed_medium'
+  | 'completed_no_market'
+  | 'research_failed' // legacy — alte gespeicherte Checks
+  | string
+
+// Identity-Trust-Gate (car_lookup.find_baureihe_mit_vertrauen): wie verlässlich
+// die erkannte Baureihe ist. "niedrig" -> keine fahrzeugspezifischen Aussagen.
+export type IdentitaetKonfidenz = 'hoch' | 'niedrig' | string
+
+// Technischer Web-Fallback: woher die TECHNISCHEN Fahrzeugdaten stammen.
+// Getrennt von `quelle` (Gesamtlage inkl. Marktdaten) und `vertrauen`.
+export type TechnicalCoverage = 'db' | 'db_plus_web' | 'web' | 'partial' | string
+
+// Die per Webrecherche BELEGTE Fahrzeugidentität (nur wenn der DB-Pfad kein
+// belastbares Profil liefert und die Recherche das Fahrzeug als reales
+// Serienfahrzeug bestätigt). `belegt=false` -> alle Detailfelder leer, keine
+// fahrzeugspezifische Aussage möglich (z.B. Fantasiebezeichnung).
+export interface WebVehicleIdentity {
+  belegt: boolean
+  marke?: string | null
+  modell?: string | null
+  generation?: string | null
+  bauzeitraum_von?: number | null
+  bauzeitraum_bis?: number | null
+  motor?: string | null
+  kraftstoff?: string | null
+  leistung_ps?: number | null
+  confidence?: string | null
+  belegende_domains?: number | null
+  quellen?: EvidenceQuelle[]
+}
+
+// P1-4 — ergänzender Fahrzeugkontext aus der VIRA-Fahrzeugdatenbank. KEINE
+// Evidence, KEINE Bewertung des Fahrzeugzustands — beschreibt die Baureihe
+// allgemein (Segment, Erkennungsmerkmale, Herstellerintervalle). Alle Felder
+// optional, nur echte Werte werden vom Backend gesetzt.
+export interface Fahrzeugkontext {
+  baureihe_id?: string | null
+  generation?: string | null
+  segment?: string | null
+  vorgaenger?: string | null
+  erkennung_generation?: string | null
+  facelift_merkmale?: string | null
+  wartung_oel_km?: number | null
+  wartung_hu_intervall?: string | null
+}
+
+// P2-5 — EIN Wartungspunkt, dessen hinterlegtes Intervall in der Nähe der
+// tatsächlichen Laufleistung liegt. AUSDRÜCKLICH KEINE Fälligkeitsaussage —
+// VIRA weiß nicht, wann der letzte Service war. `hinweis` ist der bereits vom
+// Backend fertig formulierte, P2-5-konforme Text (nie "fällig"/"überfällig").
+export interface Wartungshinweis {
+  bauteil: string
+  status: 'naehert_sich' | 'im_bereich' | 'darueber' | string
+  punkt_km: number
+  punkt_bis_km?: number | null
+  differenz_km: number
+  intervall_text: string
+  hinweis: string
+  herkunft: 'db_wartung' | 'web_wartung' | string
+  evidence_id: string
+  quellen?: EvidenceQuelle[]
+}
+
+// P2-5 — Kilometerstand/Alter eingeordnet, plus relevante Wartungspunkte. KEINE
+// Preisaussage, KEINE Modulo-Fälligkeit, KEINE Bewertung von km_pro_jahr
+// (niedrig/hoch etc. — dafür gibt es bewusst keine belastbare Schwelle).
+export interface Laufleistungskontext {
+  kilometerstand?: number | null
+  fahrzeugalter_jahre?: number | null
+  km_pro_jahr?: number | null
+  wartungshinweise: Wartungshinweis[]
+  letzter_service_bekannt: boolean
+}
+
+// P1-3 — EINE konkrete, deterministisch abgeleitete Handlung vor dem Kauf.
+// KEIN LLM beteiligt. `typ` trennt fahrzeugspezifisch (echte Evidence zu DIESEM
+// Fahrzeug) von "basis" (allgemeiner Prüfstandard, behauptet nichts Konkretes).
+export interface Kaufaktion {
+  id: string
+  bereich: 'besichtigung' | 'probefahrt' | 'verkaeuferfragen' | 'dokumente' | string
+  typ: 'fahrzeugspezifisch' | 'basis' | string
+  titel: string
+  aktion: string
+  prioritaet: 'kritisch' | 'hoch' | 'mittel' | 'basis' | string
+  gruppe?: string | null
+  hinweis?: string | null
+  evidence_ids: string[]
+  kategorie?: string | null
+  schweregrad?: string | null
+  kostenhinweis?: string | null
+  rang: number
+}
+
+// EINE der vier Checklisten — fahrzeugspezifische Punkte ZUERST, dann der
+// allgemeine Prüfstandard. Bewusst getrennt, nicht vorab zusammengeworfen.
+export interface Pruefliste {
+  bereich: string
+  export_title: string
+  fahrzeug?: string | null
+  fahrzeugspezifisch: Kaufaktion[]
+  basis: Kaufaktion[]
+}
+
+// P1-3 — der vollständige Prüfplan: vier eigenständige Checklisten. Additiv:
+// alte gespeicherte Checks ohne dieses Feld -> vier leere Prüflisten (Backend-
+// Default), niemals `undefined` beim aktuellen Backend — trotzdem optional
+// getypt, damit sehr alte Checks (vor P1-3) nicht brechen.
+export interface Kaufaktionen {
+  besichtigung: Pruefliste
+  probefahrt: Pruefliste
+  verkaeuferfragen: Pruefliste
+  dokumente: Pruefliste
+}
 
 export interface Insight {
   id: string
@@ -296,6 +418,15 @@ export interface KaufCheckResult {
   // Reliability-Sprint (optional; alte Checks besitzen diese Felder nicht)
   price_assessment?: PriceAssessment | null
   research_status?: ResearchStatus
+  // KaufCheck-Backend-Freeze (P0-1/P1-3/P1-4/P2-5) — alle additiv, alte
+  // gespeicherte Checks besitzen diese Felder nicht (defensiv optional).
+  identitaet_konfidenz?: IdentitaetKonfidenz
+  identitaet_match_art?: string | null
+  technical_coverage?: TechnicalCoverage
+  web_identitaet?: WebVehicleIdentity | null
+  fahrzeugkontext?: Fahrzeugkontext | null
+  laufleistungskontext?: Laufleistungskontext | null
+  kaufaktionen?: Kaufaktionen
 }
 
 // Phase 4 — Inseratsanalyse & optimierte Version. Alle Felder optional an den

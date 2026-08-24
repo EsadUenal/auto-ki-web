@@ -22,9 +22,11 @@ import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
+import { marktanalyseOf, CollapsibleReport, ResearchFailedCard } from './ResultSummary'
 import {
-  marktanalyseOf, MarketMetrics, RiskOverview, NextSteps, CollapsibleReport, ResearchFailedCard, DeepeningStatus,
-} from './ResultSummary'
+  fahrzeugTitel, DatenbasisZeile, MarktpreisModul, LaufleistungKarte, FahrzeugprofilKarte,
+  PruefplanBereich, KaufLoadingStatus, PREIS_LABEL, formatUnbekannterPreiswert,
+} from './KaufCheckDetails'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -180,7 +182,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 space-y-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
             <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#a49c92]">Fahrzeugdaten</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Marke" required>
                 <input className={inputCls} value={form.marke}
                   onChange={(e) => set('marke', e.target.value)} placeholder="z. B. BMW" required />
@@ -190,7 +192,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                   onChange={(e) => set('modell', e.target.value)} placeholder="z. B. 320d" required />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Baujahr" required>
                 <input className={inputCls} type="number" min={1980} max={new Date().getFullYear() + 1}
                   value={form.baujahr} onChange={(e) => set('baujahr', parseInt(e.target.value))} required />
@@ -240,7 +242,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             </button>
 
             {showMore && (
-              <div className="grid grid-cols-2 gap-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <Field label="Unfallfrei laut Inserat">
                   <select className={inputCls} value={form.unfallfrei}
                     onChange={(e) => set('unfallfrei', e.target.value as KaufCheckForm['unfallfrei'])}>
@@ -348,8 +350,8 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
 
         {loading && !result && (
           <>
-            <DeepeningStatus />
-            <ReportSkeleton kind="kauf" />
+            <KaufLoadingStatus />
+            <ReportSkeleton />
           </>
         )}
         {result && result.research_status === 'research_failed' ? (
@@ -360,6 +362,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
               result={result}
               checkId={savedCheck ? savedCheck.id : freshCheckId}
               chatKey={savedCheck ? `saved-${savedCheck.id}` : `fresh-${runId}`}
+              form={form}
             />
           )
         )}
@@ -368,31 +371,20 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   )
 }
 
-function ReportSkeleton({ kind }: { kind: 'kauf' | 'verkauf' }) {
+function ReportSkeleton() {
   const cardCls =
     'rounded-2xl border border-[#e6e1da] bg-white p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]'
   return (
     <div className="mt-10 space-y-4" aria-hidden="true">
       <div className="ez-skeleton h-2.5 w-28 rounded" />
-      {kind === 'kauf' ? (
-        <div className={`${cardCls} flex items-start gap-4`}>
-          <div className="ez-skeleton w-10 h-10 rounded-lg shrink-0" />
-          <div className="flex-1 space-y-2.5 pt-0.5">
-            <div className="ez-skeleton h-2.5 w-24 rounded" />
-            <div className="ez-skeleton h-6 w-48 rounded" />
-            <div className="ez-skeleton h-3 w-40 rounded" />
-          </div>
-        </div>
-      ) : (
-        <div className={`${cardCls} space-y-4`}>
+      <div className={`${cardCls} flex items-start gap-4`}>
+        <div className="ez-skeleton w-10 h-10 rounded-lg shrink-0" />
+        <div className="flex-1 space-y-2.5 pt-0.5">
           <div className="ez-skeleton h-2.5 w-24 rounded" />
-          <div className="grid grid-cols-3 gap-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="ez-skeleton h-24 rounded-xl" />
-            ))}
-          </div>
+          <div className="ez-skeleton h-6 w-48 rounded" />
+          <div className="ez-skeleton h-3 w-40 rounded" />
         </div>
-      )}
+      </div>
       <div className={`${cardCls} space-y-3`}>
         <div className="ez-skeleton h-2.5 w-32 rounded" />
         <div className="ez-skeleton h-3 w-full rounded" />
@@ -440,23 +432,6 @@ const EMPFEHLUNG_CONFIG: Record<string, { label: string; bg: string; label_cls: 
     bg: 'bg-gray-50 border-gray-200', label_cls: 'text-gray-600',
     icon: <MinusCircle size={24} className="text-gray-400 shrink-0 mt-0.5" />,
   },
-}
-
-const PREIS_LABEL: Record<string, string> = {
-  extrem_guenstig: 'Extrem günstig',
-  guenstig: 'Günstig',
-  marktgerecht: 'Marktgerecht',
-  teuer: 'Teuer',
-  extrem_teuer: 'Extrem teuer',
-  unbekannt: 'Unbekannt',
-}
-
-// Falls das Backend einen von PREIS_LABEL nicht erfassten Wert liefert (z.B. eine
-// unbekannte Kategorie), wird nie der rohe Snake-Case-Schlüssel angezeigt, sondern
-// eine lesbare Notlösung ("guter_deal" -> "Guter deal").
-function formatUnbekannterPreiswert(wert: string): string {
-  const lesbar = wert.replace(/_/g, ' ')
-  return lesbar.charAt(0).toUpperCase() + lesbar.slice(1)
 }
 
 // Phase 5: übernimmt den (gespeicherten) Kaufcheck in den Händlerbestand. Nur für
@@ -511,29 +486,23 @@ function KaufCheckReport({
   result,
   checkId,
   chatKey,
+  form,
 }: {
   result: KaufCheckResult
   checkId?: number
   chatKey: string
+  form: KaufCheckForm
 }) {
   const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
   const recStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
-  const preisKey = result.preis_bewertung?.toLowerCase()
-  // §6: das kanonische, differenziertere Label ("Oberes Marktsegment") bevorzugen —
-  // fällt auf das 5-stufige Legacy-Label zurück (alte Checks ohne price_assessment).
-  const preisLabel =
-    result.price_assessment && result.price_assessment.verdict !== 'unbekannt'
-      ? result.price_assessment.label
-      : preisKey
-        ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey))
-        : null
+  const subtitle = fahrzeugTitel(result, form)
 
   // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).
   const empfehlungInsights = insightsByIds(result.insights, result.empfehlung_evidence_ids)
   const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
   const risikoInsights = insightsByIds(result.insights, result.risiko_evidence_ids)
   const marktanalyse = marktanalyseOf(result.insights)
-  // §29: IDs, die bereits in den eigenständigen "Warum"-Blöcken oben stehen — Key
+  // §29: IDs, die bereits in den eigenständigen "Warum"-Blöcken stehen — Key
   // Findings rendern dieselbe Insight-Karte nicht nochmal komplett.
   const shownInsightIds = new Set([
     ...empfehlungInsights.map((i) => i.id),
@@ -545,66 +514,66 @@ function KaufCheckReport({
     <div id="kauf-result" className="mt-10 space-y-4">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
 
-      {/* Phase 3: kompakter Entscheidungsbereich — Empfehlung + Markt-Kennzahlen in EINER Karte. */}
+      {/* 1) Fahrzeug + finale Kaufentscheidung. Die Empfehlung ist das alleinige
+          Hauptsignal — kein gleichwertiges Preis-Badge mehr daneben (§3); der
+          Marktpreis bekommt weiter unten sein eigenes Modul. */}
       <div className={`rounded-2xl p-5 sm:p-6 border ${recStyle.bg}`}>
         <div className="flex items-start gap-3.5">
           {recStyle.icon}
           <div className="min-w-0 flex-1">
             <p className={`text-[11px] font-bold uppercase tracking-[0.18em] mb-1 opacity-80 ${recStyle.label_cls}`}>
-              Entscheidung
+              Kaufempfehlung
             </p>
             <p className={`text-xl sm:text-2xl font-bold tracking-[-0.01em] leading-tight ${recStyle.label_cls}`}>
               {recStyle.label}
             </p>
+            {subtitle && <p className="mt-1.5 text-sm text-gray-600">{subtitle}</p>}
+            <DatenbasisZeile technicalCoverage={result.technical_coverage} />
           </div>
-          {preisLabel && (
-            <span className={`shrink-0 mt-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/60 ${recStyle.label_cls}`}>
-              Preis: {preisLabel}
-            </span>
-          )}
         </div>
-        <MarketMetrics
-          marktpreisMin={result.marktpreis_min}
-          marktpreisMax={result.marktpreis_max}
-          marktanalyse={marktanalyse}
-        />
       </div>
 
       {/* Phase 5: Dealer-Übernahme — nur für Händler-Konten, nur bei gespeichertem Check. */}
       <DealerAddButton checkId={checkId} />
 
-      {(empfehlungInsights.length > 0 || preisInsights.length > 0) && (
-        <div className="space-y-2 px-1">
+      {empfehlungInsights.length > 0 && (
+        <div className="px-1">
           <EvidenceWhy label="Warum diese Empfehlung?" insights={empfehlungInsights} />
-          <EvidenceWhy label="Warum diese Preisbewertung?" insights={preisInsights} />
         </div>
       )}
 
-      {/* Risiko-Kurzüberblick (deterministisch, "Unklar" ohne Datenbasis). */}
-      <RiskOverview
-        insights={result.insights}
-        marktanalyse={marktanalyse}
-        baureiheErkannt={result.baureihe_erkannt}
-        preisBewertung={result.preis_bewertung}
-        priceAssessment={result.price_assessment}
-      />
+      {/* 2) Konkrete Erkenntnisse / Risiken. */}
+      <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
       {risikoInsights.length > 0 && (
         <div className="px-1">
           <EvidenceWhy label="Warum diese Risiken?" insights={risikoInsights} />
         </div>
       )}
 
-      {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
-      <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
+      {/* 3) Laufleistung & Wartung (P2-5) — rendert sich selbst weg, wenn nichts vorliegt. */}
+      <LaufleistungKarte kontext={result.laufleistungskontext} />
 
-      {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
-      <NextSteps findings={result.key_findings} />
+      {/* 4) Vor dem Kauf prüfen — die vier Prüflisten (P1-3, Kernfeature). */}
+      <PruefplanBereich kaufaktionen={result.kaufaktionen} insights={result.insights} checkId={checkId} />
 
-      {/* Vollständiger Bericht — unverändert, standardmäßig eingeklappt. */}
-      <CollapsibleReport bericht={result.bericht} title="Vollständige Analyse anzeigen" />
+      {/* 5) Marktpreis — eigenes Modul, MIT und OHNE belastbare Marktdaten. */}
+      <MarktpreisModul result={result} marktanalyse={marktanalyse} />
+      {preisInsights.length > 0 && (
+        <div className="px-1">
+          <EvidenceWhy label="Warum diese Preisbewertung?" insights={preisInsights} />
+        </div>
+      )}
 
+      {/* 6) Fahrzeug-/Datenkontext (P1-4 + Web-Identität bei DB-Miss). */}
+      <FahrzeugprofilKarte fahrzeugkontext={result.fahrzeugkontext} webIdentitaet={result.web_identitaet} />
+
+      {/* 7) Ausführliche Analyse — unverändert vollständig, standardmäßig eingeklappt. */}
+      <CollapsibleReport bericht={result.bericht} title="Ausführliche Analyse anzeigen" />
+
+      {/* 8) Quellen. */}
       <SourceBadge meta={{ source: result.quelle as never, trust_level: result.vertrauen as never, belege: result.belege }} />
 
+      {/* 9) Analyse-Chat. */}
       <AnalyseFrageChat
         key={chatKey}
         analyseKontext={buildAnalyseKontext(result)}
@@ -615,8 +584,12 @@ function KaufCheckReport({
   )
 }
 
-// Baut den Analysetext, den die kontextgebundenen Rückfragen als Grundlage bekommen:
-// Verdikt (Empfehlung/Preisbewertung/Marktpreis) + der vollständige Detailbericht.
+// Baut den Analysetext, den die kontextgebundenen Rückfragen als Grundlage bekommen.
+// §15: erweitert um Kaufaktionen, Laufleistungskontext, Fahrzeugkontext und
+// technical_coverage, damit der Chat auch Fragen wie "Warum soll ich das bei der
+// Probefahrt prüfen?" oder "Was soll ich wegen des Zahnriemens fragen?" aus dem
+// tatsächlich angezeigten Kontext beantworten kann — keine Backend-Änderung, rein
+// zusätzlicher Text im ohnehin an den Chat übergebenen Kontext-String.
 function buildAnalyseKontext(result: KaufCheckResult): string {
   const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
   const empfLabel = (EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt).label
@@ -627,10 +600,50 @@ function buildAnalyseKontext(result: KaufCheckResult): string {
       ? `${result.marktpreis_min?.toLocaleString('de-DE') ?? '?'} – ${result.marktpreis_max?.toLocaleString('de-DE') ?? '?'} €`
       : null
 
+  const lk = result.laufleistungskontext
+  const laufleistungZeilen: string[] = []
+  if (lk) {
+    const teile: string[] = []
+    if (lk.kilometerstand != null) teile.push(`${lk.kilometerstand.toLocaleString('de-DE')} km`)
+    if (lk.fahrzeugalter_jahre != null) teile.push(`ca. ${lk.fahrzeugalter_jahre} Jahre alt`)
+    if (lk.km_pro_jahr != null) teile.push(`ca. ${lk.km_pro_jahr.toLocaleString('de-DE')} km/Jahr im Schnitt`)
+    if (teile.length) laufleistungZeilen.push(`Laufleistung: ${teile.join(', ')}.`)
+    for (const w of lk.wartungshinweise ?? []) {
+      laufleistungZeilen.push(`Wartungspunkt ${w.bauteil}: ${w.hinweis} (hinterlegtes Intervall: ${w.intervall_text}).`)
+    }
+  }
+
+  const fk = result.fahrzeugkontext
+  const fahrzeugkontextZeile = fk
+    ? [
+        fk.generation ? `Generation ${fk.generation}` : '',
+        fk.segment ? `Segment ${fk.segment}` : '',
+        fk.erkennung_generation ? `Erkennungsmerkmale: ${fk.erkennung_generation}` : '',
+      ].filter(Boolean).join(' · ')
+    : ''
+
+  const kaufaktionenZeilen: string[] = []
+  for (const liste of [result.kaufaktionen?.besichtigung, result.kaufaktionen?.probefahrt,
+                       result.kaufaktionen?.verkaeuferfragen, result.kaufaktionen?.dokumente]) {
+    if (!liste) continue
+    for (const a of liste.fahrzeugspezifisch ?? []) {
+      kaufaktionenZeilen.push(`[${liste.export_title}] ${a.titel}: ${a.aktion}`)
+    }
+  }
+
+  const coverageZeile = result.technical_coverage
+    ? `Datenbasis der technischen Angaben: ${result.technical_coverage}.`
+    : ''
+
   return [
-    `Empfehlung: ${empfLabel}`,
+    `Finale Kaufempfehlung: ${empfLabel}`,
     preisLabel ? `Preisbewertung: ${preisLabel}` : '',
     marktpreis ? `Marktpreis-Einschätzung: ${marktpreis}` : '',
+    coverageZeile,
+    fahrzeugkontextZeile ? `Fahrzeugprofil: ${fahrzeugkontextZeile}` : '',
+    ...laufleistungZeilen,
+    kaufaktionenZeilen.length ? '--- Fahrzeugspezifische Prüfpunkte (Besichtigung/Probefahrt/Verkäuferfragen/Dokumente) ---' : '',
+    ...kaufaktionenZeilen,
     '',
     '--- Detailbericht ---',
     result.bericht,

@@ -3,7 +3,7 @@ import { ChevronDown, RefreshCw, SearchX, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { stripEvidenceIds } from './EvidenceWhy'
-import type { Insight, KeyFinding, Marktanalyse, PriceAssessment } from '../types'
+import type { Insight, KeyFinding, Marktanalyse } from '../types'
 
 /**
  * Phase 3 — Informationshierarchie. Reine Darstellungs-Bausteine, die ausschließlich
@@ -22,16 +22,6 @@ function eur(n?: number | null): string {
 }
 
 const QUALI_LABEL: Record<string, string> = { hoch: 'Hoch', mittel: 'Mittel', niedrig: 'Niedrig' }
-
-// Ruhige, abgestufte Töne — bewusst zurückhaltend, kein Ampel-Gaming.
-type Tone = 'gut' | 'mittel' | 'pruefen' | 'hoch' | 'unklar'
-const TONE: Record<Tone, { text: string; dot: string }> = {
-  gut: { text: 'text-emerald-700', dot: 'bg-emerald-500' },
-  mittel: { text: 'text-amber-700', dot: 'bg-amber-500' },
-  pruefen: { text: 'text-amber-700', dot: 'bg-amber-500' },
-  hoch: { text: 'text-orange-700', dot: 'bg-orange-500' },
-  unklar: { text: 'text-gray-500', dot: 'bg-gray-300' },
-}
 
 // ── Kennzahl (Label + Wert) ──────────────────────────────────────────────────
 
@@ -104,120 +94,6 @@ export function VerkaufMarketMetrics({ marktanalyse }: { marktanalyse?: Marktana
       {qualiLabel && (
         <Metric label="Datenqualität" value={qualiLabel} tone={q === 'niedrig' ? 'amber' : undefined} />
       )}
-    </div>
-  )
-}
-
-// ── Risikoübersicht (Kauf) — deterministisch, "Unklar" ohne Datenbasis ───────
-
-type RiskRow = { k: string; label: string; tone: Tone }
-
-const VERDICT_ZU_PREIS_ROW: Record<string, RiskRow> = {
-  deutlich_unter: { k: 'Preis', label: 'Gut', tone: 'gut' },
-  unter: { k: 'Preis', label: 'Gut', tone: 'gut' },
-  marktgerecht: { k: 'Preis', label: 'Marktgerecht', tone: 'gut' },
-  oberes_segment: { k: 'Preis', label: 'Oberes Segment', tone: 'hoch' },
-  ueber: { k: 'Preis', label: 'Hoch', tone: 'hoch' },
-  deutlich_ueber: { k: 'Preis', label: 'Hoch', tone: 'hoch' },
-}
-
-function computeRiskRows(
-  insights: Insight[],
-  ma: Marktanalyse | undefined,
-  baureiheErkannt: string | null | undefined,
-  preisBewertung: string | undefined,
-  priceAssessment?: PriceAssessment | null,
-): RiskRow[] {
-  const has = (kat: string) => insights.filter((i) => i.kategorie === kat)
-  const rueckrufe = has('rueckruf')
-  // Reliability-Sprint 3 (§27/§28): neue Werte + Alt-Werte (§36, alte gespeicherte
-  // Checks ohne Migration) — KEINE der Stufen ohne VIN-Prüfung als "sicher betroffen"
-  // behandeln, nur als "zu prüfen" (Label unten bleibt bewusst "Prüfen", nicht
-  // "Relevant"/"Betrifft").
-  const zuPruefenRecalls = rueckrufe.filter((i) =>
-    ['confirmed_by_vin', 'variant_match', 'series_only', 'exakt', 'wahrscheinlich']
-      .includes((i.applicability ?? '').toLowerCase()))
-  const unclearRecalls = rueckrufe.filter((i) => ['unclear', 'unklar'].includes((i.applicability ?? '').toLowerCase()))
-  const schwHoch = has('schwachstelle').filter((i) => ['hoch', 'kritisch', 'sehr hoch'].includes((i.schweregrad ?? '').toLowerCase()))
-  const schwMittel = has('schwachstelle').filter((i) => ['mittel', 'moderat'].includes((i.schweregrad ?? '').toLowerCase()))
-  const motorprobleme = has('motorproblem')
-  const hatProfil = !!baureiheErkannt
-
-  // Technik
-  let technik: RiskRow
-  if (!hatProfil) technik = { k: 'Technik', label: 'Unklar', tone: 'unklar' }
-  else if (motorprobleme.length || schwHoch.length) technik = { k: 'Technik', label: 'Erhöht', tone: 'hoch' }
-  else if (schwMittel.length) technik = { k: 'Technik', label: 'Mittel', tone: 'mittel' }
-  else technik = { k: 'Technik', label: 'Gering', tone: 'gut' }
-
-  // Rückrufe
-  let recalls: RiskRow
-  if (zuPruefenRecalls.length) recalls = { k: 'Rückrufe', label: 'Prüfen', tone: 'pruefen' }
-  else if (unclearRecalls.length) recalls = { k: 'Rückrufe', label: 'Zu prüfen', tone: 'mittel' }
-  else if (hatProfil) recalls = { k: 'Rückrufe', label: 'Keine', tone: 'gut' }
-  else recalls = { k: 'Rückrufe', label: 'Unklar', tone: 'unklar' }
-
-  // Preis — bevorzugt das KANONISCHE Preisurteil (§6: dieselbe Quelle wie Bericht,
-  // Zusammenfassung und Key Findings), damit die Risikoübersicht nie widerspricht.
-  let preis: RiskRow
-  const verdict = (priceAssessment?.verdict ?? '').toLowerCase()
-  if (verdict && verdict !== 'unbekannt' && VERDICT_ZU_PREIS_ROW[verdict]) {
-    preis = VERDICT_ZU_PREIS_ROW[verdict]
-  } else if (ma?.median_eur != null && ma.differenz_pct != null) {
-    const p = ma.differenz_pct
-    if (p <= -8) preis = { k: 'Preis', label: 'Gut', tone: 'gut' }
-    else if (p >= 8) preis = { k: 'Preis', label: 'Hoch', tone: 'hoch' }
-    else preis = { k: 'Preis', label: 'Marktgerecht', tone: 'gut' }
-  } else {
-    const pb = (preisBewertung ?? '').toLowerCase()
-    if (['guenstig', 'extrem_guenstig'].includes(pb)) preis = { k: 'Preis', label: 'Gut', tone: 'gut' }
-    else if (['teuer', 'extrem_teuer'].includes(pb)) preis = { k: 'Preis', label: 'Hoch', tone: 'hoch' }
-    else if (pb === 'marktgerecht') preis = { k: 'Preis', label: 'Marktgerecht', tone: 'gut' }
-    else preis = { k: 'Preis', label: 'Unklar', tone: 'unklar' }
-  }
-
-  // Datenlage
-  let daten: RiskRow
-  const q = (ma?.datenqualitaet ?? '').toLowerCase()
-  if (q === 'hoch') daten = { k: 'Datenlage', label: 'Gut', tone: 'gut' }
-  else if (q === 'mittel') daten = { k: 'Datenlage', label: 'Mittel', tone: 'mittel' }
-  else if (q === 'niedrig') daten = { k: 'Datenlage', label: 'Niedrig', tone: 'mittel' }
-  else daten = { k: 'Datenlage', label: 'Unklar', tone: 'unklar' }
-
-  return [technik, recalls, preis, daten]
-}
-
-export function RiskOverview({
-  insights,
-  marktanalyse,
-  baureiheErkannt,
-  preisBewertung,
-  priceAssessment,
-}: {
-  insights: Insight[] | undefined
-  marktanalyse?: Marktanalyse
-  baureiheErkannt?: string | null
-  preisBewertung?: string
-  priceAssessment?: PriceAssessment | null
-}) {
-  // Alte Checks ohne strukturierte Insights: keinen (leeren) Dashboard-Bereich zeigen.
-  if (!insights?.length) return null
-  const rows = computeRiskRows(insights, marktanalyse, baureiheErkannt, preisBewertung, priceAssessment)
-
-  return (
-    <div className="bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Risikoübersicht</p>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
-        {rows.map((r) => (
-          <div key={r.k} className="flex items-center justify-between gap-3">
-            <span className="text-sm text-gray-600">{r.k}</span>
-            <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${TONE[r.tone].text}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${TONE[r.tone].dot}`} />
-              {r.label}
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
