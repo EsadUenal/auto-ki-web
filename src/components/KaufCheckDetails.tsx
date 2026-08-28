@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Search, Car, MessageCircle, FileText, Gauge } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Search, Car, MessageCircle, FileText, Gauge, Printer } from 'lucide-react'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import { MarketMetrics } from './ResultSummary'
 import type {
-  KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen,
+  KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen, KaufCheckForm,
   Fahrzeugkontext, Laufleistungskontext, WebVehicleIdentity, Marktanalyse, Insight,
 } from '../types'
 
@@ -342,6 +343,93 @@ function useChecklistState(checkId: number | undefined) {
   return { checked, toggle }
 }
 
+// ── Einzel-Export je Prüfbereich (Print/PDF, §Checkliste-Export) ────────────
+// Bewusst KEIN kombinierter Export: jeder Button druckt genau EINEN Bereich.
+// Technik: React-Portal mit dem Print-Inhalt direkt an document.body gehängt,
+// dann window.print(). So muss das bestehende, verschachtelte Bildschirm-Layout
+// (Sidebar, andere Karten, Chat) für den Druck nicht "weggerechnet" werden —
+// @media print blendet stattdessen einfach #root komplett aus und zeigt nur
+// den Portal-Inhalt. Keine neue Library, kein serverseitiges Rendering.
+
+type FahrzeugHeaderDaten = Pick<KaufCheckForm, 'marke' | 'modell' | 'motor' | 'baujahr' | 'kilometerstand'>
+
+function useBereichPrint() {
+  const [printing, setPrinting] = useState<string | null>(null)
+
+  // Reset NACH dem Druckdialog (egal ob gedruckt, als PDF gespeichert oder
+  // abgebrochen) — unabhängig vom Ausgang schließt afterprint zuverlässig.
+  useEffect(() => {
+    function onAfterPrint() { setPrinting(null) }
+    window.addEventListener('afterprint', onAfterPrint)
+    return () => window.removeEventListener('afterprint', onAfterPrint)
+  }, [])
+
+  useEffect(() => {
+    if (!printing) {
+      document.body.classList.remove('kc-printing')
+      return
+    }
+    document.body.classList.add('kc-printing')
+    window.print()
+  }, [printing])
+
+  return { printing, requestPrint: setPrinting }
+}
+
+function PrintChecklist({
+  liste,
+  fahrzeug,
+  checked,
+}: {
+  liste: Pruefliste
+  fahrzeug: FahrzeugHeaderDaten
+  checked: Set<string>
+}) {
+  const punkte = [...(liste.fahrzeugspezifisch ?? []), ...(liste.basis ?? [])]
+  const fahrzeugFelder: { label: string; value: string }[] = []
+  if (fahrzeug.marke) fahrzeugFelder.push({ label: 'Marke', value: fahrzeug.marke })
+  if (fahrzeug.modell) fahrzeugFelder.push({ label: 'Modell', value: fahrzeug.modell })
+  if (fahrzeug.motor) fahrzeugFelder.push({ label: 'Motorisierung', value: fahrzeug.motor })
+  if (fahrzeug.baujahr) fahrzeugFelder.push({ label: 'Baujahr', value: String(fahrzeug.baujahr) })
+  if (fahrzeug.kilometerstand) {
+    fahrzeugFelder.push({ label: 'Kilometerstand', value: `${fahrzeug.kilometerstand.toLocaleString('de-DE')} km` })
+  }
+
+  return (
+    <div className="kc-print-portal">
+      <div className="kc-print-page">
+        <header className="kc-print-header">
+          <p className="kc-print-brand">VIRA · KaufCheck</p>
+          <h1>{liste.export_title}</h1>
+          {fahrzeugFelder.length > 0 && (
+            <dl className="kc-print-vehicle">
+              {fahrzeugFelder.map((f) => (
+                <div key={f.label}>
+                  <dt>{f.label}</dt>
+                  <dd>{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </header>
+        <ul className="kc-print-list">
+          {punkte.map((a) => (
+            <li key={a.id} className="kc-print-item">
+              <input type="checkbox" checked={checked.has(`${liste.bereich}:${a.id}`)} readOnly aria-hidden="true" />
+              <div>
+                <p className="kc-print-item-title">{a.titel}</p>
+                {a.aktion && <p className="kc-print-item-note">{a.aktion}</p>}
+                {a.hinweis && <p className="kc-print-item-hint">{a.hinweis}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="kc-print-footer">Stand des KaufChecks zum Zeitpunkt des Exports.</p>
+      </div>
+    </div>
+  )
+}
+
 function PrioritaetBadge({ prioritaet }: { prioritaet: string }) {
   const p = prioritaet.toLowerCase()
   if (p === 'kritisch') return <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">Kritisch</span>
@@ -411,11 +499,13 @@ function PrueflisteCard({
   insights,
   checked,
   onToggle,
+  onExport,
 }: {
   liste: Pruefliste
   insights: Insight[] | undefined
   checked: Set<string>
   onToggle: (bereich: string, aktionId: string) => void
+  onExport: () => void
 }) {
   const spezifisch = liste.fahrzeugspezifisch ?? []
   const basis = liste.basis ?? []
@@ -423,9 +513,20 @@ function PrueflisteCard({
 
   return (
     <div className="bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-      <div className="flex items-center gap-2 mb-3">
-        {BEREICH_ICON[liste.bereich] ?? null}
-        <p className="text-sm font-semibold text-gray-800">{liste.export_title}</p>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {BEREICH_ICON[liste.bereich] ?? null}
+          <p className="text-sm font-semibold text-gray-800 truncate">{liste.export_title}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onExport}
+          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+          aria-label={`${liste.export_title} drucken oder als PDF speichern`}
+          title="Drucken / als PDF speichern"
+        >
+          <Printer size={16} />
+        </button>
       </div>
 
       {spezifisch.length > 0 && (
@@ -475,12 +576,15 @@ export function PruefplanBereich({
   kaufaktionen,
   insights,
   checkId,
+  fahrzeug,
 }: {
   kaufaktionen?: Kaufaktionen
   insights: Insight[] | undefined
   checkId?: number
+  fahrzeug: FahrzeugHeaderDaten
 }) {
   const { checked, toggle } = useChecklistState(checkId)
+  const { printing, requestPrint } = useBereichPrint()
   if (!kaufaktionen) return null
 
   const listen = [
@@ -492,14 +596,29 @@ export function PruefplanBereich({
 
   if (listen.length === 0) return null
 
+  // Der aktuell gedruckte Bereich — exakt derselbe `checked`-State wie auf dem
+  // Bildschirm, kein erneutes Laden aus dem (u.U. veralteten) Backend-Stand.
+  const druckListe = printing ? listen.find((l) => l.bereich === printing) : null
+
   return (
     <div className="space-y-2.5">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Vor dem Kauf prüfen</p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {listen.map((l) => (
-          <PrueflisteCard key={l.bereich} liste={l} insights={insights} checked={checked} onToggle={toggle} />
+          <PrueflisteCard
+            key={l.bereich}
+            liste={l}
+            insights={insights}
+            checked={checked}
+            onToggle={toggle}
+            onExport={() => requestPrint(l.bereich)}
+          />
         ))}
       </div>
+      {druckListe && createPortal(
+        <PrintChecklist liste={druckListe} fahrzeug={fahrzeug} checked={checked} />,
+        document.body,
+      )}
     </div>
   )
 }

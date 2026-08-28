@@ -309,3 +309,64 @@
 @media (hover: none) {
   .ez-card:hover { transform: none; box-shadow: none; }
 }
+
+/* ── KaufCheck-Prüfbereich-Export (Print/PDF) ────────────────────────────────
+   Portal-Inhalt (siehe PrintChecklist in KaufCheckDetails.tsx) ist auf dem
+   Bildschirm immer unsichtbar. Erst wenn body.kc-printing gesetzt ist (genau
+   während window.print() für einen einzelnen Bereich läuft), blendet der
+   Druck die normale App komplett aus und zeigt nur den Portal-Inhalt — so
+   bleibt das bestehende Bildschirm-Layout unangetastet und es entsteht nie
+   ein kombinierter Export. */
+.kc-print-portal { display: none; }
+
+@media print {
+  body.kc-printing #root { display: none !important; }
+  body.kc-printing .kc-print-portal { display: block !important; }
+
+  @page { size: A4; margin: 16mm 14mm; }
+
+  .kc-print-page {
+    color: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .kc-print-header { margin-bottom: 6mm; }
+  .kc-print-brand {
+    margin: 0 0 2mm;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6b6b6b;
+  }
+  .kc-print-header h1 { margin: 0 0 3mm; font-size: 18px; font-weight: 700; }
+  .kc-print-vehicle {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5mm 6mm;
+    margin: 0 0 4mm;
+    padding: 3mm 4mm;
+    border: 1px solid #ddd;
+    border-radius: 3mm;
+    font-size: 11px;
+  }
+  .kc-print-vehicle dt { font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: #777; }
+  .kc-print-vehicle dd { margin: 0; font-weight: 600; }
+  .kc-print-list { margin: 0; padding: 0; list-style: none; }
+  .kc-print-item {
+    display: flex;
+    gap: 3mm;
+    padding: 2.4mm 0;
+    border-bottom: 1px solid #eee;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .kc-print-item input[type='checkbox'] {
+    flex-shrink: 0;
+    width: 3.6mm;
+    height: 3.6mm;
+    margin-top: 1mm;
+  }
+  .kc-print-item-title { margin: 0; font-size: 12px; font-weight: 600; }
+  .kc-print-item-note { margin: 0.6mm 0 0; font-size: 10.5px; color: #444; }
+  .kc-print-item-hint { margin: 1mm 0 0; font-size: 10px; color: #8a5a00; }
+  .kc-print-footer { margin-top: 6mm; font-size: 9px; color: #999; }
+}

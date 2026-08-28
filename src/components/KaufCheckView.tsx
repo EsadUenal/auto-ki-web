@@ -554,7 +554,7 @@ function KaufCheckReport({
       <LaufleistungKarte kontext={result.laufleistungskontext} />
 
       {/* 4) Vor dem Kauf prüfen — die vier Prüflisten (P1-3, Kernfeature). */}
-      <PruefplanBereich kaufaktionen={result.kaufaktionen} insights={result.insights} checkId={checkId} />
+      <PruefplanBereich kaufaktionen={result.kaufaktionen} insights={result.insights} checkId={checkId} fahrzeug={form} />
 
       {/* 5) Marktpreis — eigenes Modul, MIT und OHNE belastbare Marktdaten. */}
       <MarktpreisModul result={result} marktanalyse={marktanalyse} />
