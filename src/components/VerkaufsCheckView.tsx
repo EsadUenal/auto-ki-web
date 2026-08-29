@@ -487,6 +487,22 @@ function VerkaufsReport({
         </div>
       )}
 
+      {/* P1 #2: Check vollständig, aber kein belastbarer Marktpreis — neutrale
+          Karte statt versteckter/leerer Preisstrategie (kein 0 €, kein Fehler-Look). */}
+      {!hasPreise && result.research_status === 'completed_no_market' && (
+        <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Preisstrategie</p>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            Keine belastbaren Marktdaten verfügbar — für dieses Fahrzeug ließ sich aktuell keine
+            zuverlässige Preisspanne ermitteln.
+          </p>
+          <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+            Fahrzeug- und Zustandsanalyse, Inseratsbewertung und die Verkaufstipps unten sind davon
+            unabhängig vollständig.
+          </p>
+        </div>
+      )}
+
       {preisInsights.length > 0 && (
         <div className="px-1">
           <EvidenceWhy label="Warum dieser Preis?" insights={preisInsights} />
