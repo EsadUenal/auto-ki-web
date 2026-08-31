@@ -6,6 +6,7 @@ import type {
   VerkaufsCheckForm,
   VerkaufsCheckResult,
 } from '../types'
+import type { AutoFinderPayload, AutoFinderResponse } from '../components/autofinder/logic'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 const API_KEY = import.meta.env.VITE_API_KEY ?? ''
@@ -803,6 +804,23 @@ export async function apiErsatzteilSuche(fahrzeug: string, bauteil: string): Pro
   const data = await res.json()
   if (!res.ok) throw new Error(extractMessage(data))
   return data as ApiErsatzteilSuche
+}
+
+// ---- AutoFinder (öffentlich, kostenlos, kein Check-Kontingent) ----
+// Nutzt denselben Bearer-API-Key wie /fahrzeug (siehe Router-Doc im Backend).
+// KEIN `credentials: 'include'` — der Endpunkt kennt keinen Nutzer-Cookie.
+export async function apiAutoFinder(payload: AutoFinderPayload): Promise<AutoFinderResponse> {
+  const response = await fetch(`${BASE_URL}/api/v1/autofinder`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    const msg = data ? extractMessage(data) : `Server-Fehler ${response.status}`
+    throw new Error(`${response.status} ${msg}`)
+  }
+  return response.json() as Promise<AutoFinderResponse>
 }
 
 // ---- Kauf-Check ----

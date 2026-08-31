@@ -15,6 +15,7 @@ import SettingsView from './components/SettingsView'
 import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
+import AutoFinderView from './components/autofinder/AutoFinderView'
 import Footer from './components/Footer'
 import PrivateRoute from './components/PrivateRoute'
 import SplashScreen from './components/SplashScreen'
@@ -404,6 +405,11 @@ export default function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<LoginView />} />
+              {/* AutoFinder ist ein Akquise-Feature und bewusst OHNE Login
+                  erreichbar (wie die Rechtsseiten) — eigener Screen ohne die
+                  App-Shell/Sidebar. Backend-Endpunkt /api/v1/autofinder hat
+                  kein Check-Gate und keinen Nutzer-Cookie. */}
+              <Route path="/autofinder" element={<AutoFinderView />} />
               {/* Rechtsseiten öffentlich (ohne Login) erreichbar — Impressum &
                   Datenschutz müssen für jeden zugänglich sein. */}
               <Route path="/impressum" element={<LegalView page="impressum" />} />
