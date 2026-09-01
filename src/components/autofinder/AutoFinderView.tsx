@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Loader2, SlidersHorizontal, Sparkles, Car } from 'lucide-react'
+import { Loader2, SlidersHorizontal, Car } from 'lucide-react'
 import { apiAutoFinder } from '../../api/client'
 import {
   EMPTY_FORM,
@@ -31,7 +30,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
         'text-sm rounded-full px-3 py-1.5 border transition-colors ' +
         (active
           ? 'bg-orange-500 border-orange-500 text-white'
-          : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300')
+          : 'bg-white border-[#e6e1da] text-gray-700 hover:border-[#d8d0c2]')
       }
       aria-pressed={active}
     >
@@ -50,12 +49,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputCls =
-  'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300/50'
+  'w-full rounded-lg border border-[#e6e1da] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300/50'
 
 function GroupTitle({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <h2 className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-500 flex items-center gap-2">
-      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-[10px]">{n}</span>
+      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-500/10 text-orange-600 text-[10px] font-bold">{n}</span>
       {children}
     </h2>
   )
@@ -101,32 +100,38 @@ export default function AutoFinderView() {
   const cards = resp?.kandidaten.slice(0, MAX_CARDS) ?? []
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Kopf */}
-      <header className="border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.svg" alt="Vira" className="w-6 h-6 rounded-md" />
-            <span className="font-semibold text-gray-900 tracking-tight">Vira</span>
-          </Link>
-          <Link to="/login" className="text-sm text-gray-500 hover:text-gray-800">Anmelden</Link>
-        </div>
-      </header>
+    <div
+      className="relative h-full overflow-y-auto scrollbar-thin"
+      style={{ background: 'radial-gradient(120% 60% at 50% 0%, #fdfaf6 0%, #faf7f3 40%, #f4f0ea 100%)' }}
+    >
+      {/* Eine ruhige warme Lichtquelle oben — wie Entdecken / Kauf-Check */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
+        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
+      </div>
 
-      <main className="max-w-5xl mx-auto px-5 py-8 ez-rise">
-        <div className="flex items-center gap-2 text-orange-600">
-          <Sparkles size={16} />
-          <span className="text-[11px] font-bold tracking-[0.22em] uppercase">AutoFinder</span>
+      <div className="ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
+        {/* Hero */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2.5 mb-5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
+              <Car size={12} />
+            </span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · AutoFinder</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
+            Welches Auto
+            <br />
+            <span className="text-gray-400">passt zu dir?</span>
+          </h1>
+          <p className="mt-4 text-sm text-gray-500 max-w-md">
+            Sag uns dein Budget, wie du fährst und was dir wichtig ist. VIRA schlägt dir
+            bis zu fünf Modelle aus seiner gepflegten Fahrzeugdatenbank vor — kostenlos
+            und ohne Konto.
+          </p>
         </div>
-        <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-          Welches Auto passt zu dir?
-        </h1>
-        <p className="mt-2 text-gray-600 max-w-2xl">
-          Sag uns dein Budget, wie du fährst und was dir wichtig ist. VIRA schlägt dir bis zu
-          fünf Modelle aus seiner gepflegten Fahrzeugdatenbank vor — kostenlos und ohne Konto.
-        </p>
 
-        <form onSubmit={submit} className="mt-8 space-y-8">
+        <form onSubmit={submit} className="space-y-8">
           {/* 1 — Budget */}
           <section className="space-y-3">
             <GroupTitle n={1}>Budget</GroupTitle>
@@ -216,7 +221,7 @@ export default function AutoFinderView() {
           </div>
 
           {showMore && (
-            <section className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+            <section className="space-y-4 rounded-xl border border-[#e6e1da] bg-[#faf8f5] p-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Field label="Baujahr von">
                   <input inputMode="numeric" className={inputCls} value={form.baujahr_von}
@@ -272,9 +277,9 @@ export default function AutoFinderView() {
             </div>
           )}
 
-          <div className="sticky bottom-0 -mx-5 px-5 py-3 bg-white/90 backdrop-blur border-t border-gray-100">
+          <div className="pt-1">
             <button type="submit" disabled={loading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-white font-semibold hover:bg-orange-600 disabled:opacity-60">
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 transition-colors">
               {loading ? <><Loader2 size={16} className="animate-spin" /> Suche läuft …</> : <><Car size={16} /> Autos für mich finden</>}
             </button>
           </div>
@@ -293,8 +298,8 @@ export default function AutoFinderView() {
             <>
               {cov.kind !== 'ok' && (
                 <div className={
-                  'rounded-xl border p-4 ' +
-                  (cov.kind === 'none' ? 'border-gray-200 bg-gray-50' : 'border-amber-200 bg-amber-50')
+                  'rounded-2xl border p-5 ' +
+                  (cov.kind === 'none' ? 'border-[#e6e1da] bg-[#faf8f5]' : 'border-amber-200 bg-amber-50/70')
                 }>
                   <p className="font-semibold text-gray-900">{cov.headline}</p>
                   <p className="mt-1 text-sm text-gray-600">{cov.detail}</p>
@@ -303,11 +308,9 @@ export default function AutoFinderView() {
 
               {cards.length > 0 && (
                 <>
-                  <div className="flex items-baseline justify-between">
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                      {cards.length === 1 ? 'Ein Vorschlag' : `Top ${cards.length}`} für dich
-                    </h2>
-                  </div>
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                    {cards.length === 1 ? 'Ein Vorschlag' : `Top ${cards.length}`} für dich
+                  </h2>
                   <div className="mt-4 space-y-4">
                     {cards.map((k, i) => (
                       <ResultCard key={k.candidate_id || `${k.marke}-${k.modell}-${i}`} k={k} rank={i + 1} />
@@ -326,7 +329,7 @@ export default function AutoFinderView() {
             </>
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -35,10 +35,10 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
   const showImg = k.image_url && !imgBroken
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+    <article className="rounded-2xl border border-[#e6e1da] bg-white overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
       <div className="sm:flex">
         {/* Bild */}
-        <div className="relative sm:w-56 md:w-64 shrink-0 bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-100">
+        <div className="relative sm:w-56 md:w-64 shrink-0 bg-[#faf8f5] border-b sm:border-b-0 sm:border-r border-[#efe9df]">
           <div className="aspect-[16/10] flex items-center justify-center">
             {showImg ? (
               <img
@@ -108,7 +108,7 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50"
+              className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 border border-[#e6e1da] rounded-lg px-3 py-1.5 hover:bg-[#faf8f5]"
               aria-expanded={open}
             >
               {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -126,7 +126,7 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
 
       {/* Aufgeklappt */}
       {open && (
-        <div className="border-t border-gray-100 bg-gray-50/60 p-4 space-y-4 text-sm">
+        <div className="border-t border-[#efe9df] bg-[#faf8f5] p-4 space-y-4 text-sm">
           {k.match_gruende.length > 0 && (
             <section>
               <h4 className="font-semibold text-gray-800 flex items-center gap-1.5">
@@ -185,7 +185,7 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
             </p>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
               {filters.map((f) => (
-                <div key={f.label} className="flex justify-between gap-2 border-b border-gray-100 py-1">
+                <div key={f.label} className="flex justify-between gap-2 border-b border-[#efe9df] py-1">
                   <span className="text-gray-500">{f.label}</span>
                   <span className="text-gray-800 font-medium text-right">{f.value}</span>
                 </div>

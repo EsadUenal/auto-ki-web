@@ -61,13 +61,24 @@ const resp = (over: Partial<AutoFinderResponse> = {}): AutoFinderResponse => ({
   filters_applied: {}, warnings: [], data_scope_hint: '416 Baureihen', ...over,
 })
 
-// ── A) Öffentliche Route ────────────────────────────────────────────────────
-test('A: /autofinder ist als Route registriert, außerhalb von PrivateRoute', () => {
+// ── A) Öffentliche Route in der geteilten App-Shell, ohne Auth-Guard ─────────
+test('A: /autofinder ist registriert, in der App-Shell und OHNE <Guard>', () => {
   assert.match(appTsx, /path="\/autofinder"/)
-  const idxRoute = appTsx.indexOf('path="/autofinder"')
-  const idxPrivate = appTsx.indexOf('<PrivateRoute>')
-  assert.ok(idxRoute < idxPrivate, 'AutoFinder-Route muss vor dem PrivateRoute-Catch-all stehen')
-  assert.doesNotMatch(appTsx, /<PrivateRoute>[\s\S]*path="\/autofinder"[\s\S]*<\/PrivateRoute>/)
+  // Die AutoFinder-Route rendert direkt <AutoFinderView />, nicht in <Guard> gewickelt.
+  assert.match(appTsx, /path="\/autofinder" element=\{<AutoFinderView \/>\}/)
+  // Die Shell (AppContent) hängt NICHT mehr unter einem Blanket-Auth-Wrapper.
+  assert.match(appTsx, /path="\/\*" element=\{<AppContent \/>\}/)
+  assert.doesNotMatch(appTsx, /<PrivateRoute>/)
+})
+
+test('A2: geschützte Routen behalten den <Guard>', () => {
+  // /kaufcheck und /verkaufscheck müssen weiterhin hinter <Guard> liegen.
+  for (const path of ['/chat', '/kaufcheck', '/verkaufscheck', '/entdecken', '/ersatzteile', '/pricing']) {
+    const re = new RegExp(`path="${path.replace('/', '\\/')}"[\\s\\S]{0,120}?<Guard`)
+    assert.match(appTsx, re, `${path} ohne <Guard>`)
+  }
+  // Der Guard leitet unangemeldete Nutzer auf /login.
+  assert.match(appTsx, /Navigate to="\/login" replace/)
 })
 
 // ── B) Formular rendert (strukturell) ───────────────────────────────────────
@@ -192,11 +203,25 @@ test('L: jede Karte hat eine KaufCheck-CTA, die nur navigiert (keine Prefill-Log
   assert.doesNotMatch(cardTsx, /kaufcheck\?[a-z]/i) // keine Query-Parameter -> KaufCheckView bleibt unangetastet
 })
 
-// ── M) Responsives Grundlayout ─────────────────────────────────────────────
-test('M: View und Karte nutzen responsive Utilities + zentrierten Container', () => {
-  assert.match(viewTsx, /max-w-5xl mx-auto/)
+// ── M) Responsives Grundlayout + geteilte VIRA-Shell-Sprache ────────────────
+test('M: View nutzt die kanonische VIRA-Content-Sprache (wie Kauf-Check/Entdecken)', () => {
+  // gleicher zentrierter Container wie die anderen Werkzeugseiten
+  assert.match(viewTsx, /max-w-3xl mx-auto/)
   assert.match(viewTsx, /sm:/)
   assert.match(cardTsx, /sm:flex/)
+  // kanonische Chrome-Bausteine
+  assert.match(viewTsx, /h-full overflow-y-auto scrollbar-thin/)
+  assert.match(viewTsx, /ez-rise/)
+  assert.match(viewTsx, /ez-aurora/)
+  assert.match(viewTsx, /Vira · AutoFinder/)
+  // KEIN eigener Landingpage-Header mehr (Logo/Anmelden lebt in der Shell)
+  assert.doesNotMatch(viewTsx, /<header/)
+  assert.doesNotMatch(viewTsx, /\/logo\.svg/)
+})
+
+test('M2: Sidebar hat einen AutoFinder-Navigationseintrag', () => {
+  const sidebar = readFileSync(join(here, '..', 'Sidebar.tsx'), 'utf8')
+  assert.match(sidebar, /to: '\/autofinder'.*label: 'AutoFinder'/)
 })
 
 // ── N) Fehlerzustand ────────────────────────────────────────────────────────

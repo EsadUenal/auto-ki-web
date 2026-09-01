@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
-  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench, Store,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench, Store, Car,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import type { ApiCheckSummary } from '../api/client'
@@ -143,6 +143,7 @@ export default function Sidebar({
           { to: '/chat',          Icon: MessageSquare, label: 'KI-Chat' },
           { to: '/kaufcheck',     Icon: ShoppingCart,  label: 'Kauf-Check' },
           { to: '/verkaufscheck', Icon: TrendingUp,    label: 'Verkaufs-Check' },
+          { to: '/autofinder',    Icon: Car,           label: 'AutoFinder' },
           // Dealer-Bereich nur bei effektiver Berechtigung (MAX-Tarif ODER manueller
           // Override) — dealer_access wird serverseitig abgeleitet.
           ...(user?.dealer_access ? [{ to: '/dealer', Icon: Store, label: 'Dealer' }] : []),

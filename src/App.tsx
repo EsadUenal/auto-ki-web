@@ -17,7 +17,6 @@ import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
 import Footer from './components/Footer'
-import PrivateRoute from './components/PrivateRoute'
 import SplashScreen from './components/SplashScreen'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import {
@@ -49,10 +48,21 @@ function titleFromMessages(messages: Message[]): string {
   return first.content.slice(0, 42) + (first.content.length > 42 ? '…' : '')
 }
 
+// ── Auth-Gate pro Route ───────────────────────────────────────────────────────
+// AutoFinder ist ein öffentliches Akquise-Feature und läuft in DERSELBEN
+// App-Shell (Sidebar/Footer/Hintergrund) wie alle anderen Werkzeuge. Damit die
+// Shell wiederverwendbar ist, ohne geschützte Routen zu öffnen, sitzt das
+// Auth-Gate jetzt PRO ROUTE statt als ein Wrapper um die ganze Shell.
+// `/autofinder` bekommt kein <Guard>, alle bisher geschützten Routen behalten es.
+function Guard({ authed, loading, children }: { authed: boolean; loading: boolean; children: React.ReactNode }) {
+  if (loading) return null   // Auth-Check läuft noch — kurzer Leerzustand statt Flackern
+  return authed ? <>{children}</> : <Navigate to="/login" replace />
+}
+
 // ── Inner app — muss innerhalb von AuthProvider sein um useAuth() zu nutzen ──
 
 function AppContent() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -330,51 +340,74 @@ function AppContent() {
         <div className="flex-1 min-h-0 overflow-hidden">
         <Routes>
           <Route path="/" element={<Navigate to="/chat" replace />} />
+
+          {/* AutoFinder — öffentlich, KEIN <Guard>. Läuft trotzdem in dieser
+              Shell (Sidebar/Footer/Hintergrund) wie jedes andere Werkzeug. */}
+          <Route path="/autofinder" element={<AutoFinderView />} />
+
           <Route
             path="/chat"
             element={
-              <ChatView
-                conversation={activeConv}
-                onMessagesUpdate={handleMessagesUpdate}
-                onSaveExchange={handleSaveExchange}
-                autoMessage={pendingAutoMessage}
-                onAutoMessageDone={() => {}}
-              />
+              <Guard authed={!!user} loading={isLoading}>
+                <ChatView
+                  conversation={activeConv}
+                  onMessagesUpdate={handleMessagesUpdate}
+                  onSaveExchange={handleSaveExchange}
+                  autoMessage={pendingAutoMessage}
+                  onAutoMessageDone={() => {}}
+                />
+              </Guard>
             }
           />
           <Route path="/kaufcheck" element={
-            <KaufCheckView
-              savedCheck={savedKaufCheck}
-              onCheckSaved={refreshChecks}
-              onClearSaved={() => setSavedKaufCheck(null)}
-            />
+            <Guard authed={!!user} loading={isLoading}>
+              <KaufCheckView
+                savedCheck={savedKaufCheck}
+                onCheckSaved={refreshChecks}
+                onClearSaved={() => setSavedKaufCheck(null)}
+              />
+            </Guard>
           } />
           <Route path="/verkaufscheck" element={
-            <VerkaufsCheckView
-              savedCheck={savedVerkaufsCheck}
-              onCheckSaved={refreshChecks}
-              onClearSaved={() => setSavedVerkaufsCheck(null)}
-            />
+            <Guard authed={!!user} loading={isLoading}>
+              <VerkaufsCheckView
+                savedCheck={savedVerkaufsCheck}
+                onCheckSaved={refreshChecks}
+                onClearSaved={() => setSavedVerkaufsCheck(null)}
+              />
+            </Guard>
           } />
           {/* Phase 5: Dealer-Bereich nur bei effektiver Berechtigung (MAX-Tarif ODER
               manueller Override). Backend erzwingt zusätzlich 403 — Guard ist Komfort. */}
           <Route
             path="/dealer"
-            element={user?.dealer_access ? <DealerView /> : <Navigate to="/chat" replace />}
+            element={
+              <Guard authed={!!user} loading={isLoading}>
+                {user?.dealer_access ? <DealerView /> : <Navigate to="/chat" replace />}
+              </Guard>
+            }
           />
           <Route
             path="/dealer/:id"
-            element={user?.dealer_access ? <DealerVehicleView onOpenCheck={handleSelectCheck} /> : <Navigate to="/chat" replace />}
+            element={
+              <Guard authed={!!user} loading={isLoading}>
+                {user?.dealer_access ? <DealerVehicleView onOpenCheck={handleSelectCheck} /> : <Navigate to="/chat" replace />}
+              </Guard>
+            }
           />
           <Route
             path="/entdecken"
-            element={<EntdeckenView onCarSelect={handleEntdeckenSelect} />}
+            element={
+              <Guard authed={!!user} loading={isLoading}>
+                <EntdeckenView onCarSelect={handleEntdeckenSelect} />
+              </Guard>
+            }
           />
-          <Route path="/ebooks" element={<EbookView />} />
-          <Route path="/ersatzteile" element={<ErsatzteileView />} />
-          <Route path="/pricing" element={<PricingView />} />
-          <Route path="/settings" element={<SettingsView />} />
-          <Route path="/help" element={<HelpView />} />
+          <Route path="/ebooks" element={<Guard authed={!!user} loading={isLoading}><EbookView /></Guard>} />
+          <Route path="/ersatzteile" element={<Guard authed={!!user} loading={isLoading}><ErsatzteileView /></Guard>} />
+          <Route path="/pricing" element={<Guard authed={!!user} loading={isLoading}><PricingView /></Guard>} />
+          <Route path="/settings" element={<Guard authed={!!user} loading={isLoading}><SettingsView /></Guard>} />
+          <Route path="/help" element={<Guard authed={!!user} loading={isLoading}><HelpView /></Guard>} />
         </Routes>
         </div>
         <Footer />
@@ -405,25 +438,17 @@ export default function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<LoginView />} />
-              {/* AutoFinder ist ein Akquise-Feature und bewusst OHNE Login
-                  erreichbar (wie die Rechtsseiten) — eigener Screen ohne die
-                  App-Shell/Sidebar. Backend-Endpunkt /api/v1/autofinder hat
-                  kein Check-Gate und keinen Nutzer-Cookie. */}
-              <Route path="/autofinder" element={<AutoFinderView />} />
               {/* Rechtsseiten öffentlich (ohne Login) erreichbar — Impressum &
-                  Datenschutz müssen für jeden zugänglich sein. */}
+                  Datenschutz müssen für jeden zugänglich sein. Eigenständig,
+                  ohne App-Shell (reiner Rechtstext). */}
               <Route path="/impressum" element={<LegalView page="impressum" />} />
               <Route path="/datenschutz" element={<LegalView page="datenschutz" />} />
               <Route path="/agb" element={<LegalView page="agb" />} />
               <Route path="/widerruf" element={<LegalView page="widerruf" />} />
-              <Route
-                path="/*"
-                element={
-                  <PrivateRoute>
-                    <AppContent />
-                  </PrivateRoute>
-                }
-              />
+              {/* Die VIRA-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
+                  sitzt pro Route (<Guard>), damit die öffentliche /autofinder-
+                  Seite dieselbe Shell nutzen kann. */}
+              <Route path="/*" element={<AppContent />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
