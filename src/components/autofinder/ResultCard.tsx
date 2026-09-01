@@ -45,7 +45,6 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
                 src={k.image_url}
                 alt={titel}
                 className="w-full h-full object-contain"
-                loading="lazy"
                 onError={() => setImgBroken(true)}
               />
             ) : (
