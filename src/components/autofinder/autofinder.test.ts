@@ -24,6 +24,9 @@ import {
   humanError,
   formatPriceRange,
   fehlendeBilder,
+  hatEchtesBild,
+  waehleImageReady,
+  aktualisiereGespeicherteBilder,
   resolveImageUrl,
   buildKaufCheckPrefill,
   sucheLabel,
@@ -32,6 +35,7 @@ import {
   type AutoFinderForm,
   type AutoFinderKandidat,
   type AutoFinderResponse,
+  type ImageEnsureResult,
 } from './logic.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -364,15 +368,15 @@ test('Bild: resolveImageUrl — /api/ -> Backend-Origin, /cars/ -> verbatim', ()
   assert.equal(resolveImageUrl('/cars/autofinder/a--b.webp', 'http://be:8000'), '/cars/autofinder/a--b.webp')
   assert.equal(resolveImageUrl('https://cdn/x.webp', 'http://be:8000'), 'https://cdn/x.webp')
 })
-test('Bild: View zieht fehlende Bilder über den separaten Endpunkt nach + zeigt Skeleton', () => {
+test('Bild: View zieht fehlende Bilder VOR dem Anzeigen nach (Progress-State)', () => {
   assert.match(viewTsx, /apiAutoFinderImagesEnsure/)
   assert.match(viewTsx, /fehlendeBilder\(r\.kandidaten\)/)
   assert.match(viewTsx, /Fahrzeugdarstellungen werden vorbereitet/)   // Progress-Schritt 5
-  assert.match(cardTsx, /Fahrzeugdarstellung wird vorbereitet/)        // Skeleton-Text
-  assert.match(cardTsx, /imagePending/)
-  assert.match(cardTsx, /zeigeSkeleton/)
+  // das finale Result-Set wird EINMAL gesetzt (nach dem ensure), nicht vorher
+  assert.match(viewTsx, /const finale = waehleImageReady\(r\.kandidaten, ensureResults, API_BASE_URL\)/)
+  assert.match(viewTsx, /setResp\(finalResp\)/)
 })
-test('Bild: der API-Client schluckt Ensure-Fehler (Karte fällt aufs Symbolbild zurück)', () => {
+test('Bild: der API-Client schluckt Ensure-Fehler', () => {
   const fn = clientTs.slice(clientTs.indexOf('export async function apiAutoFinderImagesEnsure'))
   assert.match(fn.slice(0, 700), /catch\s*\{[\s\S]*return \[\]/)
   assert.match(fn.slice(0, 700), /images\/ensure/)
@@ -382,23 +386,103 @@ test('Bild: der Such-Client-Call und der Ensure-Call sind getrennte Endpunkte', 
   assert.match(clientTs, /\$\{BASE_URL\}\/api\/v1\/autofinder\/images\/ensure`/) // Bild-On-Demand
 })
 
-// ── BUG 3: Bild-Ensure — echter Fehler vs. "nie gelaufen" ────────────────
-test('BUG3: View merkt sich echte Ensure-Fehlschläge (imageFailed), Karte zeigt klaren Status', () => {
-  assert.match(viewTsx, /setImageFailedKeys/)
-  assert.match(viewTsx, /imageFailed=\{imageFailedKeys\.has\(k\.visual_key\)\}/)
-  assert.match(cardTsx, /imageFailed/)
-  assert.match(cardTsx, /konnte nicht erzeugt werden/)
+// ── FIX 3: Image-Guarantee — kein Symbolbild in finalen AutoFinder-Ergebnissen ──
+const erg = (over: Partial<ImageEnsureResult> & { visual_key: string }): ImageEnsureResult => ({
+  status: 'generated', image_url: `/api/v1/autofinder/img/${over.visual_key}`,
+  image_type: 'generated_cached', ai_generated: true, ...over,
 })
-test('BUG3: für ALLE finalen Kandidaten ohne echtes Asset wird ensure aufgerufen', () => {
-  // fehlendeBilder deckt curated + generated_cached ab, alles andere -> ensure
-  const items = fehlendeBilder([
-    { ...KAND, image_type: 'curated' as const },
-    { ...KAND, visual_key: 'a', image_type: 'generated_cached' as const },
-    { ...KAND, visual_key: 'b', image_type: 'generic_fallback' as const },
-    { ...KAND, visual_key: 'c', image_type: 'generic_fallback' as const },
-  ])
-  assert.deepEqual(items.map((i) => i.visual_key).sort(), ['b', 'c'])
-  assert.match(viewTsx, /fehlendeBilder\(r\.kandidaten\)\.slice\(0, MAX_CARDS\)/)
+const poolKand = (vk: string, image_type: AutoFinderKandidat['image_type'], image_url = ''): AutoFinderKandidat =>
+  ({ ...KAND, candidate_id: vk, variante_id: vk, visual_key: vk, image_type, image_url })
+
+test('K: Kandidat mit gecachtem Bild wird direkt übernommen (kein ensure nötig)', () => {
+  const k = poolKand('a', 'curated', '/cars/autofinder/a.webp')
+  assert.ok(hatEchtesBild(k))
+  const out = waehleImageReady([k], [], 'http://be:8000')
+  assert.equal(out.length, 1)
+  assert.equal(out[0].image_url, '/cars/autofinder/a.webp')
+})
+test('L: Kandidat ohne Bild landet als ensure-Item im Nachzieh-Batch', () => {
+  const k = poolKand('b', 'generic_fallback')
+  assert.equal(hatEchtesBild(k), false)
+  assert.deepEqual(fehlendeBilder([k]).map((i) => i.visual_key), ['b'])
+})
+test('M: erst QA-Fail, dann Erfolg -> Kandidat bleibt im finalen Set', () => {
+  const k = poolKand('c', 'generic_fallback')
+  // 2. Versuch erfolgreich -> ensure liefert status "generated"
+  const out = waehleImageReady([k], [erg({ visual_key: 'c', status: 'generated' })], 'http://be:8000')
+  assert.equal(out.length, 1)
+  assert.equal(out[0].image_type, 'generated_cached')
+  assert.match(out[0].image_url, /^http:\/\/be:8000\/api\/v1\/autofinder\/img\/c$/)
+})
+test('N: zweimal fehlgeschlagen -> Kandidat wird NICHT final angezeigt', () => {
+  const k = poolKand('d', 'generic_fallback')
+  const out = waehleImageReady([k], [erg({ visual_key: 'd', status: 'failed', image_url: null })], 'http://be:8000')
+  assert.equal(out.length, 0)
+})
+test('O: nächster qualifizierter Kandidat rückt für einen bildlosen nach', () => {
+  const pool = [
+    poolKand('p1', 'curated', '/cars/p1.webp'),
+    poolKand('p2', 'generic_fallback'),                 // scheitert
+    poolKand('p3', 'curated', '/cars/p3.webp'),
+    poolKand('p4', 'curated', '/cars/p4.webp'),
+    poolKand('p5', 'curated', '/cars/p5.webp'),
+    poolKand('p6', 'curated', '/cars/p6.webp'),         // Nachrücker
+  ]
+  const out = waehleImageReady(pool, [erg({ visual_key: 'p2', status: 'failed', image_url: null })], 'http://be:8000')
+  assert.equal(out.length, MAX_CARDS)
+  assert.deepEqual(out.map((k) => k.visual_key), ['p1', 'p3', 'p4', 'p5', 'p6'])
+})
+test('P/Q: das finale Set enthält ausschließlich echte Bilder, kein generic_fallback', () => {
+  const pool = [
+    poolKand('q1', 'generic_fallback'),
+    poolKand('q2', 'curated', '/cars/q2.webp'),
+    poolKand('q3', 'generic_fallback'),
+  ]
+  const out = waehleImageReady(pool, [erg({ visual_key: 'q1' })], 'http://be:8000')
+  assert.ok(out.every((k) => k.image_type === 'curated' || k.image_type === 'generated_cached'))
+  assert.ok(out.every((k) => !!k.image_url))
+  assert.ok(out.every((k) => k.image_type !== 'generic_fallback'))
+})
+test('R: weniger als 5 bildfertige -> weniger Resultate, KEIN Symbolbild aufgefüllt', () => {
+  const pool = [
+    poolKand('r1', 'curated', '/cars/r1.webp'),
+    poolKand('r2', 'generic_fallback'),   // scheitert, kein ensure-Ergebnis
+    poolKand('r3', 'generic_fallback'),   // scheitert
+  ]
+  const out = waehleImageReady(pool, [], 'http://be:8000')
+  assert.equal(out.length, 1)
+  assert.equal(out[0].visual_key, 'r1')
+})
+test('R: die View zeigt bei 0 bildfertigen einen kontrollierten Hinweis, keine leere Stille', () => {
+  assert.match(viewTsx, /finale\.length === 0 && r\.kandidaten\.length > 0/)
+  assert.match(viewTsx, /keine Fahrzeugdarstellung/)
+})
+test('S: der zweite gleiche ensure-Aufruf nutzt den Backend-Cache (status "ready")', () => {
+  // "ready" (aus dem Manifest, ohne Neu-Generierung) zählt genauso als bildfertig
+  const k = poolKand('s1', 'generic_fallback')
+  const out = waehleImageReady([k], [erg({ visual_key: 's1', status: 'ready' })], 'http://be:8000')
+  assert.equal(out.length, 1)
+})
+test('T: History-Restore lädt on-demand-Bilder frisch aus dem aktuellen Cache', async () => {
+  const gespeichert: AutoFinderResponse = resp({
+    kandidaten: [
+      poolKand('t1', 'generated_cached', 'http://alt:8000/api/v1/autofinder/img/t1'),
+      poolKand('t2', 'curated', '/cars/t2.webp'),
+    ],
+  })
+  let gefragt: string[] = []
+  const fakeEnsure = async (items: { visual_key: string }[]) => {
+    gefragt = items.map((i) => i.visual_key)
+    return [erg({ visual_key: 't1', status: 'ready', image_url: '/api/v1/autofinder/img/t1' })]
+  }
+  const upd = await aktualisiereGespeicherteBilder(gespeichert, fakeEnsure as never, 'http://neu:9000')
+  assert.deepEqual(gefragt, ['t1'])                 // nur on-demand-Keys, nicht das kuratierte t2
+  assert.ok(upd)
+  assert.equal(upd!.kandidaten[0].image_url, 'http://neu:9000/api/v1/autofinder/img/t1')
+  assert.equal(upd!.kandidaten[1].image_url, '/cars/t2.webp')   // kuratiert unangetastet
+})
+test('T: die View ruft beim Restore aktualisiereGespeicherteBilder auf', () => {
+  assert.match(viewTsx, /aktualisiereGespeicherteBilder\(s\.response, apiAutoFinderImagesEnsure, API_BASE_URL\)/)
 })
 
 // ── Suchhistorie (§Punkt 5 / BUG 2) ──────────────────────────────────────
@@ -468,6 +552,57 @@ test('History F/K: Sidebar zeigt AutoFinder-Suchen + Löschen aktualisiert sofor
   const logic = read('logic.ts')
   assert.match(logic, /fireHistoryEvent\(\)/)               // speichern + löschen feuern das Event
 })
+
+// ── FIX 1: KaufCheck- / VerkaufsCheck-Historie in der kanonischen Sidebar ────
+const sidebarSrc = () => readFileSync(join(here, '..', 'Sidebar.tsx'), 'utf8')
+test('Sidebar A: AutoFinder-Historie-Bereich bleibt vorhanden', () => {
+  assert.match(sidebarSrc(), /<Car size=\{11\} \/> AutoFinder/)
+})
+test('Sidebar B: eigener Kauf-Check-Historie-Bereich (aus der bestehenden checks-Liste)', () => {
+  const s = sidebarSrc()
+  assert.match(s, /renderCheckSection\('Kauf-Check', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf'\)/)
+  assert.match(s, /const kaufChecks = checks\.filter\(\(c\) => c\.typ === 'kauf'\)\.slice\(0, HISTORY_SIDEBAR_MAX\)/)
+})
+test('Sidebar C: eigener Verkaufs-Check-Historie-Bereich', () => {
+  const s = sidebarSrc()
+  assert.match(s, /renderCheckSection\('Verkaufs-Check', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf'\)/)
+  assert.match(s, /const verkaufChecks = checks\.filter\(\(c\) => c\.typ === 'verkauf'\)\.slice\(0, HISTORY_SIDEBAR_MAX\)/)
+})
+test('Sidebar D: max. 5 Einträge je Bereich (HISTORY_SIDEBAR_MAX)', () => {
+  assert.equal(HISTORY_SIDEBAR_MAX, 5)
+  const s = sidebarSrc()
+  // AutoFinder + KaufCheck + VerkaufsCheck: alle drei kappen auf HISTORY_SIDEBAR_MAX
+  assert.equal((s.match(/\.slice\(0, HISTORY_SIDEBAR_MAX\)/g) || []).length >= 3, true)
+})
+test('Sidebar E/F: Klick öffnet den RICHTIGEN bestehenden Check (onSelectCheck mit typ)', () => {
+  const s = sidebarSrc()
+  // ein gemeinsamer Renderer, der den typ 1:1 an den bestehenden Callback gibt
+  assert.match(s, /onClick=\{\(\) => \{ onSelectCheck\(check\.id, typ\); onMobileClose\?\.\(\) \}\}/)
+  // Delete nutzt den bestehenden Callback (keine neue Produktlogik)
+  assert.match(s, /onClick=\{\(e\) => \{ e\.stopPropagation\(\); onDeleteCheck\(check\.id\) \}\}/)
+  // KEINE zweite parallele Check-History: Datenquelle bleibt die prop `checks`
+  assert.doesNotMatch(s, /localStorage[\s\S]{0,40}check/i)
+})
+
+// ── FIX 2: Ersatzteile aus dem Consumer-UI entfernt ────────────────────────
+test('Ersatzteile H: KEIN Ersatzteile-Eintrag in der Sidebar-Navigation', () => {
+  const s = sidebarSrc()
+  assert.doesNotMatch(s, /label: 'Ersatzteile'/)
+  assert.doesNotMatch(s, /to: '\/ersatzteile'/)
+  assert.doesNotMatch(s, /\bWrench\b/)   // Icon-Import ebenfalls entfernt
+})
+test('Ersatzteile I: keine andere sichtbare Consumer-Navigation zu /ersatzteile', () => {
+  const s = sidebarSrc()
+  // keine aktive Navigation (NavLink to / navigate / goTo) auf die Route
+  assert.doesNotMatch(s, /(to:|to=|navigate\(|goTo\()\s*['"]\/ersatzteile['"]/)
+  // App.tsx: die Route bleibt (geparkt, Direkt-URL), aber KEIN <NavLink>/Menüeintrag
+  assert.doesNotMatch(appTsx, /(to=|navigate\()\s*['"]\/ersatzteile['"]/)
+  assert.doesNotMatch(appTsx, /label:\s*['"]Ersatzteile['"]/)
+})
+test('Ersatzteile J: Route bleibt technisch erhalten (geparkt, nur nicht in der Nav)', () => {
+  assert.match(appTsx, /path="\/ersatzteile" element=\{<Guard[\s\S]{0,80}<ErsatzteileView \/>/)
+})
+
 test('History BUG2: Restore feuert ein Event, die Seite reagiert auch wenn schon offen', () => {
   const logic = read('logic.ts')
   // stageSucheRestore dispatcht RESTORE_EVENT (navigate('/autofinder') auf sich

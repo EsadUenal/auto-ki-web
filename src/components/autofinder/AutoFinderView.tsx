@@ -14,7 +14,8 @@ import {
   coverageState,
   humanError,
   fehlendeBilder,
-  resolveImageUrl,
+  waehleImageReady,
+  aktualisiereGespeicherteBilder,
   ladeSuchen,
   speichereSuche,
   loescheSuchen,
@@ -24,7 +25,7 @@ import {
   MAX_CARDS,
   type AutoFinderForm,
   type AutoFinderResponse,
-  type AutoFinderKandidat,
+  type ImageEnsureResult,
   type GespeicherteSuche,
 } from './logic'
 import ResultCard from './ResultCard'
@@ -89,7 +90,6 @@ export default function AutoFinderView() {
   const [historie, setHistorie] = useState<GespeicherteSuche[]>([])
   const [showHistorie, setShowHistorie] = useState(false)
   const [restauriert, setRestauriert] = useState(false)   // Ergebnisse aus dem Verlauf, nicht frisch gesucht
-  const [imageFailedKeys, setImageFailedKeys] = useState<Set<string>>(new Set())
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const restoreHandled = useRef(false)
 
@@ -117,6 +117,9 @@ export default function AutoFinderView() {
       if (s.response) {
         setResp(s.response)
         setRestauriert(true)
+        // §8: gespeicherte on-demand-Bilder frisch aus dem aktuellen Cache lösen
+        void aktualisiereGespeicherteBilder(s.response, apiAutoFinderImagesEnsure, API_BASE_URL)
+          .then((upd) => { if (upd) setResp(upd) })
         setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 120)
       } else {
         window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -162,43 +165,38 @@ export default function AutoFinderView() {
     setResp(null)
     setRestauriert(false)
     setPendingKeys(new Set())
-    setImageFailedKeys(new Set())
     startProgress()
     try {
       const r = await apiAutoFinder(buildPayload(f))
-      stopProgress()
-      setResp(r)
-      setHistorie(speichereSuche(f, r))
-      setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 80)
 
-      // §Punkt 1/8: fehlende Bilder über den separaten Endpunkt nachziehen
-      // (Skeleton währenddessen). Erfolg -> Karte ersetzt das Symbolbild sofort;
-      // echter Fehlschlag -> Symbolbild bleibt, aber mit klarem Status.
-      const fehlen = fehlendeBilder(r.kandidaten).slice(0, MAX_CARDS)
+      // ── Image-Guarantee (FIX 3) ────────────────────────────────────────────
+      // Das Backend liefert einen qualifizierten Pool (bis 8, alle >= Fit-
+      // Schwelle). Fehlende Bilder werden JETZT — vor dem Anzeigen — über den
+      // separaten Endpunkt nachgezogen. Danach wird nur das finale image-ready
+      // Set (<= 5) gerendert: kein Symbolbild, keine Karte, die erst erscheint
+      // und dann verschwindet (§Punkt 7).
+      const fehlen = fehlendeBilder(r.kandidaten)
+      let ensureResults: ImageEnsureResult[] = []
       if (fehlen.length > 0) {
         setProgressStep(4)
         setPendingKeys(new Set(fehlen.map((i) => i.visual_key)))
-        const results = await apiAutoFinderImagesEnsure(fehlen)
-        const gescheitert = new Set<string>()
-        setResp((cur) => cur && {
-          ...cur,
-          kandidaten: cur.kandidaten.map((k) => {
-            const hit = results.find((x) => x.visual_key === k.visual_key)
-            if (hit && (hit.status === 'ready' || hit.status === 'generated') && hit.image_url) {
-              return {
-                ...k,
-                image_url: resolveImageUrl(hit.image_url, API_BASE_URL),
-                image_type: 'generated_cached' as AutoFinderKandidat['image_type'],
-                ai_generated: hit.ai_generated,
-              }
-            }
-            if (fehlen.some((f2) => f2.visual_key === k.visual_key)) gescheitert.add(k.visual_key)
-            return k
-          }),
-        })
-        setImageFailedKeys(gescheitert)
-        setPendingKeys(new Set())
+        ensureResults = await apiAutoFinderImagesEnsure(fehlen)
       }
+      const finale = waehleImageReady(r.kandidaten, ensureResults, API_BASE_URL)
+      const warnings = [...r.warnings]
+      if (finale.length === 0 && r.kandidaten.length > 0) {
+        warnings.push(
+          'Für die besten Treffer konnte gerade keine Fahrzeugdarstellung ' +
+          'vorbereitet werden. Bitte versuche es in einem Moment noch einmal.',
+        )
+      }
+      const finalResp: AutoFinderResponse = { ...r, kandidaten: finale, warnings }
+
+      stopProgress()
+      setPendingKeys(new Set())
+      setResp(finalResp)
+      setHistorie(speichereSuche(f, finalResp))
+      setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 80)
     } catch (err) {
       stopProgress()
       setError(humanError(err))
@@ -223,6 +221,9 @@ export default function AutoFinderView() {
       setResp(s.response)
       setRestauriert(true)
       setError(null)
+      // §8: on-demand-Bilder frisch aus dem aktuellen Cache lösen
+      void aktualisiereGespeicherteBilder(s.response, apiAutoFinderImagesEnsure, API_BASE_URL)
+        .then((upd) => { if (upd) setResp(upd) })
       setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 120)
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -529,7 +530,6 @@ export default function AutoFinderView() {
                         key={k.candidate_id || `${k.marke}-${k.modell}-${i}`}
                         k={k} rank={i + 1}
                         imagePending={pendingKeys.has(k.visual_key)}
-                        imageFailed={imageFailedKeys.has(k.visual_key)}
                       />
                     ))}
                   </div>

@@ -270,19 +270,28 @@ export interface ImageEnsureResult {
   ai_generated: boolean
 }
 
+/** Kandidat hat bereits ein echtes VIRA-Line-Art-Bild — kuratiert oder on-demand
+ *  gecacht. KEIN generisches Symbolbild / keine Karosserie-Silhouette. */
+export function hatEchtesBild(k: Pick<AutoFinderKandidat, 'image_type' | 'image_url'>): boolean {
+  return !!k.image_url && (k.image_type === 'curated' || k.image_type === 'generated_cached')
+}
+
+/** Ein Ensure-Item aus einem Kandidaten bauen (für den On-Demand-Endpunkt). */
+export function alsEnsureItem(k: AutoFinderKandidat): ImageEnsureItem {
+  return {
+    visual_key: k.visual_key,
+    marke: k.marke,
+    modell: k.modell,
+    generation: k.generation,
+    karosserie: k.karosserie[0] ?? 'unbekannt',
+    baujahr_von: k.baujahr_von,
+    baujahr_bis: k.baujahr_bis,
+  }
+}
+
 /** Kandidaten, deren Bild noch nachgezogen werden muss (kein echtes KI-Asset). */
 export function fehlendeBilder(kandidaten: AutoFinderKandidat[]): ImageEnsureItem[] {
-  return kandidaten
-    .filter((k) => k.image_type !== 'generated_cached' && k.image_type !== 'curated' && k.visual_key)
-    .map((k) => ({
-      visual_key: k.visual_key,
-      marke: k.marke,
-      modell: k.modell,
-      generation: k.generation,
-      karosserie: k.karosserie[0] ?? 'unbekannt',
-      baujahr_von: k.baujahr_von,
-      baujahr_bis: k.baujahr_bis,
-    }))
+  return kandidaten.filter((k) => !hatEchtesBild(k) && k.visual_key).map(alsEnsureItem)
 }
 
 /** image_url aus dem Backend richtig auflösen: `/api/…` -> Backend-Origin,
@@ -292,6 +301,74 @@ export function resolveImageUrl(url: string, apiBase: string): string {
   if (/^https?:\/\//.test(url)) return url
   if (url.startsWith('/api/')) return apiBase.replace(/\/$/, '') + url
   return url
+}
+
+// ── Image-Guarantee (FIX 3) — kein Symbolbild in finalen AutoFinder-Ergebnissen ──
+// Das Backend liefert einen etwas größeren qualifizierten Pool (alle >= Fit-
+// Schwelle). Hier wird daraus das finale Set gebaut: nur Kandidaten mit echtem
+// Line-Art-Bild — von Anfang an vorhanden ODER frisch erfolgreich erzeugt.
+// Kandidaten ohne verwendbares Bild (auch nach dem 2-Versuch-ensure) fallen raus,
+// der nächste geeignete Kandidat rückt nach. Reihenfolge = Backend-Ranking.
+
+export function waehleImageReady(
+  kandidaten: AutoFinderKandidat[],
+  ensure: ImageEnsureResult[],
+  apiBase: string,
+): AutoFinderKandidat[] {
+  const byKey = new Map(ensure.map((e) => [e.visual_key, e]))
+  const out: AutoFinderKandidat[] = []
+  for (const k of kandidaten) {
+    if (out.length >= MAX_CARDS) break
+    if (hatEchtesBild(k)) {
+      out.push({ ...k, image_url: resolveImageUrl(k.image_url, apiBase) })
+      continue
+    }
+    const hit = k.visual_key ? byKey.get(k.visual_key) : undefined
+    if (hit && (hit.status === 'ready' || hit.status === 'generated') && hit.image_url) {
+      out.push({
+        ...k,
+        image_url: resolveImageUrl(hit.image_url, apiBase),
+        image_type: 'generated_cached',
+        ai_generated: hit.ai_generated,
+      })
+    }
+    // sonst: Kandidat wird NICHT final angezeigt (kein echtes Bild verfügbar)
+  }
+  return out
+}
+
+/** FIX 3 / §8: beim Öffnen einer gespeicherten Suche die on-demand-Bilder frisch
+ *  aus dem aktuellen Cache/Manifest auflösen — nie einen alten Symbolbild-Snapshot
+ *  erzwingen. Kuratierte Bilder bleiben unangetastet. `ensure` wird injiziert
+ *  (diese Datei bleibt api-client-frei). Rückgabe: aktualisierte Antwort oder
+ *  null, wenn nichts nachzuladen war. */
+export async function aktualisiereGespeicherteBilder(
+  resp: AutoFinderResponse,
+  ensure: (items: ImageEnsureItem[]) => Promise<ImageEnsureResult[]>,
+  apiBase: string,
+): Promise<AutoFinderResponse | null> {
+  const nachladen = resp.kandidaten.filter(
+    (k) => k.visual_key && k.image_type === 'generated_cached',
+  )
+  if (nachladen.length === 0) return null
+  let results: ImageEnsureResult[] = []
+  try {
+    results = await ensure(nachladen.map(alsEnsureItem))
+  } catch {
+    return null
+  }
+  if (results.length === 0) return null
+  const byKey = new Map(results.map((e) => [e.visual_key, e]))
+  return {
+    ...resp,
+    kandidaten: resp.kandidaten.map((k) => {
+      const hit = byKey.get(k.visual_key)
+      if (hit && (hit.status === 'ready' || hit.status === 'generated') && hit.image_url) {
+        return { ...k, image_url: resolveImageUrl(hit.image_url, apiBase) }
+      }
+      return k
+    }),
+  }
 }
 
 // ── Bild-Disclosure (§ PRIO 6/10) ───────────────────────────────────────────

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
-  Compass, LogOut, FileText, Pencil, Trash2, Check, X, CreditCard,
-  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench, Store, Car,
+  Compass, LogOut, Pencil, Trash2, Check, X, CreditCard,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Store, Car,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -70,6 +70,51 @@ export default function Sidebar({
     stageSucheRestore(s.id)
     navigate('/autofinder')
     onMobileClose?.()
+  }
+
+  // FIX 1: KaufCheck- und VerkaufsCheck-Historie bekommen — wie AutoFinder —
+  // je einen eigenen Sidebar-Bereich. Datenquelle ist die BESTEHENDE Check-
+  // Historie (`checks`, Backend `/api/v1/checks`, ORDER BY created_at DESC);
+  // KEINE zweite parallele History. Öffnen/Löschen nutzen die vorhandenen
+  // Callbacks (onSelectCheck / onDeleteCheck).
+  const kaufChecks = checks.filter((c) => c.typ === 'kauf').slice(0, HISTORY_SIDEBAR_MAX)
+  const verkaufChecks = checks.filter((c) => c.typ === 'verkauf').slice(0, HISTORY_SIDEBAR_MAX)
+
+  function renderCheckSection(
+    titel: string,
+    Icon: typeof ShoppingCart,
+    iconCls: string,
+    list: ApiCheckSummary[],
+    typ: 'kauf' | 'verkauf',
+  ) {
+    if (list.length === 0) return null
+    return (
+      <div className="px-3 pt-5">
+        <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
+          <Icon size={11} /> {titel}
+        </p>
+        <div className="space-y-0.5 mt-1">
+          {list.map((check) => (
+            <div key={check.id} className="relative group/check">
+              <button
+                onClick={() => { onSelectCheck(check.id, typ); onMobileClose?.() }}
+                className="w-full text-left px-3 py-2 rounded-lg text-xs truncate transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2 pr-8"
+              >
+                <Icon size={12} className={`shrink-0 ${iconCls}`} />
+                <span className="truncate min-w-0">{check.titel}</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteCheck(check.id) }}
+                title="Löschen"
+                className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/check:flex p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   useEffect(() => {
@@ -172,7 +217,8 @@ export default function Sidebar({
           // Dealer-Bereich nur bei effektiver Berechtigung (MAX-Tarif ODER manueller
           // Override) — dealer_access wird serverseitig abgeleitet.
           ...(user?.dealer_access ? [{ to: '/dealer', Icon: Store, label: 'Dealer' }] : []),
-          { to: '/ersatzteile',   Icon: Wrench,        label: 'Ersatzteile' },
+          // Ersatzteile: technisch im Repo geparkt, aber NICHT im Consumer-UI
+          // freigegeben — kein Sidebar-Eintrag, keine sichtbare Navigation.
           { to: '/entdecken',     Icon: Compass,       label: 'Entdecken' },
           { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },
           { to: '/pricing',       Icon: CreditCard,    label: 'Preise & Abo' },
@@ -291,37 +337,8 @@ export default function Sidebar({
             </div>
           )}
 
-          {checks.length > 0 && (
-            <div className="px-3 pt-4 pb-2">
-              <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
-                <FileText size={11} /> Meine Checks
-              </p>
-              <div className="space-y-0.5 mt-1">
-                {checks.map((check) => (
-                  <div key={check.id} className="relative group/check">
-                    <button
-                      onClick={() => { onSelectCheck(check.id, check.typ); onMobileClose?.() }}
-                      className="w-full text-left px-3 py-2 rounded-lg transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2 pr-8"
-                    >
-                      {check.typ === 'kauf'
-                        ? <ShoppingCart size={12} className="shrink-0 text-blue-400" />
-                        : <TrendingUp   size={12} className="shrink-0 text-green-400" />
-                      }
-                      <span className="text-xs truncate min-w-0">{check.titel}</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDeleteCheck(check.id) }}
-                      title="Löschen"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/check:flex p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {renderCheckSection('Kauf-Check', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf')}
+          {renderCheckSection('Verkaufs-Check', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf')}
         </div>
       )}
 
