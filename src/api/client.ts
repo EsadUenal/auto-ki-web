@@ -6,10 +6,18 @@ import type {
   VerkaufsCheckForm,
   VerkaufsCheckResult,
 } from '../types'
-import type { AutoFinderPayload, AutoFinderResponse } from '../components/autofinder/logic'
+import type {
+  AutoFinderPayload,
+  AutoFinderResponse,
+  ImageEnsureItem,
+  ImageEnsureResult,
+} from '../components/autofinder/logic'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 const API_KEY = import.meta.env.VITE_API_KEY ?? ''
+
+/** Backend-Origin — für die Auflösung von on-demand-Bild-URLs (`/api/…`). */
+export const API_BASE_URL = BASE_URL
 
 export class PaymentRequiredError extends Error {
   constructor() {
@@ -821,6 +829,25 @@ export async function apiAutoFinder(payload: AutoFinderPayload): Promise<AutoFin
     throw new Error(`${response.status} ${msg}`)
   }
   return response.json() as Promise<AutoFinderResponse>
+}
+
+/** §Punkt 1: fehlende finale Fahrzeugbilder nacherzeugen lassen (gecacht,
+ *  separater Endpunkt — der Such-Endpunkt bleibt bildgenerierungsfrei).
+ *  Fehler werden geschluckt: fehlt das Bild, zeigt die Karte das Symbolbild. */
+export async function apiAutoFinderImagesEnsure(items: ImageEnsureItem[]): Promise<ImageEnsureResult[]> {
+  if (items.length === 0) return []
+  try {
+    const response = await fetch(`${BASE_URL}/api/v1/autofinder/images/ensure`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ items: items.slice(0, 8) }),
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    return Array.isArray(data?.results) ? (data.results as ImageEnsureResult[]) : []
+  } catch {
+    return []
+  }
 }
 
 // ---- Kauf-Check ----

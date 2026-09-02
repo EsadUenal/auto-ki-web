@@ -226,18 +226,73 @@ export interface AutoFinderKandidat {
   image_type: 'curated' | 'generated_cached' | 'generic_fallback'
   image_confidence: string
   ai_generated: boolean
+
+  // Quality-Enrichment-Runde
+  user_fit: number               // 0..99, im UI die Passungs-%; >= 80
+  user_fit_gruende: string[]
+  why_fits: string[]
+  known_points: string[]
+  enrichment_status: 'ok' | 'fallback' | 'unavailable'
+  estimated_price_min: number | null
+  estimated_price_max: number | null
+  price_confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
 }
 
 export interface AutoFinderResponse {
-  status: 'ok' | 'no_internal_match'
+  status: 'ok' | 'no_internal_match' | 'no_strong_match'
   kandidaten: AutoFinderKandidat[]
   total_candidates_considered: number
   filters_applied: Record<string, unknown>
   warnings: string[]
   data_scope_hint: string
+  enrichment_notice: string | null
 }
 
 export const MAX_CARDS = 5
+
+// ── Bild-On-Demand (§Punkt 1) ──────────────────────────────────────────────
+
+export interface ImageEnsureItem {
+  visual_key: string
+  marke: string
+  modell: string
+  generation: string | null
+  karosserie: string
+  baujahr_von: number | null
+  baujahr_bis: number | null
+}
+
+export interface ImageEnsureResult {
+  visual_key: string
+  status: 'ready' | 'generated' | 'failed'
+  image_url: string | null
+  image_type: string | null
+  ai_generated: boolean
+}
+
+/** Kandidaten, deren Bild noch nachgezogen werden muss (kein echtes KI-Asset). */
+export function fehlendeBilder(kandidaten: AutoFinderKandidat[]): ImageEnsureItem[] {
+  return kandidaten
+    .filter((k) => k.image_type !== 'generated_cached' && k.image_type !== 'curated' && k.visual_key)
+    .map((k) => ({
+      visual_key: k.visual_key,
+      marke: k.marke,
+      modell: k.modell,
+      generation: k.generation,
+      karosserie: k.karosserie[0] ?? 'unbekannt',
+      baujahr_von: k.baujahr_von,
+      baujahr_bis: k.baujahr_bis,
+    }))
+}
+
+/** image_url aus dem Backend richtig auflösen: `/api/…` -> Backend-Origin,
+ *  `/cars/…` (Starter-Library) -> Frontend-Origin (verbatim). */
+export function resolveImageUrl(url: string, apiBase: string): string {
+  if (!url) return ''
+  if (/^https?:\/\//.test(url)) return url
+  if (url.startsWith('/api/')) return apiBase.replace(/\/$/, '') + url
+  return url
+}
 
 // ── Bild-Disclosure (§ PRIO 6/10) ───────────────────────────────────────────
 
@@ -301,6 +356,15 @@ export interface CoverageState {
 }
 
 export function coverageState(resp: AutoFinderResponse): CoverageState {
+  if (resp.status === 'no_strong_match') {
+    return {
+      kind: 'none',
+      headline: 'Kein wirklich starker Treffer',
+      detail:
+        'Zu deinen Angaben gibt es aktuell keine Empfehlung, die richtig gut passt (mindestens 80 % Übereinstimmung). ' +
+        'Versuche es mit weniger oder etwas weiteren Filtern — z. B. Budget, Baujahr oder Karosserie.',
+    }
+  }
   if (resp.status === 'no_internal_match' || resp.kandidaten.length === 0) {
     return {
       kind: 'none',
@@ -315,6 +379,89 @@ export function coverageState(resp: AutoFinderResponse): CoverageState {
     return { kind: 'low', headline: 'Kleine Auswahl', detail: lowHint }
   }
   return { kind: 'ok', headline: '', detail: '' }
+}
+
+// ── Preisorientierung (§Punkt 3) — KI-Schätzung, NIE "Marktpreis" ──────────
+
+const PRICE_CONF_LABEL: Record<string, string> = {
+  HIGH: 'grobe Orientierung',
+  MEDIUM: 'grobe Orientierung',
+  LOW: 'sehr grobe Orientierung — bitte großzügig einplanen',
+  UNKNOWN: '',
+}
+
+export function formatPriceRange(k: Pick<AutoFinderKandidat, 'estimated_price_min' | 'estimated_price_max' | 'price_confidence'>):
+  { range: string; hint: string } | null {
+  if (k.estimated_price_min == null || k.estimated_price_max == null) return null
+  const fmt = (n: number) => n.toLocaleString('de-DE')
+  const conf = PRICE_CONF_LABEL[k.price_confidence] ?? ''
+  return {
+    range: `ca. ${fmt(k.estimated_price_min)}–${fmt(k.estimated_price_max)} €`,
+    hint: `KI-Schätzung · keine Live-Marktdaten${conf ? ` · ${conf}` : ''}`,
+  }
+}
+
+// ── Suchhistorie (§Punkt 5) — nur localStorage, max 20, kein Account ───────
+
+const HISTORY_KEY = 'vira.autofinder.searches'
+const HISTORY_MAX = 20
+
+export interface GespeicherteSuche {
+  id: string
+  ts: number
+  label: string
+  form: AutoFinderForm
+  fahrzeuge: { titel: string; user_fit: number; visual_key: string }[]
+}
+
+export function sucheLabel(form: AutoFinderForm): string {
+  const teile: string[] = []
+  const karo = form.karosserie.map((c) => KAROSSERIE_LABEL[c] ?? c)
+  if (karo.length) teile.push(karo.slice(0, 2).join('/'))
+  if (form.kraftstoff.length) teile.push(form.kraftstoff.slice(0, 2).join('/'))
+  if (form.getriebe.length) teile.push(form.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : 'Schalt')).join('/'))
+  const bmax = form.budget_max.trim()
+  if (bmax) teile.push(`bis ${Number(bmax.replace(/[.\s]/g, '')).toLocaleString('de-DE')} €`)
+  else if (form.budget_min.trim()) teile.push(`ab ${Number(form.budget_min.replace(/[.\s]/g, '')).toLocaleString('de-DE')} €`)
+  if (form.nutzung) teile.push(NUTZUNG_OPTIONS.find((n) => n.value === form.nutzung)?.label ?? form.nutzung)
+  return teile.length ? teile.join(' · ') : 'Alle Fahrzeuge'
+}
+
+export function ladeSuchen(): GespeicherteSuche[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? (arr as GespeicherteSuche[]).slice(0, HISTORY_MAX) : []
+  } catch {
+    return []
+  }
+}
+
+export function speichereSuche(form: AutoFinderForm, resp: AutoFinderResponse): GespeicherteSuche[] {
+  const eintrag: GespeicherteSuche = {
+    id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+    ts: Date.now(),
+    label: sucheLabel(form),
+    form,
+    fahrzeuge: resp.kandidaten.map((k) => ({
+      titel: [k.marke, k.modell].filter(Boolean).join(' '),
+      user_fit: k.user_fit,
+      visual_key: k.visual_key,
+    })),
+  }
+  const bestehend = ladeSuchen().filter((s) => s.label !== eintrag.label)
+  const neu = [eintrag, ...bestehend].slice(0, HISTORY_MAX)
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(neu))
+  } catch {
+    /* Speicher voll / privat -> Historie ist ein Bonus, kein Muss */
+  }
+  return neu
+}
+
+export function loescheSuchen(): void {
+  try { localStorage.removeItem(HISTORY_KEY) } catch { /* egal */ }
 }
 
 /** Menschliche Fehlermeldung — trennt Backend-/Netzausfall von echten Fehlern
@@ -332,9 +479,57 @@ export function humanError(err: unknown): string {
   return 'Die Suche ist fehlgeschlagen. Bitte versuche es erneut.'
 }
 
-// ── KaufCheck-CTA (§ PRIO 9) ────────────────────────────────────────────────
-// Additive Navigation OHNE Änderung der eingefrorenen KaufCheck-Logik: der
-// KaufCheck liest KEINE Query-Parameter (das würde KaufCheckView ändern), also
-// navigieren wir nur auf die Route. Ein späteres echtes Prefill braucht eine
-// separate, ausdrücklich beauftragte KaufCheckView-Erweiterung.
+// ── KaufCheck-CTA + Prefill (§Punkt 4) ─────────────────────────────────────
+// Additiv: NUR das KaufCheck-FORMULAR wird vorbefüllt. Auswertung, Credits,
+// Preislogik, Trust, Backend, Freeze-Logik bleiben unangetastet. Übergabe via
+// sessionStorage — überlebt den Login-Zwischenschritt eines anonymen Nutzers
+// (Navigation-State ginge beim Redirect verloren).
 export const KAUFCHECK_ROUTE = '/kaufcheck'
+const KAUFCHECK_PREFILL_KEY = 'vira.kaufcheck.prefill'
+
+export interface KaufCheckPrefill {
+  marke: string
+  modell: string
+  motor: string
+  baujahr: number | null
+  quelle: 'autofinder'
+  // reine Anzeige-/Kontextfelder (KaufCheckForm kennt sie nicht als eigene
+  // Felder — landen in der Beschreibung):
+  generation: string | null
+  kraftstoff: string
+  getriebe: string
+}
+
+export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
+  return {
+    marke: k.marke,
+    modell: k.modell,
+    motor: k.motor,
+    baujahr: k.baujahr_von,
+    quelle: 'autofinder',
+    generation: k.generation,
+    kraftstoff: k.kraftstoff,
+    getriebe: k.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : g === 'manuell' ? 'Schaltgetriebe' : g)).join(' / '),
+  }
+}
+
+export function stageKaufCheckPrefill(k: AutoFinderKandidat): void {
+  try {
+    sessionStorage.setItem(KAUFCHECK_PREFILL_KEY, JSON.stringify(buildKaufCheckPrefill(k)))
+  } catch { /* privat / voll -> CTA navigiert trotzdem, nur ohne Prefill */ }
+}
+
+/** Vom KaufCheck beim Mount aufgerufen. Liefert das Prefill EINMAL und löscht
+ *  es danach (kein „Geister-Prefill" bei späteren KaufCheck-Besuchen). */
+export function consumeKaufCheckPrefill(): KaufCheckPrefill | null {
+  try {
+    const raw = sessionStorage.getItem(KAUFCHECK_PREFILL_KEY)
+    if (!raw) return null
+    sessionStorage.removeItem(KAUFCHECK_PREFILL_KEY)
+    const p = JSON.parse(raw)
+    if (p && typeof p === 'object' && p.quelle === 'autofinder') return p as KaufCheckPrefill
+    return null
+  } catch {
+    return null
+  }
+}

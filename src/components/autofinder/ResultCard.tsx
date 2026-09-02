@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp, ShoppingCart, Search, Gauge, Fuel, Cog, CheckCircle, AlertTriangle } from 'lucide-react'
+import {
+  ChevronDown, ChevronUp, ShoppingCart, Search, Gauge, Fuel, Cog,
+  CheckCircle, AlertTriangle, Info, Tag,
+} from 'lucide-react'
 import {
   imageDisclosure,
   marketplaceFilters,
+  formatPriceRange,
+  stageKaufCheckPrefill,
   KAUFCHECK_ROUTE,
   type AutoFinderKandidat,
 } from './logic'
@@ -16,14 +21,20 @@ const BUDGET_LABEL: Record<AutoFinderKandidat['budget_status'], string | null> =
   UNKNOWN: null,
 }
 
-function scorePercent(k: AutoFinderKandidat): number {
-  // match_score ist additiv (kein fixes Maximum). Für die Anzeige robust auf
-  // 0–100 abbilden, ohne einen "echten" Prozentwert zu behaupten.
-  const s = Number.isFinite(k.match_score) ? k.match_score : 0
-  return Math.max(8, Math.min(100, Math.round((s / 12) * 100)))
+/** Eine kurze 1-Zeilen-Zusammenfassung (§Punkt 6): stärkster why_fit, sonst
+ *  stärkster deterministischer Fit-Grund. */
+function summary(k: AutoFinderKandidat): string | null {
+  return k.why_fits[0] ?? k.user_fit_gruende[0] ?? k.match_gruende[0] ?? null
 }
 
-export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: number }) {
+interface Props {
+  k: AutoFinderKandidat
+  rank: number
+  /** true, solange das Bild für diesen visual_key noch nacherzeugt wird. */
+  imagePending?: boolean
+}
+
+export default function ResultCard({ k, rank, imagePending = false }: Props) {
   const [open, setOpen] = useState(false)
   const [imgBroken, setImgBroken] = useState(false)
   const navigate = useNavigate()
@@ -31,8 +42,16 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
   const disclosure = imageDisclosure(k)
   const budgetLabel = BUDGET_LABEL[k.budget_status]
   const filters = marketplaceFilters(k)
+  const preis = formatPriceRange(k)
   const titel = [k.marke, k.modell].filter(Boolean).join(' ')
-  const showImg = k.image_url && !imgBroken
+  const hatEchtesBild = k.image_type === 'generated_cached' || k.image_type === 'curated'
+  const showImg = k.image_url && !imgBroken && (hatEchtesBild || !imagePending)
+  const zeigeSkeleton = imagePending && !hatEchtesBild && !imgBroken
+
+  function toKaufCheck() {
+    stageKaufCheckPrefill(k)
+    navigate(KAUFCHECK_ROUTE)
+  }
 
   return (
     <article className="rounded-2xl border border-[#e6e1da] bg-white overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
@@ -40,18 +59,23 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
         {/* Bild */}
         <div className="relative sm:w-56 md:w-64 shrink-0 bg-[#faf8f5] border-b sm:border-b-0 sm:border-r border-[#efe9df]">
           <div className="aspect-[16/10] flex items-center justify-center">
-            {showImg ? (
+            {zeigeSkeleton ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-3 text-center">
+                <div className="w-8 h-8 rounded-full border-2 border-orange-300 border-t-transparent animate-spin" />
+                <span className="text-[11px] text-gray-400 leading-tight">Fahrzeugdarstellung wird vorbereitet …</span>
+              </div>
+            ) : showImg ? (
               <img
                 src={k.image_url}
                 alt={titel}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain transition-opacity duration-300"
                 onError={() => setImgBroken(true)}
               />
             ) : (
               <CarPlaceholder karosserie={k.karosserie} className="w-full h-full p-3" />
             )}
           </div>
-          {disclosure && (
+          {!zeigeSkeleton && disclosure && (
             <span className="absolute bottom-1 left-2 text-[10px] leading-tight text-gray-500 bg-white/85 rounded px-1">
               {disclosure}
             </span>
@@ -71,8 +95,8 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
               </p>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-lg font-bold text-orange-600 leading-none">{scorePercent(k)}%</div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-400">Match</div>
+              <div className="text-lg font-bold text-orange-600 leading-none">{k.user_fit}%</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Passung</div>
             </div>
           </div>
 
@@ -93,10 +117,16 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
             )}
           </dl>
 
-          {k.match_gruende.length > 0 && (
-            <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-              {k.match_gruende.slice(0, 2).join(' · ')}
+          {preis && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-700">
+              <Tag size={13} className="text-gray-400" />
+              <span className="font-medium">{preis.range}</span>
+              <span className="text-[11px] text-gray-400">· {preis.hint}</span>
             </p>
+          )}
+
+          {summary(k) && (
+            <p className="mt-2 text-sm text-gray-600 line-clamp-2">{summary(k)}</p>
           )}
 
           {k.source_type === 'web_discovered' && (
@@ -115,7 +145,7 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
               {open ? 'Weniger' : 'Details & Suchhilfe'}
             </button>
             <button
-              onClick={() => navigate(KAUFCHECK_ROUTE)}
+              onClick={toKaufCheck}
               className="inline-flex items-center gap-1 text-sm font-medium text-white bg-gray-900 rounded-lg px-3 py-1.5 hover:bg-gray-800"
             >
               <ShoppingCart size={14} /> Mit KaufCheck prüfen
@@ -127,13 +157,13 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
       {/* Aufgeklappt */}
       {open && (
         <div className="border-t border-[#efe9df] bg-[#faf8f5] p-4 space-y-4 text-sm">
-          {k.match_gruende.length > 0 && (
+          {k.why_fits.length > 0 && (
             <section>
               <h4 className="font-semibold text-gray-800 flex items-center gap-1.5">
                 <CheckCircle size={14} className="text-emerald-600" /> Warum passt es?
               </h4>
-              <ul className="mt-1.5 list-disc pl-5 text-gray-700 space-y-0.5">
-                {k.match_gruende.map((g, i) => <li key={i}>{g}</li>)}
+              <ul className="mt-1.5 list-disc pl-5 text-gray-700 space-y-1">
+                {k.why_fits.map((g, i) => <li key={i}>{g}</li>)}
               </ul>
             </section>
           )}
@@ -141,11 +171,32 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
           {k.trade_offs.length > 0 && (
             <section>
               <h4 className="font-semibold text-gray-800 flex items-center gap-1.5">
-                <AlertTriangle size={14} className="text-amber-600" /> Trade-offs & offene Punkte
+                <AlertTriangle size={14} className="text-amber-600" /> Trade-offs
               </h4>
-              <ul className="mt-1.5 list-disc pl-5 text-gray-700 space-y-0.5">
+              <ul className="mt-1.5 list-disc pl-5 text-gray-700 space-y-1">
                 {k.trade_offs.map((t, i) => <li key={i}>{t}</li>)}
               </ul>
+            </section>
+          )}
+
+          {k.known_points.length > 0 && (
+            <section>
+              <h4 className="font-semibold text-gray-800 flex items-center gap-1.5">
+                <Info size={14} className="text-gray-500" /> Bekannte Punkte
+              </h4>
+              <ul className="mt-1.5 list-disc pl-5 text-gray-700 space-y-1">
+                {k.known_points.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </section>
+          )}
+
+          {preis && (
+            <section>
+              <h4 className="font-semibold text-gray-800 flex items-center gap-1.5">
+                <Tag size={14} className="text-gray-500" /> Preisorientierung
+              </h4>
+              <p className="mt-1 text-gray-800 font-medium">{preis.range}</p>
+              <p className="text-[11px] text-gray-400">{preis.hint}</p>
             </section>
           )}
 
@@ -160,7 +211,8 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
               )}
               {k.leistung_ps != null && <div><dt className="text-gray-400 text-xs">Leistung</dt><dd>{k.leistung_ps} PS</dd></div>}
               {k.kraftstoff && <div><dt className="text-gray-400 text-xs">Kraftstoff</dt><dd>{k.kraftstoff}</dd></div>}
-              {k.getriebe.length > 0 && <div><dt className="text-gray-400 text-xs">Getriebe</dt><dd>{k.getriebe.join(' / ')}</dd></div>}
+              {k.getriebe.length > 0 && <div><dt className="text-gray-400 text-xs">Getriebe</dt>
+                <dd>{k.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : g === 'manuell' ? 'Schaltgetriebe' : g)).join(' / ')}</dd></div>}
               {k.antrieb && <div><dt className="text-gray-400 text-xs">Antrieb</dt><dd>{k.antrieb}</dd></div>}
               {k.karosserie.length > 0 && <div><dt className="text-gray-400 text-xs">Karosserie</dt><dd>{k.karosserie.join(' / ')}</dd></div>}
             </dl>
@@ -171,7 +223,10 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
             <p className="mt-1 text-gray-600">
               {k.source_type === 'web_discovered'
                 ? 'Aus einer Web-Recherche zusammengetragen — die genannten technischen Angaben sind in den Quellen belegt, aber nicht von VIRA geprüft.'
-                : `VIRA-gepflegter Datensatz${k.datenqualitaet >= 1 ? ', vollständig' : ''}. Bekannte Schwachpunkte oben unter „Trade-offs“, soweit vorhanden.`}
+                : `VIRA-gepflegter Datensatz${k.datenqualitaet >= 1 ? ', vollständig' : ''}.` +
+                  (k.enrichment_status === 'fallback'
+                    ? ' Die ausführliche KI-Analyse konnte diesmal nicht vollständig geladen werden.'
+                    : '')}
             </p>
           </section>
 
@@ -181,7 +236,7 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
             </h4>
             <p className="mt-1 text-gray-500 text-xs">
               Werte zum direkten Eintippen bei mobile.de oder AutoScout24. VIRA ruft keine
-              Portaldaten ab und nennt bewusst keinen Marktpreis.
+              Portaldaten ab und nennt keinen Marktpreis.
             </p>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
               {filters.map((f) => (
@@ -195,7 +250,7 @@ export default function ResultCard({ k, rank }: { k: AutoFinderKandidat; rank: n
 
           <div>
             <button
-              onClick={() => navigate(KAUFCHECK_ROUTE)}
+              onClick={toKaufCheck}
               className="inline-flex items-center gap-1 text-sm font-medium text-white bg-gray-900 rounded-lg px-3 py-1.5 hover:bg-gray-800"
             >
               <ShoppingCart size={14} /> Dieses Fahrzeug mit KaufCheck prüfen

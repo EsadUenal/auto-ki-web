@@ -27,6 +27,7 @@ import {
   fahrzeugTitel, DatenbasisZeile, MarktpreisModul, LaufleistungKarte, FahrzeugprofilKarte,
   PruefplanBereich, KaufLoadingStatus, PREIS_LABEL, formatUnbekannterPreiswert,
 } from './KaufCheckDetails'
+import { consumeKaufCheckPrefill } from './autofinder/logic'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -76,7 +77,27 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         100
       )
     } else {
-      setForm(EMPTY)
+      // §Punkt 4 (additiv): kommt der Nutzer vom AutoFinder ("Mit KaufCheck
+      // prüfen"), ist das Fahrzeug schon bekannt — Formular vorbefüllen statt
+      // erneut abfragen. Nur Formularwerte; Auswertung/Credits/Preislogik/
+      // Trust bleiben unberührt. sessionStorage überlebt den Login-Redirect.
+      const pf = consumeKaufCheckPrefill()
+      if (pf) {
+        const kontext = [
+          pf.generation ? `Generation ${pf.generation}` : '',
+          pf.kraftstoff, pf.getriebe,
+        ].filter(Boolean).join(' · ')
+        setForm({
+          ...EMPTY,
+          marke: pf.marke || EMPTY.marke,
+          modell: pf.modell || EMPTY.modell,
+          motor: pf.motor || EMPTY.motor,
+          baujahr: pf.baujahr ?? EMPTY.baujahr,
+          beschreibung: kontext ? `Aus AutoFinder übernommen: ${kontext}` : EMPTY.beschreibung,
+        })
+      } else {
+        setForm(EMPTY)
+      }
       setResult(null)
       setError(null)
     }
