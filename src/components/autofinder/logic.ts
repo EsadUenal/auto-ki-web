@@ -446,8 +446,8 @@ export function speichereSuche(form: AutoFinderForm, resp: AutoFinderResponse): 
     form,
     fahrzeuge: resp.kandidaten.map((k) => ({
       titel: [k.marke, k.modell].filter(Boolean).join(' '),
-      user_fit: k.user_fit,
-      visual_key: k.visual_key,
+      user_fit: Number.isFinite(k.user_fit) ? k.user_fit : 0,
+      visual_key: k.visual_key ?? '',
     })),
   }
   const bestehend = ladeSuchen().filter((s) => s.label !== eintrag.label)

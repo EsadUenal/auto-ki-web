@@ -235,7 +235,7 @@ export default function AutoFinderView() {
                     <p className="text-sm text-gray-800 font-medium truncate">{s.label}</p>
                     <p className="text-[11px] text-gray-400 truncate">
                       {s.fahrzeuge.length > 0
-                        ? s.fahrzeuge.slice(0, 3).map((f) => `${f.titel} ${f.user_fit}%`).join(' · ')
+                        ? s.fahrzeuge.slice(0, 3).map((f) => f.user_fit ? `${f.titel} ${f.user_fit}%` : f.titel).join(' · ')
                         : 'kein starker Treffer'}
                     </p>
                   </div>
