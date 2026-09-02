@@ -118,9 +118,9 @@ export default function ResultCard({ k, rank, imagePending = false }: Props) {
           </dl>
 
           {preis && (
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-700">
-              <Tag size={13} className="text-gray-400" />
-              <span className="font-medium">{preis.range}</span>
+            <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-sm text-gray-700">
+              <Tag size={13} className="text-gray-400 self-center shrink-0" />
+              <span className="font-medium whitespace-nowrap">{preis.range}</span>
               <span className="text-[11px] text-gray-400">· {preis.hint}</span>
             </p>
           )}
