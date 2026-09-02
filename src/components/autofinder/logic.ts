@@ -405,6 +405,10 @@ export function formatPriceRange(k: Pick<AutoFinderKandidat, 'estimated_price_mi
 
 const HISTORY_KEY = 'vira.autofinder.searches'
 const HISTORY_MAX = 20
+export const HISTORY_SIDEBAR_MAX = 5
+/** Custom-Event, damit die Sidebar (anderer Komponentenbaum) sofort auf
+ *  gespeicherte/gelöschte Suchen reagiert — ohne Prop-Drilling/Context. */
+export const HISTORY_EVENT = 'vira:af-history'
 
 export interface GespeicherteSuche {
   id: string
@@ -412,6 +416,14 @@ export interface GespeicherteSuche {
   label: string
   form: AutoFinderForm
   fahrzeuge: { titel: string; user_fit: number; visual_key: string }[]
+  /** Vollständige Antwort — damit "gespeicherte Suche öffnen" die Ergebnisse
+   *  SOFORT zeigt, ohne einen neuen Gemini-Call (§Punkt 6). Bei sehr großem
+   *  Storage wird sie beim Speichern für ältere Einträge verworfen. */
+  response?: AutoFinderResponse
+}
+
+function fireHistoryEvent() {
+  try { window.dispatchEvent(new CustomEvent(HISTORY_EVENT)) } catch { /* SSR/Tests */ }
 }
 
 export function sucheLabel(form: AutoFinderForm): string {
@@ -438,6 +450,10 @@ export function ladeSuchen(): GespeicherteSuche[] {
   }
 }
 
+/** Behält die vollständige `response` nur für die jüngsten Einträge (Storage-
+ *  Budget); ältere Einträge behalten nur Label + Fahrzeugliste. */
+const RESPONSE_KEEP = 8
+
 export function speichereSuche(form: AutoFinderForm, resp: AutoFinderResponse): GespeicherteSuche[] {
   const eintrag: GespeicherteSuche = {
     id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
@@ -449,19 +465,56 @@ export function speichereSuche(form: AutoFinderForm, resp: AutoFinderResponse): 
       user_fit: Number.isFinite(k.user_fit) ? k.user_fit : 0,
       visual_key: k.visual_key ?? '',
     })),
+    response: resp,
   }
   const bestehend = ladeSuchen().filter((s) => s.label !== eintrag.label)
-  const neu = [eintrag, ...bestehend].slice(0, HISTORY_MAX)
+  let neu = [eintrag, ...bestehend].slice(0, HISTORY_MAX)
+    .map((s, i) => (i < RESPONSE_KEEP ? s : { ...s, response: undefined }))
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(neu))
   } catch {
-    /* Speicher voll / privat -> Historie ist ein Bonus, kein Muss */
+    // Speicher voll: erst die eingebetteten Antworten opfern, dann kürzen.
+    try {
+      neu = neu.map((s) => ({ ...s, response: undefined })).slice(0, 10)
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(neu))
+    } catch { /* Historie ist ein Bonus, kein Muss */ }
   }
+  fireHistoryEvent()
   return neu
+}
+
+export function findeSuche(id: string): GespeicherteSuche | null {
+  return ladeSuchen().find((s) => s.id === id) ?? null
 }
 
 export function loescheSuchen(): void {
   try { localStorage.removeItem(HISTORY_KEY) } catch { /* egal */ }
+  fireHistoryEvent()
+}
+
+// Übergabe "diese gespeicherte Suche öffnen" von der Sidebar an die
+// AutoFinder-Seite (frischer Mount bei Routewechsel -> sessionStorage).
+const RESTORE_KEY = 'vira.autofinder.restore-id'
+/** Damit die AutoFinder-Seite auch dann reagiert, wenn sie bereits offen ist
+ *  (navigate('/autofinder') auf sich selbst remountet nicht). */
+export const RESTORE_EVENT = 'vira:af-restore'
+
+export function stageSucheRestore(id: string): void {
+  try {
+    sessionStorage.setItem(RESTORE_KEY, id)
+    window.dispatchEvent(new CustomEvent(RESTORE_EVENT))
+  } catch { /* egal */ }
+}
+
+export function takeSucheRestore(): GespeicherteSuche | null {
+  try {
+    const id = sessionStorage.getItem(RESTORE_KEY)
+    if (!id) return null
+    sessionStorage.removeItem(RESTORE_KEY)
+    return findeSuche(id)
+  } catch {
+    return null
+  }
 }
 
 /** Menschliche Fehlermeldung — trennt Backend-/Netzausfall von echten Fehlern
@@ -486,6 +539,8 @@ export function humanError(err: unknown): string {
 // (Navigation-State ginge beim Redirect verloren).
 export const KAUFCHECK_ROUTE = '/kaufcheck'
 const KAUFCHECK_PREFILL_KEY = 'vira.kaufcheck.prefill'
+/** Wohin nach erfolgreichem Login zurückspringen (LoginView liest das). */
+export const RETURN_TO_KEY = 'vira.returnTo'
 
 export interface KaufCheckPrefill {
   marke: string
@@ -493,11 +548,13 @@ export interface KaufCheckPrefill {
   motor: string
   baujahr: number | null
   quelle: 'autofinder'
-  // reine Anzeige-/Kontextfelder (KaufCheckForm kennt sie nicht als eigene
-  // Felder — landen in der Beschreibung):
   generation: string | null
   kraftstoff: string
   getriebe: string
+  leistung_ps: number | null
+  karosserie: string
+  baureihe_id: string | null
+  variante_id: string | null
 }
 
 export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
@@ -510,25 +567,53 @@ export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
     generation: k.generation,
     kraftstoff: k.kraftstoff,
     getriebe: k.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : g === 'manuell' ? 'Schaltgetriebe' : g)).join(' / '),
+    leistung_ps: k.leistung_ps,
+    karosserie: k.karosserie.join(' / '),
+    baureihe_id: k.baureihe_id,
+    variante_id: k.variante_id,
   }
 }
 
+/** Vom AutoFinder-CTA aufgerufen: Prefill + Rücksprungziel merken, DANN erst
+ *  navigieren (der Aufrufer macht die Navigation). */
 export function stageKaufCheckPrefill(k: AutoFinderKandidat): void {
   try {
     sessionStorage.setItem(KAUFCHECK_PREFILL_KEY, JSON.stringify(buildKaufCheckPrefill(k)))
+    sessionStorage.setItem(RETURN_TO_KEY, KAUFCHECK_ROUTE)
   } catch { /* privat / voll -> CTA navigiert trotzdem, nur ohne Prefill */ }
 }
 
-/** Vom KaufCheck beim Mount aufgerufen. Liefert das Prefill EINMAL und löscht
- *  es danach (kein „Geister-Prefill" bei späteren KaufCheck-Besuchen). */
-export function consumeKaufCheckPrefill(): KaufCheckPrefill | null {
+/** Prefill NUR LESEN — nicht löschen. KaufCheckView löscht erst NACH der
+ *  erfolgreichen Übernahme via `clearKaufCheckPrefill()` (nie beim CTA, beim
+ *  Login oder beim Redirect). */
+export function readKaufCheckPrefill(): KaufCheckPrefill | null {
   try {
     const raw = sessionStorage.getItem(KAUFCHECK_PREFILL_KEY)
     if (!raw) return null
-    sessionStorage.removeItem(KAUFCHECK_PREFILL_KEY)
     const p = JSON.parse(raw)
     if (p && typeof p === 'object' && p.quelle === 'autofinder') return p as KaufCheckPrefill
     return null
+  } catch {
+    return null
+  }
+}
+
+export function clearKaufCheckPrefill(): void {
+  try { sessionStorage.removeItem(KAUFCHECK_PREFILL_KEY) } catch { /* egal */ }
+}
+
+/** LoginView / Guard: Rücksprungziel setzen bzw. abholen (+ löschen). */
+export function setReturnTo(path: string): void {
+  try {
+    if (path && path !== '/login') sessionStorage.setItem(RETURN_TO_KEY, path)
+  } catch { /* egal */ }
+}
+
+export function takeReturnTo(): string | null {
+  try {
+    const p = sessionStorage.getItem(RETURN_TO_KEY)
+    if (p) sessionStorage.removeItem(RETURN_TO_KEY)
+    return p && p !== '/login' ? p : null
   } catch {
     return null
   }

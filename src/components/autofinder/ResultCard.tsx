@@ -32,9 +32,12 @@ interface Props {
   rank: number
   /** true, solange das Bild für diesen visual_key noch nacherzeugt wird. */
   imagePending?: boolean
+  /** true, wenn die Nacherzeugung wirklich fehlgeschlagen ist (echter Fehler,
+   *  nicht "nie gelaufen") — Symbolbild bleibt, aber klarer Status. */
+  imageFailed?: boolean
 }
 
-export default function ResultCard({ k, rank, imagePending = false }: Props) {
+export default function ResultCard({ k, rank, imagePending = false, imageFailed = false }: Props) {
   const [open, setOpen] = useState(false)
   const [imgBroken, setImgBroken] = useState(false)
   const navigate = useNavigate()
@@ -72,7 +75,9 @@ export default function ResultCard({ k, rank, imagePending = false }: Props) {
                 onError={() => setImgBroken(true)}
               />
             ) : (
-              <CarPlaceholder karosserie={k.karosserie} className="w-full h-full p-3" />
+              <div className="w-full h-full p-3" title={imageFailed ? 'Fahrzeugdarstellung konnte nicht erzeugt werden' : undefined}>
+                <CarPlaceholder karosserie={k.karosserie} className="w-full h-full" />
+              </div>
             )}
           </div>
           {!zeigeSkeleton && disclosure && (

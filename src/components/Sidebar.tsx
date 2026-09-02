@@ -6,6 +6,11 @@ import {
   Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Wrench, Store, Car,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import {
+  ladeSuchen, loescheSuchen, stageSucheRestore,
+  HISTORY_EVENT, HISTORY_SIDEBAR_MAX,
+  type GespeicherteSuche,
+} from './autofinder/logic'
 import type { ApiCheckSummary } from '../api/client'
 import type { Conversation } from '../types'
 
@@ -46,6 +51,26 @@ export default function Sidebar({
 
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // AutoFinder-Suchhistorie (localStorage) — die Sidebar zeigt die letzten
+  // paar; auf ein Custom-Event von logic.ts hin sofort neu einlesen.
+  const [afSuchen, setAfSuchen] = useState<GespeicherteSuche[]>([])
+  useEffect(() => {
+    const refresh = () => setAfSuchen(ladeSuchen())
+    refresh()
+    window.addEventListener(HISTORY_EVENT, refresh)
+    window.addEventListener('storage', refresh)   // anderer Tab
+    return () => {
+      window.removeEventListener(HISTORY_EVENT, refresh)
+      window.removeEventListener('storage', refresh)
+    }
+  }, [])
+
+  function openSuche(s: GespeicherteSuche) {
+    stageSucheRestore(s.id)
+    navigate('/autofinder')
+    onMobileClose?.()
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -168,14 +193,36 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* Verlauf + Meine Checks — EIN gemeinsamer Scroll-Bereich statt zwei
-          konkurrierender Sektionen. Vorher hatte "Meine Checks" eine eigene
-          (wachsende) Höhe, die "Verlauf" immer weiter zusammendrückte, bis der
-          Chat-Verlauf verschwand/überdeckt wurde. Jetzt teilen sich beide EINEN
-          flex-1 min-h-0 overflow-y-auto Container → Footer bleibt immer sichtbar,
-          nichts wird verdrängt, es scrollt bei Bedarf einfach als Ganzes. */}
-      {(conversations.length > 0 || checks.length > 0) && (
+      {/* Verlauf + Meine Checks + AutoFinder-Suchen — EIN gemeinsamer Scroll-
+          Bereich. Footer bleibt immer sichtbar, nichts wird verdrängt. */}
+      {(conversations.length > 0 || checks.length > 0 || afSuchen.length > 0) && (
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+          {afSuchen.length > 0 && (
+            <div className="px-3 pt-5">
+              <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center justify-between gap-1.5">
+                <span className="flex items-center gap-1.5"><Car size={11} /> AutoFinder</span>
+                <button
+                  onClick={() => loescheSuchen()}
+                  title="Suchverlauf löschen"
+                  className="text-sidebar-muted hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </p>
+              <div className="space-y-0.5 mt-1">
+                {afSuchen.slice(0, HISTORY_SIDEBAR_MAX).map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => openSuche(s)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs truncate transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2"
+                  >
+                    <Car size={12} className="shrink-0 text-orange-400" />
+                    <span className="truncate min-w-0">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {conversations.length > 0 && (
             <div className="px-3 pt-5">
               <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">

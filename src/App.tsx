@@ -16,6 +16,7 @@ import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
+import { setReturnTo } from './components/autofinder/logic'
 import Footer from './components/Footer'
 import SplashScreen from './components/SplashScreen'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -54,9 +55,14 @@ function titleFromMessages(messages: Message[]): string {
 // Shell wiederverwendbar ist, ohne geschützte Routen zu öffnen, sitzt das
 // Auth-Gate jetzt PRO ROUTE statt als ein Wrapper um die ganze Shell.
 // `/autofinder` bekommt kein <Guard>, alle bisher geschützten Routen behalten es.
+// Vor dem Redirect wird das Zielpfad als returnTo gemerkt, damit LoginView nach
+// erfolgreichem Login DORTHIN zurückspringt (z. B. AutoFinder -> KaufCheck).
 function Guard({ authed, loading, children }: { authed: boolean; loading: boolean; children: React.ReactNode }) {
+  const location = useLocation()
   if (loading) return null   // Auth-Check läuft noch — kurzer Leerzustand statt Flackern
-  return authed ? <>{children}</> : <Navigate to="/login" replace />
+  if (authed) return <>{children}</>
+  setReturnTo(location.pathname + location.search)
+  return <Navigate to="/login" replace />
 }
 
 // ── Inner app — muss innerhalb von AuthProvider sein um useAuth() zu nutzen ──

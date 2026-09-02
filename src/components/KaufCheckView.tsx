@@ -27,7 +27,7 @@ import {
   fahrzeugTitel, DatenbasisZeile, MarktpreisModul, LaufleistungKarte, FahrzeugprofilKarte,
   PruefplanBereich, KaufLoadingStatus, PREIS_LABEL, formatUnbekannterPreiswert,
 } from './KaufCheckDetails'
-import { consumeKaufCheckPrefill } from './autofinder/logic'
+import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo } from './autofinder/logic'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -66,6 +66,15 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   const [freshCheckId, setFreshCheckId] = useState<number | undefined>(undefined)
   const [runId, setRunId] = useState(0)
 
+  // §Punkt 4 (additiv): kommt der Nutzer vom AutoFinder ("Mit KaufCheck
+  // prüfen"), ist das Fahrzeug schon bekannt — Formular vorbefüllen statt
+  // erneut abfragen. NUR Formularwerte; Auswertung/Credits/Preislogik/Trust/
+  // Freeze-Logik bleiben unberührt. sessionStorage überlebt den Login-Redirect;
+  // das Prefill wird erst NACH erfolgreicher Übernahme gelöscht. `useRef`
+  // schützt gegen die doppelte Effekt-Ausführung im StrictMode (sonst würde
+  // der 2. Lauf das Prefill mit EMPTY überschreiben).
+  const prefillDone = useRef(false)
+
   // Gespeicherten Check laden
   useEffect(() => {
     if (savedCheck) {
@@ -76,16 +85,18 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
         () => document.getElementById('kauf-result')?.scrollIntoView({ behavior: 'smooth' }),
         100
       )
-    } else {
-      // §Punkt 4 (additiv): kommt der Nutzer vom AutoFinder ("Mit KaufCheck
-      // prüfen"), ist das Fahrzeug schon bekannt — Formular vorbefüllen statt
-      // erneut abfragen. Nur Formularwerte; Auswertung/Credits/Preislogik/
-      // Trust bleiben unberührt. sessionStorage überlebt den Login-Redirect.
-      const pf = consumeKaufCheckPrefill()
+      return
+    }
+    if (!prefillDone.current) {
+      const pf = readKaufCheckPrefill()
       if (pf) {
+        prefillDone.current = true
+        clearKaufCheckPrefill()
+        takeReturnTo()   // Rücksprungziel ist erreicht — nicht als Altlast liegen lassen
         const kontext = [
           pf.generation ? `Generation ${pf.generation}` : '',
-          pf.kraftstoff, pf.getriebe,
+          pf.karosserie, pf.kraftstoff, pf.getriebe,
+          pf.leistung_ps ? `${pf.leistung_ps} PS` : '',
         ].filter(Boolean).join(' · ')
         setForm({
           ...EMPTY,
@@ -95,12 +106,16 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           baujahr: pf.baujahr ?? EMPTY.baujahr,
           beschreibung: kontext ? `Aus AutoFinder übernommen: ${kontext}` : EMPTY.beschreibung,
         })
-      } else {
-        setForm(EMPTY)
+        setResult(null)
+        setError(null)
+        return
       }
-      setResult(null)
-      setError(null)
     }
+    // Kein savedCheck, kein (frisches) Prefill -> genuiner Leerzustand.
+    // Ein bereits übernommenes Prefill NICHT wieder auf EMPTY zurücksetzen.
+    if (!prefillDone.current) setForm(EMPTY)
+    setResult(null)
+    setError(null)
   }, [savedCheck])
 
   function set<K extends keyof KaufCheckForm>(key: K, value: KaufCheckForm[K]) {

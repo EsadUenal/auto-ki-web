@@ -18,6 +18,9 @@ import {
   ladeSuchen,
   speichereSuche,
   loescheSuchen,
+  takeSucheRestore,
+  HISTORY_EVENT,
+  RESTORE_EVENT,
   MAX_CARDS,
   type AutoFinderForm,
   type AutoFinderResponse,
@@ -85,10 +88,49 @@ export default function AutoFinderView() {
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set())
   const [historie, setHistorie] = useState<GespeicherteSuche[]>([])
   const [showHistorie, setShowHistorie] = useState(false)
+  const [restauriert, setRestauriert] = useState(false)   // Ergebnisse aus dem Verlauf, nicht frisch gesucht
+  const [imageFailedKeys, setImageFailedKeys] = useState<Set<string>>(new Set())
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const restoreHandled = useRef(false)
 
-  useEffect(() => { setHistorie(ladeSuchen()) }, [])
+  // Historie einlesen + auf Änderungen (auch aus der Sidebar) reagieren.
+  useEffect(() => {
+    const refresh = () => setHistorie(ladeSuchen())
+    refresh()
+    window.addEventListener(HISTORY_EVENT, refresh)
+    return () => window.removeEventListener(HISTORY_EVENT, refresh)
+  }, [])
   useEffect(() => () => { if (progressTimer.current) clearInterval(progressTimer.current) }, [])
+
+  // §Punkt 6 / BUG 2: kommt der Nutzer über einen Sidebar-/Panel-Klick auf eine
+  // gespeicherte Suche, Filter wiederherstellen und — falls vorhanden — die
+  // gespeicherten Ergebnisse SOFORT zeigen (kein neuer Gemini-Call).
+  // Funktioniert beim ersten Mount UND wenn die Seite schon offen ist
+  // (navigate('/autofinder') auf sich selbst remountet nicht -> RESTORE_EVENT).
+  useEffect(() => {
+    const handleRestore = () => {
+      const s = takeSucheRestore()
+      if (!s) return
+      setForm(s.form)
+      setShowHistorie(false)
+      setError(null)
+      if (s.response) {
+        setResp(s.response)
+        setRestauriert(true)
+        setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 120)
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        void runSearch(s.form)
+      }
+    }
+    if (!restoreHandled.current) {
+      restoreHandled.current = true
+      handleRestore()
+    }
+    window.addEventListener(RESTORE_EVENT, handleRestore)
+    return () => window.removeEventListener(RESTORE_EVENT, handleRestore)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function set<K extends keyof AutoFinderForm>(key: K, value: AutoFinderForm[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -118,7 +160,9 @@ export default function AutoFinderView() {
     setLoading(true)
     setError(null)
     setResp(null)
+    setRestauriert(false)
     setPendingKeys(new Set())
+    setImageFailedKeys(new Set())
     startProgress()
     try {
       const r = await apiAutoFinder(buildPayload(f))
@@ -127,12 +171,15 @@ export default function AutoFinderView() {
       setHistorie(speichereSuche(f, r))
       setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 80)
 
-      // §Punkt 1: fehlende Bilder nachziehen (Skeleton währenddessen).
+      // §Punkt 1/8: fehlende Bilder über den separaten Endpunkt nachziehen
+      // (Skeleton währenddessen). Erfolg -> Karte ersetzt das Symbolbild sofort;
+      // echter Fehlschlag -> Symbolbild bleibt, aber mit klarem Status.
       const fehlen = fehlendeBilder(r.kandidaten).slice(0, MAX_CARDS)
       if (fehlen.length > 0) {
         setProgressStep(4)
         setPendingKeys(new Set(fehlen.map((i) => i.visual_key)))
         const results = await apiAutoFinderImagesEnsure(fehlen)
+        const gescheitert = new Set<string>()
         setResp((cur) => cur && {
           ...cur,
           kandidaten: cur.kandidaten.map((k) => {
@@ -145,9 +192,11 @@ export default function AutoFinderView() {
                 ai_generated: hit.ai_generated,
               }
             }
+            if (fehlen.some((f2) => f2.visual_key === k.visual_key)) gescheitert.add(k.visual_key)
             return k
           }),
         })
+        setImageFailedKeys(gescheitert)
         setPendingKeys(new Set())
       }
     } catch (err) {
@@ -169,8 +218,16 @@ export default function AutoFinderView() {
   function restoreSuche(s: GespeicherteSuche) {
     setForm(s.form)
     setShowHistorie(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    void runSearch(s.form)
+    if (s.response) {
+      // gespeicherte Ergebnisse sofort zeigen — kein neuer Gemini-Call (§Punkt 6)
+      setResp(s.response)
+      setRestauriert(true)
+      setError(null)
+      setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 120)
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      void runSearch(s.form)
+    }
   }
 
   const cov = resp ? coverageState(resp) : null
@@ -436,6 +493,21 @@ export default function AutoFinderView() {
 
           {!loading && resp && cov && (
             <>
+              {restauriert && (
+                <div className="rounded-2xl border border-[#e6e1da] bg-[#faf8f5] p-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-gray-600 flex items-center gap-1.5">
+                    <Clock size={14} className="text-gray-400" /> Gespeicherte Suche geöffnet
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => runSearch(form)}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-orange-500 rounded-lg px-3 py-1.5 hover:bg-orange-600"
+                  >
+                    <RotateCcw size={13} /> Neu suchen
+                  </button>
+                </div>
+              )}
+
               {cov.kind !== 'ok' && (
                 <div className={
                   'rounded-2xl border p-5 ' +
@@ -457,6 +529,7 @@ export default function AutoFinderView() {
                         key={k.candidate_id || `${k.marke}-${k.modell}-${i}`}
                         k={k} rank={i + 1}
                         imagePending={pendingKeys.has(k.visual_key)}
+                        imageFailed={imageFailedKeys.has(k.visual_key)}
                       />
                     ))}
                   </div>

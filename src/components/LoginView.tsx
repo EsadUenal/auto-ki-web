@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { takeReturnTo } from './autofinder/logic'
 
 type Mode = 'login' | 'register'
 
@@ -46,7 +47,10 @@ export default function LoginView() {
       } else {
         await register(email, password, agbAccepted)
       }
-      navigate('/chat')
+      // Nach erfolgreichem Login zurück zum ursprünglich angesteuerten Ziel
+      // (z. B. AutoFinder -> "Mit KaufCheck prüfen" -> Login -> /kaufcheck),
+      // sonst der Standard-Einstieg.
+      navigate(takeReturnTo() ?? '/chat', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler aufgetreten.')
     } finally {

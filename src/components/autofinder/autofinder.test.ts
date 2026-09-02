@@ -222,7 +222,7 @@ test('L: jede Karte hat eine KaufCheck-CTA, die das Formular vorbefüllt', () =>
   assert.doesNotMatch(cardTsx, /kaufcheck\?[a-z]/i) // keine Query-Parameter
 })
 
-test('L/M: buildKaufCheckPrefill übernimmt Marke/Modell/Generation/Motor/Baujahr', () => {
+test('L/M: buildKaufCheckPrefill übernimmt Marke/Modell/Generation/Motor/Baujahr/Leistung/Karosserie/IDs', () => {
   const pf = buildKaufCheckPrefill(KAND)
   assert.equal(pf.marke, 'BMW')
   assert.equal(pf.modell, '3er')
@@ -231,30 +231,52 @@ test('L/M: buildKaufCheckPrefill übernimmt Marke/Modell/Generation/Motor/Baujah
   assert.equal(pf.baujahr, 2019)
   assert.equal(pf.quelle, 'autofinder')
   assert.equal(pf.kraftstoff, 'Diesel')
+  assert.equal(pf.leistung_ps, 190)
+  assert.equal(pf.karosserie, 'limousine')
+  assert.equal(pf.baureihe_id, 'bmw-3er-g20')
+  assert.equal(pf.variante_id, 'bmw-3er-g20-320d')
 })
 
-test('N: Prefill überlebt den Login-Zwischenschritt -> sessionStorage, nicht Navigation-State', () => {
-  // Übergabe via sessionStorage (überlebt Redirect zu /login und zurück)
+// ── BUG 1: Prefill-Flow — returnTo + spät löschen ─────────────────────────
+test('BUG1: der CTA setzt returnTo=/kaufcheck (Rücksprung nach Login)', () => {
   const logic = read('logic.ts')
-  assert.match(logic, /KAUFCHECK_PREFILL_KEY = 'vira\.kaufcheck\.prefill'/)
-  assert.match(logic, /sessionStorage\.setItem\(KAUFCHECK_PREFILL_KEY/)
-  assert.match(logic, /sessionStorage\.getItem\(KAUFCHECK_PREFILL_KEY/)
-  // consume löscht den Key wieder (kein Geister-Prefill)
-  assert.match(logic, /sessionStorage\.removeItem\(KAUFCHECK_PREFILL_KEY/)
-  // KEINE Navigation-State-Übergabe (die ginge beim Redirect verloren)
-  assert.doesNotMatch(cardTsx, /navigate\([^)]*state:/)
+  assert.match(logic, /RETURN_TO_KEY = 'vira\.returnTo'/)
+  assert.match(logic, /sessionStorage\.setItem\(RETURN_TO_KEY, KAUFCHECK_ROUTE\)/)
 })
-
-test('O: KaufCheckView liest das Prefill NUR additiv (keine Logik-/Credits-/Preisänderung)', () => {
+test('BUG1: der Guard merkt sich das Ziel vor dem Login-Redirect', () => {
+  assert.match(appTsx, /setReturnTo\(location\.pathname/)
+  assert.match(appTsx, /Navigate to="\/login" replace/)
+})
+test('BUG1: LoginView springt nach erfolgreichem Login zum returnTo (statt immer /chat)', () => {
+  const lv = readFileSync(join(here, '..', 'LoginView.tsx'), 'utf8')
+  assert.match(lv, /navigate\(takeReturnTo\(\) \?\? '\/chat'/)
+  assert.doesNotMatch(lv, /navigate\('\/chat'\)\s*\n/)   // kein hartes navigate('/chat') mehr
+})
+test('BUG1: Prefill wird NUR gelesen, nicht beim CTA/Login/Redirect gelöscht', () => {
+  const logic = read('logic.ts')
+  // readKaufCheckPrefill enthält KEIN removeItem
+  const readFn = logic.slice(logic.indexOf('export function readKaufCheckPrefill'), logic.indexOf('export function clearKaufCheckPrefill'))
+  assert.doesNotMatch(readFn, /removeItem/)
+  // clearKaufCheckPrefill ist eine eigene Funktion
+  assert.match(logic, /export function clearKaufCheckPrefill\(\): void/)
+})
+test('O/BUG1: KaufCheckView übernimmt Prefill additiv + löscht erst NACH Übernahme (StrictMode-fest)', () => {
   const kc = readFileSync(join(here, '..', 'KaufCheckView.tsx'), 'utf8')
-  assert.match(kc, /consumeKaufCheckPrefill\(\)/)
-  // nur setForm mit Formularfeldern — kein Eingriff in runCheck/Credits/Trust
-  const before = kc
-  // die Prefill-Logik steht im else-Zweig des savedCheck-Effekts und ruft nur setForm
-  assert.match(kc, /const pf = consumeKaufCheckPrefill\(\)[\s\S]{0,600}setForm\(\{/)
-  assert.equal(before, kc)
-  // runKaufCheck / apiSaveCheck etc. unverändert vorhanden, nicht angefasst
+  assert.match(kc, /readKaufCheckPrefill\(\)/)
+  assert.match(kc, /clearKaufCheckPrefill\(\)/)
+  // Ref-Guard gegen doppelte Effekt-Ausführung (StrictMode würde sonst mit EMPTY überschreiben)
+  assert.match(kc, /prefillDone = useRef\(false\)/)
+  assert.match(kc, /prefillDone\.current = true[\s\S]{0,200}clearKaufCheckPrefill\(\)/)
+  // erst LESEN, dann clearen (nicht in der Lesefunktion)
+  assert.match(kc, /const pf = readKaufCheckPrefill\(\)[\s\S]{0,120}clearKaufCheckPrefill\(\)/)
+  // KaufCheck-Kernlogik unverändert
   assert.match(kc, /runKaufCheck\(form, screenshot, retry\)/)
+  assert.doesNotMatch(kc, /consumeKaufCheckPrefill/)
+})
+test('BUG1: KaufCheckView räumt das returnTo weg, wenn es das Prefill übernimmt (kein Altlast-Redirect)', () => {
+  const kc = readFileSync(join(here, '..', 'KaufCheckView.tsx'), 'utf8')
+  // im Prefill-Zweig wird takeReturnTo() aufgerufen (liest+entfernt)
+  assert.match(kc, /clearKaufCheckPrefill\(\)\s*\n\s*takeReturnTo\(\)/)
 })
 
 // ── M) Responsives Grundlayout + geteilte VIRA-Shell-Sprache ────────────────
@@ -360,44 +382,115 @@ test('Bild: der Such-Client-Call und der Ensure-Call sind getrennte Endpunkte', 
   assert.match(clientTs, /\$\{BASE_URL\}\/api\/v1\/autofinder\/images\/ensure`/) // Bild-On-Demand
 })
 
-// ── Suchhistorie (§Punkt 5) ──────────────────────────────────────────────
-import { ladeSuchen, speichereSuche, loescheSuchen } from './logic.ts'
+// ── BUG 3: Bild-Ensure — echter Fehler vs. "nie gelaufen" ────────────────
+test('BUG3: View merkt sich echte Ensure-Fehlschläge (imageFailed), Karte zeigt klaren Status', () => {
+  assert.match(viewTsx, /setImageFailedKeys/)
+  assert.match(viewTsx, /imageFailed=\{imageFailedKeys\.has\(k\.visual_key\)\}/)
+  assert.match(cardTsx, /imageFailed/)
+  assert.match(cardTsx, /konnte nicht erzeugt werden/)
+})
+test('BUG3: für ALLE finalen Kandidaten ohne echtes Asset wird ensure aufgerufen', () => {
+  // fehlendeBilder deckt curated + generated_cached ab, alles andere -> ensure
+  const items = fehlendeBilder([
+    { ...KAND, image_type: 'curated' as const },
+    { ...KAND, visual_key: 'a', image_type: 'generated_cached' as const },
+    { ...KAND, visual_key: 'b', image_type: 'generic_fallback' as const },
+    { ...KAND, visual_key: 'c', image_type: 'generic_fallback' as const },
+  ])
+  assert.deepEqual(items.map((i) => i.visual_key).sort(), ['b', 'c'])
+  assert.match(viewTsx, /fehlendeBilder\(r\.kandidaten\)\.slice\(0, MAX_CARDS\)/)
+})
 
-test('History P/Q/R/S: speichern, max 20, Reload-Persistenz, Restore', () => {
-  // frische, isolierte localStorage-Simulation
+// ── Suchhistorie (§Punkt 5 / BUG 2) ──────────────────────────────────────
+import {
+  ladeSuchen, speichereSuche, loescheSuchen, findeSuche,
+  stageSucheRestore, takeSucheRestore, HISTORY_SIDEBAR_MAX,
+} from './logic.ts'
+
+function fakeStorage() {
   const store: Record<string, string> = {}
-  ;(globalThis as Record<string, unknown>).localStorage = {
+  const api = {
     getItem: (k: string) => (k in store ? store[k] : null),
     setItem: (k: string, v: string) => { store[k] = String(v) },
     removeItem: (k: string) => { delete store[k] },
   }
+  ;(globalThis as Record<string, unknown>).localStorage = api
+  ;(globalThis as Record<string, unknown>).sessionStorage = { ...api }
+  if (!(globalThis as Record<string, unknown>).window) {
+    ;(globalThis as Record<string, unknown>).window = { dispatchEvent: () => true, addEventListener: () => {}, removeEventListener: () => {} }
+  }
+  return store
+}
+
+test('History J/Q: speichern, max 20 im localStorage', () => {
+  fakeStorage()
   loescheSuchen()
   assert.deepEqual(ladeSuchen(), [])
-  // P) Suche gespeichert
-  const f1 = form({ karosserie: ['kombi'], kraftstoff: ['Benzin'], budget_max: '25000' })
-  const after1 = speichereSuche(f1, resp())
+  const after1 = speichereSuche(form({ karosserie: ['kombi'], kraftstoff: ['Benzin'], budget_max: '25000' }), resp())
   assert.equal(after1.length, 1)
   assert.match(after1[0].label, /Kombi/)
-  // R) Reload -> weiterhin da
-  assert.equal(ladeSuchen().length, 1)
-  // Q) max 20
   for (let i = 0; i < 30; i++) speichereSuche(form({ marken_bevorzugt: `M${i}` }), resp())
-  assert.ok(ladeSuchen().length <= 20)
-  // S) Restore: die gespeicherte form ist vollständig wiederherstellbar
-  const s = ladeSuchen()[0]
+  assert.ok(ladeSuchen().length <= 20, 'max 20')
+})
+test('History G/R: Reload -> Eintrag bleibt (localStorage-Persistenz)', () => {
+  fakeStorage()
+  loescheSuchen()
+  speichereSuche(form({ karosserie: ['suv'] }), resp())
+  assert.equal(ladeSuchen().length, 1)   // "Reload" = erneutes ladeSuchen()
+})
+test('History H/S: Restore stellt die vollständige Form wieder her + volle Response ist dabei', () => {
+  fakeStorage()
+  loescheSuchen()
+  const f1 = form({ karosserie: ['kombi'], kraftstoff: ['Benzin'], budget_max: '25000' })
+  const [s] = speichereSuche(f1, resp())
   assert.deepEqual(Object.keys(s.form).sort(), Object.keys(EMPTY_FORM).sort())
-  assert.equal(s.fahrzeuge[0].user_fit, 91)
+  assert.ok(s.response, 'die vollständige Antwort ist eingebettet -> Öffnen ohne neuen Gemini-Call')
+  assert.equal(s.response!.kandidaten[0].user_fit, 91)
+  // stage -> take (Sidebar -> AutoFinder-Seite)
+  stageSucheRestore(s.id)
+  const wieder = takeSucheRestore()
+  assert.equal(wieder?.id, s.id)
+  assert.equal(takeSucheRestore(), null, 'nur einmal')
+  assert.equal(findeSuche(s.id)?.label, s.label)
+})
+test('History I: Sidebar-Limit ist 5', () => {
+  assert.equal(HISTORY_SIDEBAR_MAX, 5)
+  const sidebar = readFileSync(join(here, '..', 'Sidebar.tsx'), 'utf8')
+  assert.match(sidebar, /\.slice\(0, HISTORY_SIDEBAR_MAX\)/)
+})
+test('History F/K: Sidebar zeigt AutoFinder-Suchen + Löschen aktualisiert sofort (Event)', () => {
+  const sidebar = readFileSync(join(here, '..', 'Sidebar.tsx'), 'utf8')
+  assert.match(sidebar, /AutoFinder/)                       // eigener Sidebar-Bereich
+  assert.match(sidebar, /ladeSuchen\(\)/)
+  assert.match(sidebar, /HISTORY_EVENT, refresh/)           // reagiert sofort
+  assert.match(sidebar, /loescheSuchen\(\)/)                // Löschen-Button
+  assert.match(sidebar, /stageSucheRestore\(s\.id\)[\s\S]{0,80}navigate\('\/autofinder'\)/)
+  const logic = read('logic.ts')
+  assert.match(logic, /fireHistoryEvent\(\)/)               // speichern + löschen feuern das Event
+})
+test('History BUG2: Restore feuert ein Event, die Seite reagiert auch wenn schon offen', () => {
+  const logic = read('logic.ts')
+  // stageSucheRestore dispatcht RESTORE_EVENT (navigate('/autofinder') auf sich
+  // selbst remountet nicht -> ohne Event bliebe der Klick wirkungslos)
+  assert.match(logic, /export const RESTORE_EVENT = 'vira:af-restore'/)
+  assert.match(logic, /stageSucheRestore[\s\S]{0,160}dispatchEvent\(new CustomEvent\(RESTORE_EVENT\)\)/)
+  // AutoFinderView hört auf das Event UND verarbeitet den Mount-Fall
+  assert.match(viewTsx, /addEventListener\(RESTORE_EVENT, handleRestore\)/)
+  assert.match(viewTsx, /removeEventListener\(RESTORE_EVENT, handleRestore\)/)
+  assert.match(viewTsx, /restoreHandled\.current/)
 })
 test('History: sucheLabel ist menschenlesbar', () => {
   assert.match(sucheLabel(form({ karosserie: ['kombi'], kraftstoff: ['Benzin'], budget_max: '25000' })),
     /Kombi.*Benzin.*bis 25\.000 €/)
   assert.equal(sucheLabel(EMPTY_FORM), 'Alle Fahrzeuge')
 })
-test('History: View hat eine "Letzte Suchen"-Ansicht mit Öffnen/Löschen', () => {
-  assert.match(viewTsx, /Letzte Suchen/)
-  assert.match(viewTsx, /restoreSuche/)
-  assert.match(viewTsx, /Verlauf löschen/)
-  assert.match(viewTsx, /speichereSuche\(f, r\)/)
+test('History H/§6: "gespeicherte Suche öffnen" zeigt die alten Ergebnisse ohne neuen Call', () => {
+  assert.match(viewTsx, /takeSucheRestore\(\)/)
+  assert.match(viewTsx, /setResp\(s\.response\)/)
+  assert.match(viewTsx, /setRestauriert\(true\)/)
+  assert.match(viewTsx, /Neu suchen/)
+  // restoreSuche (In-Page-Panel) nutzt ebenfalls die eingebettete Antwort
+  assert.match(viewTsx, /if \(s\.response\)[\s\S]{0,120}setResp\(s\.response\)/)
 })
 
 // ── N) Fehlerzustand ────────────────────────────────────────────────────────
