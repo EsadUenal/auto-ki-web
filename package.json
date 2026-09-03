@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test:autofinder": "node --test src/components/autofinder/autofinder.test.ts"
+    "test:autofinder": "node --test src/components/autofinder/autofinder.test.ts",
+    "test:autokosten": "node --test src/components/autokosten/autokosten.test.ts"
   },
   "dependencies": {
     "react": "^18.2.0",

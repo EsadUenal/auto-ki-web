@@ -16,6 +16,7 @@ import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
+import AutokostenView from './components/autokosten/AutokostenView'
 import { setReturnTo } from './components/autofinder/logic'
 import Footer from './components/Footer'
 import SplashScreen from './components/SplashScreen'
@@ -347,9 +348,12 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to="/chat" replace />} />
 
-          {/* AutoFinder — öffentlich, KEIN <Guard>. Läuft trotzdem in dieser
-              Shell (Sidebar/Footer/Hintergrund) wie jedes andere Werkzeug. */}
+          {/* AutoFinder + Autokosten — öffentliche, kostenlose Werkzeuge, KEIN
+              <Guard>. Laufen trotzdem in dieser Shell (Sidebar/Footer/Hinter-
+              grund) wie jedes andere Werkzeug. Autokosten ist rein deterministisch
+              (kein Backend, keine Nutzerdaten). */}
           <Route path="/autofinder" element={<AutoFinderView />} />
+          <Route path="/autokosten" element={<AutokostenView />} />
 
           <Route
             path="/chat"
