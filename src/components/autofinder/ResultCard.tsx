@@ -13,7 +13,6 @@ import {
   type AutoFinderKandidat,
 } from './logic'
 import CarPlaceholder from './CarPlaceholder'
-import { useAutofitVehicleImage } from './imageFit'
 
 const BUDGET_LABEL: Record<AutoFinderKandidat['budget_status'], string | null> = {
   IN_BUDGET: 'Im Budget',
@@ -49,10 +48,6 @@ export default function ResultCard({ k, rank, imagePending = false }: Props) {
   const hatEchtesBild = k.image_type === 'generated_cached' || k.image_type === 'curated'
   const showImg = k.image_url && !imgBroken && (hatEchtesBild || !imagePending)
   const zeigeSkeleton = imagePending && !hatEchtesBild && !imgBroken
-  // Vereinheitlicht Größe/Position des Fahrzeugs im Bild (siehe imageFit.ts) —
-  // reine Darstellung, betrifft nie image_url/image_type selbst. Bis das Ergebnis
-  // vorliegt oder falls es fehlschlägt, wird ganz normal k.image_url gezeigt.
-  const autofitBild = useAutofitVehicleImage(showImg ? k.image_url : null)
 
   function toKaufCheck() {
     stageKaufCheckPrefill(k)
@@ -72,7 +67,7 @@ export default function ResultCard({ k, rank, imagePending = false }: Props) {
               </div>
             ) : showImg ? (
               <img
-                src={autofitBild ?? k.image_url}
+                src={k.image_url}
                 alt={titel}
                 className="w-full h-full object-contain transition-opacity duration-300"
                 onError={() => setImgBroken(true)}
