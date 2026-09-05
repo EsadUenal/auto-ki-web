@@ -56,9 +56,9 @@ export default function ResultCard({ k, rank, imagePending = false }: Props) {
 
   return (
     <article className="ez-card rounded-2xl border border-[#e6e1da] bg-white overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-      <div className="sm:flex">
+      <div className="sm:flex sm:items-start">
         {/* Bild */}
-        <div className="relative sm:w-56 md:w-64 shrink-0 bg-gradient-to-b from-[#faf8f5] to-[#f3efe7] border-b sm:border-b-0 sm:border-r border-[#efe9df]">
+        <div className="relative sm:w-56 md:w-64 shrink-0 bg-white border-b sm:border-b-0 sm:border-r border-[#efe9df]">
           <div className="aspect-[16/10] flex items-center justify-center">
             {zeigeSkeleton ? (
               <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-3 text-center">
