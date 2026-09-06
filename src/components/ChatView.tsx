@@ -159,7 +159,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
         )
         if (finalContent) onSaveExchange?.(text, finalContent)
       },
-      onError(err: string) {
+      onError(err: string, art?: 'fehler' | 'hinweis') {
         cancelPendingRaf()
         streamIdRef.current = null
         setLiveText('')
@@ -169,7 +169,11 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
         if (convIdRef.current !== startConvId) return
         onMessagesUpdate(
           baseMessages.map((m) =>
-            m.id === assistantMsg.id ? { ...m, content: `**Fehler:** ${err}`, streaming: false } : m
+            // Ein erreichtes Tageslimit ist ein normaler Produktzustand, kein
+            // Defekt — es bekommt deshalb kein "Fehler:"-Praefix.
+            m.id === assistantMsg.id
+              ? { ...m, content: art === 'hinweis' ? err : `**Fehler:** ${err}`, streaming: false }
+              : m
           )
         )
       },

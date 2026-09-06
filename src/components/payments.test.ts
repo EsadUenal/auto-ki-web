@@ -140,7 +140,18 @@ test('U: kein roher Status, kein JSON, kein Stacktrace in der Oberflaeche', () =
   assert.doesNotMatch(client, /onError\(\s*`?\$?\{?\s*response\.status/)
   assert.doesNotMatch(client, /onError\(JSON\.stringify/)
   // Die Nutzertexte kommen aus dem strukturierten Feld bzw. aus festen Saetzen.
-  assert.match(client, /callbacks\.onError\(extractMessage\(grund\)\)/)
+  assert.match(client, /callbacks\.onError\(extractMessage\(grund\), 'hinweis'\)/)
+})
+
+test('ein erreichtes Tageslimit wird nicht als Fehler dargestellt', () => {
+  const chatView = readFileSync(new URL('./ChatView.tsx', import.meta.url), 'utf8')
+  // Das Limit ist ein normaler Produktzustand: der Chat setzt davor kein
+  // "Fehler:"-Praefix mehr. Echte Fehler behalten es.
+  assert.match(chatView, /art === 'hinweis' \? err : `\*\*Fehler:\*\* \$\{err\}`/)
+  assert.match(client, /export type MeldungsArt = 'fehler' \| 'hinweis'/)
+  // Beide Limit-Zweige (Chat + Rueckfragen) melden als Hinweis.
+  const hinweise = client.match(/extractMessage\(grund\), 'hinweis'\)/g) || []
+  assert.equal(hinweise.length, 2)
 })
 
 test('das Tageskontingent haengt am Konto: Cookie wird mitgesendet', () => {

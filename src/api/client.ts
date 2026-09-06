@@ -64,6 +64,8 @@ function extractMessage(data: unknown): string {
   return 'Unbekannter Fehler'
 }
 
+export type MeldungsArt = 'fehler' | 'hinweis'
+
 /**
  * Erkennt den strukturierten Tageslimit-Fehler des Backends
  * (`{ fehler: { code: 'tageslimit_erreicht', nachricht } }`).
@@ -368,7 +370,13 @@ export interface ChatStreamCallbacks {
   onToken: (token: string) => void
   onStatus: (text: string) => void
   onDone: (meta: SourceMeta) => void
-  onError: (err: string) => void
+  /**
+   * `art` unterscheidet einen echten Fehler von einem normalen
+   * Produktzustand. Ein erreichtes Tageslimit ist kein Defekt und soll
+   * in der Oberflaeche nicht wie einer aussehen. Optional — bestehende
+   * Aufrufer bleiben unveraendert gueltig.
+   */
+  onError: (err: string, art?: MeldungsArt) => void
 }
 
 export async function streamChat(
@@ -410,7 +418,7 @@ export async function streamChat(
     // dieser wird uebernommen, roher Status/JSON nie angezeigt.
     const grund = await response.json().catch(() => null)
     if (istTageslimit(grund)) {
-      callbacks.onError(extractMessage(grund))
+      callbacks.onError(extractMessage(grund), 'hinweis')
       return
     }
     callbacks.onError(consumerServiceError('Der KI-Chat', response.status))
@@ -487,7 +495,13 @@ export async function streamChat(
 export interface AnalyseFrageCallbacks {
   onToken: (token: string) => void
   onDone: () => void
-  onError: (err: string) => void
+  /**
+   * `art` unterscheidet einen echten Fehler von einem normalen
+   * Produktzustand. Ein erreichtes Tageslimit ist kein Defekt und soll
+   * in der Oberflaeche nicht wie einer aussehen. Optional — bestehende
+   * Aufrufer bleiben unveraendert gueltig.
+   */
+  onError: (err: string, art?: MeldungsArt) => void
 }
 
 /**
@@ -529,7 +543,7 @@ export async function streamAnalyseFrage(
   if (!response.ok) {
     const grund = await response.json().catch(() => null)
     if (istTageslimit(grund)) {
-      callbacks.onError(extractMessage(grund))
+      callbacks.onError(extractMessage(grund), 'hinweis')
       return
     }
     callbacks.onError(consumerServiceError('Die Antwort', response.status))
