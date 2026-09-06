@@ -348,7 +348,7 @@ export default function PricingView() {
 
         {/* Hinweis */}
         <p className="text-center text-xs text-gray-400 mt-6">
-          Alle Preise inkl. MwSt. · Testmodus: keine echten Zahlungen · Abo monatlich kündbar
+          Alle Preise inkl. MwSt. · Abo monatlich kündbar
         </p>
       </div>
     </div>

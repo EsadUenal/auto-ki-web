@@ -26,11 +26,6 @@ const FAQ_ITEMS = [
       'Gehe zu Einstellungen → Abo verwalten → Abo kündigen. Das Abo läuft bis zum Ende der bezahlten Periode weiter, du verlierst nichts, was du schon bezahlt hast. Danach wechselst du automatisch zurück auf den kostenlosen Plan.',
   },
   {
-    frage: 'Wie läuft ein Poster-Kauf ab?',
-    antwort:
-      'Wähle ein Poster in der Galerie, klicke auf "Kaufen" und gib deine Lieferadresse ein. Du wirst zu Stripe weitergeleitet (sichere Zahlung per Karte). Nach der Zahlung erscheint die Bestellung unter "Meine Bestellungen". Druck und Versand folgen in einer späteren Version. Du wirst informiert.',
-  },
-  {
     frage: 'Welche Zahlungsmethoden werden akzeptiert?',
     antwort:
       'Aktuell Kreditkarte und Debitkarte über Stripe. Weitere Methoden (PayPal, SEPA-Lastschrift) sind geplant.',

@@ -11,9 +11,6 @@ const ABO_INFO = {
   max:   { label: 'Max',        icon: <Crown size={12} />,   cls: 'bg-purple-100 text-purple-700' },
 } as const
 
-type Lang = 'de' | 'en'
-const LANG_LABELS: Record<Lang, string> = { de: 'Deutsch', en: 'English' }
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-[#e6e1da] rounded-2xl overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
@@ -117,16 +114,6 @@ export default function SettingsView() {
     } finally {
       setCancelLoading(false)
     }
-  }
-
-  // ── Sprache ──────────────────────────────────────────────────────────────────
-  const [sprache, setSprache] = useState<Lang>(
-    () => (localStorage.getItem('auto-ki-sprache') as Lang | null) ?? 'de'
-  )
-
-  function handleSprache(lang: Lang) {
-    setSprache(lang)
-    localStorage.setItem('auto-ki-sprache', lang)
   }
 
   if (!user) return null
@@ -377,31 +364,6 @@ export default function SettingsView() {
               </button>
             </Row>
           )}
-        </Section>
-
-        {/* ── Sprache ── */}
-        <Section title="Sprache">
-          <Row>
-            <Label>App-Sprache</Label>
-            <div className="flex gap-2">
-              {(['de', 'en'] as Lang[]).map(lang => (
-                <button
-                  key={lang}
-                  onClick={() => handleSprache(lang)}
-                  className={`px-4 py-2 text-sm rounded-lg border transition-colors font-medium ${
-                    sprache === lang
-                      ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                  }`}
-                >
-                  {LANG_LABELS[lang]}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Vollständige Übersetzung folgt in einer späteren Version.
-            </p>
-          </Row>
         </Section>
 
       </div>

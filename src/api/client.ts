@@ -60,6 +60,19 @@ function extractMessage(data: unknown): string {
   return 'Unbekannter Fehler'
 }
 
+function consumerServiceError(aktion: string, status?: number): string {
+  if (status === 429) {
+    return 'Gerade sind viele Anfragen unterwegs. Bitte warte kurz und versuche es erneut.'
+  }
+  if (status != null && status >= 500) {
+    return `${aktion} ist gerade vorübergehend nicht verfügbar. Bitte versuche es in einem Moment noch einmal.`
+  }
+  return `${aktion} konnte nicht abgeschlossen werden. Bitte prüfe deine Eingaben und versuche es erneut.`
+}
+
+const BACKEND_NICHT_ERREICHBAR =
+  'Der VIRA-Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.'
+
 export async function authRegister(email: string, password: string, agbAkzeptiert: boolean): Promise<AuthUser> {
   const res = await authFetch('/register', {
     method: 'POST',
@@ -367,15 +380,12 @@ export async function streamChat(
     })
   } catch (e) {
     if ((e as Error).name === 'AbortError') return
-    callbacks.onError(
-      `Verbindung zum Backend fehlgeschlagen. Läuft der Server auf ${BASE_URL}?`
-    )
+    callbacks.onError(BACKEND_NICHT_ERREICHBAR)
     return
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    callbacks.onError(`Server-Fehler ${response.status}: ${text}`)
+    callbacks.onError(consumerServiceError('Der KI-Chat', response.status))
     return
   }
 
@@ -480,13 +490,12 @@ export async function streamAnalyseFrage(
     })
   } catch (e) {
     if ((e as Error).name === 'AbortError') return
-    callbacks.onError(`Verbindung zum Backend fehlgeschlagen. Läuft der Server auf ${BASE_URL}?`)
+    callbacks.onError(BACKEND_NICHT_ERREICHBAR)
     return
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    callbacks.onError(`Server-Fehler ${response.status}: ${text}`)
+    callbacks.onError(consumerServiceError('Die Antwort', response.status))
     return
   }
 
@@ -866,17 +875,21 @@ export async function runKaufCheck(
   // §22: "Erneut versuchen" nach research_failed erzwingt frische Tavily-Calls
   // statt derselben ggf. dünnen gecachten Antwort.
   const url = `${BASE_URL}/api/v1/kaufcheck${retry ? '?retry=true' : ''}`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
-    body: JSON.stringify(body),
-  })
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: authHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(body),
+    })
+  } catch {
+    throw new Error(BACKEND_NICHT_ERREICHBAR)
+  }
 
   if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
-    const data = await response.json().catch(() => null)
-    throw new Error(extractMessage(data))
+    throw new Error(consumerServiceError('Der Kauf-Check', response.status))
   }
 
   return response.json() as Promise<KaufCheckResult>
@@ -930,17 +943,21 @@ export async function runVerkaufsCheck(
   // §22: "Erneut versuchen" nach research_failed erzwingt frische Tavily-Calls
   // statt derselben ggf. dünnen gecachten Antwort.
   const url = `${BASE_URL}/api/v1/verkaufscheck${retry ? '?retry=true' : ''}`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
-    body: JSON.stringify(body),
-  })
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: authHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(body),
+    })
+  } catch {
+    throw new Error(BACKEND_NICHT_ERREICHBAR)
+  }
 
   if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    throw new Error(`Verkaufs-Check fehlgeschlagen (${response.status}): ${text}`)
+    throw new Error(consumerServiceError('Der Verkaufs-Check', response.status))
   }
 
   return response.json() as Promise<VerkaufsCheckResult>

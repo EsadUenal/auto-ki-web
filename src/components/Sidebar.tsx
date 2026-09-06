@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
-  Compass, LogOut, Pencil, Trash2, Check, X, CreditCard,
+  LogOut, Pencil, Trash2, Check, X, CreditCard,
   Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Store, Car, Calculator,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -220,7 +220,6 @@ export default function Sidebar({
           ...(user?.dealer_access ? [{ to: '/dealer', Icon: Store, label: 'Dealer' }] : []),
           // Ersatzteile: technisch im Repo geparkt, aber NICHT im Consumer-UI
           // freigegeben — kein Sidebar-Eintrag, keine sichtbare Navigation.
-          { to: '/entdecken',     Icon: Compass,       label: 'Entdecken' },
           { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },
           { to: '/pricing',       Icon: CreditCard,    label: 'Preise & Abo' },
         ].map(({ to, Icon, label }) => (
