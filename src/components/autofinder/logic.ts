@@ -250,138 +250,24 @@ export interface AutoFinderResponse {
 
 export const MAX_CARDS = 5
 
-// ── Bild-On-Demand (§Punkt 1) ──────────────────────────────────────────────
-
-export interface ImageEnsureItem {
-  visual_key: string
-  marke: string
-  modell: string
-  generation: string | null
-  karosserie: string
-  baujahr_von: number | null
-  baujahr_bis: number | null
-}
-
-export interface ImageEnsureResult {
-  visual_key: string
-  status: 'ready' | 'generated' | 'failed'
-  image_url: string | null
-  image_type: string | null
-  ai_generated: boolean
-}
-
-/** Kandidat hat bereits ein echtes VIRA-Line-Art-Bild — kuratiert oder on-demand
- *  gecacht. KEIN generisches Symbolbild / keine Karosserie-Silhouette. */
-export function hatEchtesBild(k: Pick<AutoFinderKandidat, 'image_type' | 'image_url'>): boolean {
-  return !!k.image_url && (k.image_type === 'curated' || k.image_type === 'generated_cached')
-}
-
-/** Ein Ensure-Item aus einem Kandidaten bauen (für den On-Demand-Endpunkt). */
-export function alsEnsureItem(k: AutoFinderKandidat): ImageEnsureItem {
-  return {
-    visual_key: k.visual_key,
-    marke: k.marke,
-    modell: k.modell,
-    generation: k.generation,
-    karosserie: k.karosserie[0] ?? 'unbekannt',
-    baujahr_von: k.baujahr_von,
-    baujahr_bis: k.baujahr_bis,
-  }
-}
-
-/** Kandidaten, deren Bild noch nachgezogen werden muss (kein echtes KI-Asset). */
-export function fehlendeBilder(kandidaten: AutoFinderKandidat[]): ImageEnsureItem[] {
-  return kandidaten.filter((k) => !hatEchtesBild(k) && k.visual_key).map(alsEnsureItem)
-}
-
-/** image_url aus dem Backend richtig auflösen: `/api/…` -> Backend-Origin,
- *  `/cars/…` (Starter-Library) -> Frontend-Origin (verbatim). */
-export function resolveImageUrl(url: string, apiBase: string): string {
-  if (!url) return ''
-  if (/^https?:\/\//.test(url)) return url
-  if (url.startsWith('/api/')) return apiBase.replace(/\/$/, '') + url
-  return url
-}
-
-// ── Image-Guarantee (FIX 3) — kein Symbolbild in finalen AutoFinder-Ergebnissen ──
-// Das Backend liefert einen etwas größeren qualifizierten Pool (alle >= Fit-
-// Schwelle). Hier wird daraus das finale Set gebaut: nur Kandidaten mit echtem
-// Line-Art-Bild — von Anfang an vorhanden ODER frisch erfolgreich erzeugt.
-// Kandidaten ohne verwendbares Bild (auch nach dem 2-Versuch-ensure) fallen raus,
-// der nächste geeignete Kandidat rückt nach. Reihenfolge = Backend-Ranking.
-
-export function waehleImageReady(
-  kandidaten: AutoFinderKandidat[],
-  ensure: ImageEnsureResult[],
-  apiBase: string,
-): AutoFinderKandidat[] {
-  const byKey = new Map(ensure.map((e) => [e.visual_key, e]))
-  const out: AutoFinderKandidat[] = []
-  for (const k of kandidaten) {
-    if (out.length >= MAX_CARDS) break
-    if (hatEchtesBild(k)) {
-      out.push({ ...k, image_url: resolveImageUrl(k.image_url, apiBase) })
-      continue
-    }
-    const hit = k.visual_key ? byKey.get(k.visual_key) : undefined
-    if (hit && (hit.status === 'ready' || hit.status === 'generated') && hit.image_url) {
-      out.push({
-        ...k,
-        image_url: resolveImageUrl(hit.image_url, apiBase),
-        image_type: 'generated_cached',
-        ai_generated: hit.ai_generated,
-      })
-    }
-    // sonst: Kandidat wird NICHT final angezeigt (kein echtes Bild verfügbar)
-  }
-  return out
-}
-
-/** FIX 3 / §8: beim Öffnen einer gespeicherten Suche die on-demand-Bilder frisch
- *  aus dem aktuellen Cache/Manifest auflösen — nie einen alten Symbolbild-Snapshot
- *  erzwingen. Kuratierte Bilder bleiben unangetastet. `ensure` wird injiziert
- *  (diese Datei bleibt api-client-frei). Rückgabe: aktualisierte Antwort oder
- *  null, wenn nichts nachzuladen war. */
-export async function aktualisiereGespeicherteBilder(
-  resp: AutoFinderResponse,
-  ensure: (items: ImageEnsureItem[]) => Promise<ImageEnsureResult[]>,
-  apiBase: string,
-): Promise<AutoFinderResponse | null> {
-  const nachladen = resp.kandidaten.filter(
-    (k) => k.visual_key && k.image_type === 'generated_cached',
-  )
-  if (nachladen.length === 0) return null
-  let results: ImageEnsureResult[] = []
-  try {
-    results = await ensure(nachladen.map(alsEnsureItem))
-  } catch {
-    return null
-  }
-  if (results.length === 0) return null
-  const byKey = new Map(results.map((e) => [e.visual_key, e]))
-  return {
-    ...resp,
-    kandidaten: resp.kandidaten.map((k) => {
-      const hit = byKey.get(k.visual_key)
-      if (hit && (hit.status === 'ready' || hit.status === 'generated') && hit.image_url) {
-        return { ...k, image_url: resolveImageUrl(hit.image_url, apiBase) }
-      }
-      return k
-    }),
-  }
-}
-
-// ── Bild-Disclosure (§ PRIO 6/10) ───────────────────────────────────────────
-
-/** Pflichttext unter dem Bild — abhängig vom image_type des Backends.
- *  `generated_cached` / KI-Asset -> "KI-generierte Modelldarstellung"
- *  `generic_fallback`           -> "Symbolbild"
- *  `curated` (echtes Foto)      -> kein Zusatztext */
-export function imageDisclosure(k: Pick<AutoFinderKandidat, 'image_type' | 'ai_generated'>): string | null {
-  if (k.image_type === 'generated_cached' || k.ai_generated) return 'KI-generierte Modelldarstellung'
-  if (k.image_type === 'generic_fallback') return 'Symbolbild'
-  return null
-}
+// ── Fahrzeugbilder: bewusst ENTFERNT ───────────────────────────────────────
+//
+// PRODUKTENTSCHEIDUNG: AutoFinder zeigt keine modellgenauen Fahrzeugbilder
+// mehr. Die KI-Bildgenerierung war in Generationstreue und Qualität nicht
+// zuverlässig genug, verursachte Laufzeitkosten pro Suche und eine spürbare
+// Wartephase — der Mehrwert rechtfertigte das nicht.
+//
+// Damit sind hier ersatzlos entfallen: ImageEnsureItem/-Result,
+// hatEchtesBild, alsEnsureItem, fehlendeBilder, resolveImageUrl,
+// waehleImageReady, aktualisiereGespeicherteBilder und imageDisclosure
+// ("KI-generierte Modelldarstellung" / "Symbolbild").
+//
+// Die Bildfelder der API (image_url/image_type/image_confidence/ai_generated)
+// bleiben im Response-Typ oben stehen, damit der Contract nicht bricht — das
+// Consumer-UI liest sie schlicht nicht mehr. Die Karte zeigt stattdessen das
+// VIRA Vehicle Identity Panel (VehicleIdentityPanel.tsx), und die finale
+// Trefferliste haengt ausschliesslich an Candidate Integrity, Fit, Budget und
+// Enrichment — nie mehr an der Verfuegbarkeit eines Bildes.
 
 // ── "So findest du dieses Auto" (§ PRIO 8) ──────────────────────────────────
 // NUR Werte, die der Nutzer bei mobile.de / AutoScout24 selbst eintippen kann.

@@ -18,16 +18,10 @@ import {
   buildPayload,
   validateForm,
   EMPTY_FORM,
-  imageDisclosure,
   marketplaceFilters,
   coverageState,
   humanError,
   formatPriceRange,
-  fehlendeBilder,
-  hatEchtesBild,
-  waehleImageReady,
-  aktualisiereGespeicherteBilder,
-  resolveImageUrl,
   buildKaufCheckPrefill,
   sucheLabel,
   MAX_CARDS,
@@ -35,7 +29,6 @@ import {
   type AutoFinderForm,
   type AutoFinderKandidat,
   type AutoFinderResponse,
-  type ImageEnsureResult,
 } from './logic.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -153,7 +146,6 @@ test('D: View zeigt einen klaren Loading-/Analyse-State mit Workflow-Schritten',
   assert.match(viewTsx, /Motorvarianten werden verglichen/)
   assert.match(viewTsx, /Stärken und mögliche Nachteile werden geprüft/)
   assert.match(viewTsx, /Preisorientierung wird eingeordnet/)
-  assert.match(viewTsx, /Fahrzeugdarstellungen werden vorbereitet/)
   // ehrliche Erwartungshaltung: 15–30 s
   assert.match(viewTsx, /15.?30 Sekunden/)
 })
@@ -172,26 +164,20 @@ test('F: Karte ist auf-/zuklappbar', () => {
   assert.match(cardTsx, /Trade-offs/)
 })
 
-// ── G) KI-Disclosure ────────────────────────────────────────────────────────
-test('G: generated_cached / ai_generated -> "KI-generierte Modelldarstellung"', () => {
-  assert.equal(imageDisclosure({ image_type: 'generated_cached', ai_generated: true }), 'KI-generierte Modelldarstellung')
-  assert.equal(imageDisclosure({ image_type: 'curated', ai_generated: true }), 'KI-generierte Modelldarstellung')
+// ── G-T) Fahrzeugbilder: bewusst ENTFERNT ─────────────────────────────────
+//
+// PRODUKTENTSCHEIDUNG: AutoFinder zeigt keine modellgenauen Fahrzeugbilder
+// mehr. Damit sind die frueheren Bildtests (Disclosure, On-Demand-Ensure,
+// Image-Guarantee, Nachruecken bildloser Kandidaten) gegenstandslos — die
+// zugehoerige Logik existiert nicht mehr. An ihrer Stelle stehen unten die
+// Tests A-P der Vehicle-Identity-Runde: sie sichern zu, dass gar kein Bild
+// mehr gerendert und kein Bild-Call mehr ausgeloest wird.
+
+
+test('B: die ResultCard rendert KEIN <img> mehr (Vehicle Identity Panel statt Bild)', () => {
+  assert.doesNotMatch(cardTsx, /<img/)
 })
 
-// ── H) Symbolbild-Disclosure ────────────────────────────────────────────────
-test('H: generic_fallback -> "Symbolbild"; echtes Foto -> kein Zusatz', () => {
-  assert.equal(imageDisclosure({ image_type: 'generic_fallback', ai_generated: false }), 'Symbolbild')
-  assert.equal(imageDisclosure({ image_type: 'curated', ai_generated: false }), null)
-})
-
-// ── I) Fehlendes Bild bricht die UI nicht ───────────────────────────────────
-test('I: Karte hat onError-Fallback auf die Platzhalter-Komponente', () => {
-  assert.match(cardTsx, /onError={\(\) => setImgBroken\(true\)}/)
-  assert.match(cardTsx, /CarPlaceholder/)
-  assert.match(read('CarPlaceholder.tsx'), /<svg/)
-})
-
-// ── J) mobile.de / AutoScout24 Filterwerte ──────────────────────────────────
 test('J: marketplaceFilters liefert eintippbare Werte, keine Links', () => {
   const f = marketplaceFilters(KAND)
   const labels = f.map((x) => x.label)
@@ -204,7 +190,6 @@ test('J: marketplaceFilters liefert eintippbare Werte, keine Links', () => {
   assert.doesNotMatch(blob, /mobile\.de|autoscout/i)
 })
 
-// ── K) Keine erfundenen Marktpreise ─────────────────────────────────────────
 test('K: weder Payload noch Suchhilfe enthalten je einen Preis/€-Wert', () => {
   const f = marketplaceFilters({
     ...KAND, market_price_min: 15000, market_price_median: 20000, market_price_max: 25000,
@@ -217,7 +202,6 @@ test('K: weder Payload noch Suchhilfe enthalten je einen Preis/€-Wert', () => 
   assert.doesNotMatch(viewTsx, /market_price/)
 })
 
-// ── L) KaufCheck-CTA mit Prefill (§Punkt 4) ────────────────────────────────
 test('L: jede Karte hat eine KaufCheck-CTA, die das Formular vorbefüllt', () => {
   assert.equal(KAUFCHECK_ROUTE, '/kaufcheck')
   assert.match(cardTsx, /KaufCheck/)
@@ -241,21 +225,23 @@ test('L/M: buildKaufCheckPrefill übernimmt Marke/Modell/Generation/Motor/Baujah
   assert.equal(pf.variante_id, 'bmw-3er-g20-320d')
 })
 
-// ── BUG 1: Prefill-Flow — returnTo + spät löschen ─────────────────────────
 test('BUG1: der CTA setzt returnTo=/kaufcheck (Rücksprung nach Login)', () => {
   const logic = read('logic.ts')
   assert.match(logic, /RETURN_TO_KEY = 'vira\.returnTo'/)
   assert.match(logic, /sessionStorage\.setItem\(RETURN_TO_KEY, KAUFCHECK_ROUTE\)/)
 })
+
 test('BUG1: der Guard merkt sich das Ziel vor dem Login-Redirect', () => {
   assert.match(appTsx, /setReturnTo\(location\.pathname/)
   assert.match(appTsx, /Navigate to="\/login" replace/)
 })
+
 test('BUG1: LoginView springt nach erfolgreichem Login zum returnTo (statt immer /chat)', () => {
   const lv = readFileSync(join(here, '..', 'LoginView.tsx'), 'utf8')
   assert.match(lv, /navigate\(takeReturnTo\(\) \?\? '\/chat'/)
   assert.doesNotMatch(lv, /navigate\('\/chat'\)\s*\n/)   // kein hartes navigate('/chat') mehr
 })
+
 test('BUG1: Prefill wird NUR gelesen, nicht beim CTA/Login/Redirect gelöscht', () => {
   const logic = read('logic.ts')
   // readKaufCheckPrefill enthält KEIN removeItem
@@ -264,6 +250,7 @@ test('BUG1: Prefill wird NUR gelesen, nicht beim CTA/Login/Redirect gelöscht', 
   // clearKaufCheckPrefill ist eine eigene Funktion
   assert.match(logic, /export function clearKaufCheckPrefill\(\): void/)
 })
+
 test('O/BUG1: KaufCheckView übernimmt Prefill additiv + löscht erst NACH Übernahme (StrictMode-fest)', () => {
   const kc = readFileSync(join(here, '..', 'KaufCheckView.tsx'), 'utf8')
   assert.match(kc, /readKaufCheckPrefill\(\)/)
@@ -277,13 +264,13 @@ test('O/BUG1: KaufCheckView übernimmt Prefill additiv + löscht erst NACH Über
   assert.match(kc, /runKaufCheck\(form, screenshot, retry\)/)
   assert.doesNotMatch(kc, /consumeKaufCheckPrefill/)
 })
+
 test('BUG1: KaufCheckView räumt das returnTo weg, wenn es das Prefill übernimmt (kein Altlast-Redirect)', () => {
   const kc = readFileSync(join(here, '..', 'KaufCheckView.tsx'), 'utf8')
   // im Prefill-Zweig wird takeReturnTo() aufgerufen (liest+entfernt)
   assert.match(kc, /clearKaufCheckPrefill\(\)\s*\n\s*takeReturnTo\(\)/)
 })
 
-// ── M) Responsives Grundlayout + geteilte VIRA-Shell-Sprache ────────────────
 test('M: View nutzt die kanonische VIRA-Content-Sprache (wie Kauf-Check/Entdecken)', () => {
   // gleicher zentrierter Container wie die anderen Werkzeugseiten
   assert.match(viewTsx, /max-w-3xl mx-auto/)
@@ -304,24 +291,19 @@ test('M2: Sidebar hat einen AutoFinder-Navigationseintrag', () => {
   assert.match(sidebar, /to: '\/autofinder'.*label: 'AutoFinder'/)
 })
 
-// ══════════════════════════════════════════════════════════════════════════
-// Quality-Enrichment-Runde
-// ══════════════════════════════════════════════════════════════════════════
-
-// ── Fit-Score im UI (§Punkt 2) ────────────────────────────────────────────
 test('Fit: die Karte zeigt user_fit als Passungs-%, nicht mehr den internen Score', () => {
   assert.match(cardTsx, /\{k\.user_fit\}%/)
   assert.match(cardTsx, /Passung/)
   assert.doesNotMatch(cardTsx, /scorePercent/)
   assert.doesNotMatch(cardTsx, /match_score \/ 12/)
 })
+
 test('Fit: no_strong_match -> ehrlicher Zustand, keine Karten', () => {
   const c = coverageState(resp({ status: 'no_strong_match', kandidaten: [] }))
   assert.equal(c.kind, 'none')
   assert.match(c.detail, /80 ?%|richtig gut/)
 })
 
-// ── Preisorientierung (§Punkt 3) ──────────────────────────────────────────
 test('Preis: formatPriceRange gibt Spanne + KI-Hinweis, nie "Marktpreis"', () => {
   const p = formatPriceRange(KAND)!
   assert.match(p.range, /ca\. 15\.000–22\.000 €/)
@@ -329,9 +311,11 @@ test('Preis: formatPriceRange gibt Spanne + KI-Hinweis, nie "Marktpreis"', () =>
   assert.match(p.hint, /keine Live-Marktdaten/)
   assert.doesNotMatch(p.hint, /Marktpreis|Marktwert/)
 })
+
 test('Preis: keine Range -> null (nichts erfinden)', () => {
   assert.equal(formatPriceRange({ ...KAND, estimated_price_min: null, estimated_price_max: null }), null)
 })
+
 test('Preis: die Karte behauptet nirgends einen echten Marktpreis/Marktwert', () => {
   // Ein Disclaimer "nennt keinen Marktpreis" ist erlaubt; eine BEHAUPTUNG nicht.
   assert.doesNotMatch(cardTsx, /Marktwert|aktueller (Markt)?[Pp]reis|mobile\.de[- ]?Preis|Marktpreis:\s*\d/)
@@ -339,151 +323,24 @@ test('Preis: die Karte behauptet nirgends einen echten Marktpreis/Marktwert', ()
   assert.match(cardTsx, /keinen Marktpreis/)  // der Disclaimer
 })
 
-// ── Why-Fits / Trade-offs / Bekannte Punkte (§Punkt 6) ────────────────────
 test('Content: die Karte rendert why_fits, trade_offs und known_points', () => {
   assert.match(cardTsx, /k\.why_fits\.map/)
   assert.match(cardTsx, /k\.trade_offs\.map/)
   assert.match(cardTsx, /k\.known_points\.map/)
 })
+
 test('Content: "(ungeprüft)" kommt im Consumer-UI nicht vor (Backend strippt, Frontend erfindet nichts)', () => {
   assert.doesNotMatch(cardTsx, /ungeprüft/)
   assert.doesNotMatch(viewTsx, /ungeprüft/)
 })
+
 test('Content: enrichment_notice wird angezeigt, wenn gesetzt', () => {
   assert.match(viewTsx, /enrichment_notice/)
   assert.match(viewTsx, /\{notice\}/)
 })
 
-// ── Bild-On-Demand + Skeleton (§Punkt 1) ─────────────────────────────────
-test('Bild: fehlendeBilder liefert nur Kandidaten ohne echtes KI-Asset', () => {
-  const mitAsset = { ...KAND, image_type: 'generated_cached' as const }
-  const ohne = { ...KAND, visual_key: 'x--y--z--kombi', image_type: 'generic_fallback' as const }
-  const items = fehlendeBilder([mitAsset, ohne])
-  assert.equal(items.length, 1)
-  assert.equal(items[0].visual_key, 'x--y--z--kombi')
-  assert.equal(items[0].karosserie, 'limousine')  // erste Karosserieklasse
-})
-test('Bild: resolveImageUrl — /api/ -> Backend-Origin, /cars/ -> verbatim', () => {
-  assert.equal(resolveImageUrl('/api/v1/autofinder/img/a--b', 'http://be:8000'), 'http://be:8000/api/v1/autofinder/img/a--b')
-  assert.equal(resolveImageUrl('/cars/autofinder/a--b.webp', 'http://be:8000'), '/cars/autofinder/a--b.webp')
-  assert.equal(resolveImageUrl('https://cdn/x.webp', 'http://be:8000'), 'https://cdn/x.webp')
-})
-test('Bild: View zieht fehlende Bilder VOR dem Anzeigen nach (Progress-State)', () => {
-  assert.match(viewTsx, /apiAutoFinderImagesEnsure/)
-  assert.match(viewTsx, /fehlendeBilder\(r\.kandidaten\)/)
-  assert.match(viewTsx, /Fahrzeugdarstellungen werden vorbereitet/)   // Progress-Schritt 5
-  // das finale Result-Set wird EINMAL gesetzt (nach dem ensure), nicht vorher
-  assert.match(viewTsx, /const finale = waehleImageReady\(r\.kandidaten, ensureResults, API_BASE_URL\)/)
-  assert.match(viewTsx, /setResp\(finalResp\)/)
-})
-test('Bild: der API-Client schluckt Ensure-Fehler', () => {
-  const fn = clientTs.slice(clientTs.indexOf('export async function apiAutoFinderImagesEnsure'))
-  assert.match(fn.slice(0, 700), /catch\s*\{[\s\S]*return \[\]/)
-  assert.match(fn.slice(0, 700), /images\/ensure/)
-})
-test('Bild: der Such-Client-Call und der Ensure-Call sind getrennte Endpunkte', () => {
-  assert.match(clientTs, /\$\{BASE_URL\}\/api\/v1\/autofinder`/)              // Suche
-  assert.match(clientTs, /\$\{BASE_URL\}\/api\/v1\/autofinder\/images\/ensure`/) // Bild-On-Demand
-})
 
-// ── FIX 3: Image-Guarantee — kein Symbolbild in finalen AutoFinder-Ergebnissen ──
-const erg = (over: Partial<ImageEnsureResult> & { visual_key: string }): ImageEnsureResult => ({
-  status: 'generated', image_url: `/api/v1/autofinder/img/${over.visual_key}`,
-  image_type: 'generated_cached', ai_generated: true, ...over,
-})
-const poolKand = (vk: string, image_type: AutoFinderKandidat['image_type'], image_url = ''): AutoFinderKandidat =>
-  ({ ...KAND, candidate_id: vk, variante_id: vk, visual_key: vk, image_type, image_url })
 
-test('K: Kandidat mit gecachtem Bild wird direkt übernommen (kein ensure nötig)', () => {
-  const k = poolKand('a', 'curated', '/cars/autofinder/a.webp')
-  assert.ok(hatEchtesBild(k))
-  const out = waehleImageReady([k], [], 'http://be:8000')
-  assert.equal(out.length, 1)
-  assert.equal(out[0].image_url, '/cars/autofinder/a.webp')
-})
-test('L: Kandidat ohne Bild landet als ensure-Item im Nachzieh-Batch', () => {
-  const k = poolKand('b', 'generic_fallback')
-  assert.equal(hatEchtesBild(k), false)
-  assert.deepEqual(fehlendeBilder([k]).map((i) => i.visual_key), ['b'])
-})
-test('M: erst QA-Fail, dann Erfolg -> Kandidat bleibt im finalen Set', () => {
-  const k = poolKand('c', 'generic_fallback')
-  // 2. Versuch erfolgreich -> ensure liefert status "generated"
-  const out = waehleImageReady([k], [erg({ visual_key: 'c', status: 'generated' })], 'http://be:8000')
-  assert.equal(out.length, 1)
-  assert.equal(out[0].image_type, 'generated_cached')
-  assert.match(out[0].image_url, /^http:\/\/be:8000\/api\/v1\/autofinder\/img\/c$/)
-})
-test('N: zweimal fehlgeschlagen -> Kandidat wird NICHT final angezeigt', () => {
-  const k = poolKand('d', 'generic_fallback')
-  const out = waehleImageReady([k], [erg({ visual_key: 'd', status: 'failed', image_url: null })], 'http://be:8000')
-  assert.equal(out.length, 0)
-})
-test('O: nächster qualifizierter Kandidat rückt für einen bildlosen nach', () => {
-  const pool = [
-    poolKand('p1', 'curated', '/cars/p1.webp'),
-    poolKand('p2', 'generic_fallback'),                 // scheitert
-    poolKand('p3', 'curated', '/cars/p3.webp'),
-    poolKand('p4', 'curated', '/cars/p4.webp'),
-    poolKand('p5', 'curated', '/cars/p5.webp'),
-    poolKand('p6', 'curated', '/cars/p6.webp'),         // Nachrücker
-  ]
-  const out = waehleImageReady(pool, [erg({ visual_key: 'p2', status: 'failed', image_url: null })], 'http://be:8000')
-  assert.equal(out.length, MAX_CARDS)
-  assert.deepEqual(out.map((k) => k.visual_key), ['p1', 'p3', 'p4', 'p5', 'p6'])
-})
-test('P/Q: das finale Set enthält ausschließlich echte Bilder, kein generic_fallback', () => {
-  const pool = [
-    poolKand('q1', 'generic_fallback'),
-    poolKand('q2', 'curated', '/cars/q2.webp'),
-    poolKand('q3', 'generic_fallback'),
-  ]
-  const out = waehleImageReady(pool, [erg({ visual_key: 'q1' })], 'http://be:8000')
-  assert.ok(out.every((k) => k.image_type === 'curated' || k.image_type === 'generated_cached'))
-  assert.ok(out.every((k) => !!k.image_url))
-  assert.ok(out.every((k) => k.image_type !== 'generic_fallback'))
-})
-test('R: weniger als 5 bildfertige -> weniger Resultate, KEIN Symbolbild aufgefüllt', () => {
-  const pool = [
-    poolKand('r1', 'curated', '/cars/r1.webp'),
-    poolKand('r2', 'generic_fallback'),   // scheitert, kein ensure-Ergebnis
-    poolKand('r3', 'generic_fallback'),   // scheitert
-  ]
-  const out = waehleImageReady(pool, [], 'http://be:8000')
-  assert.equal(out.length, 1)
-  assert.equal(out[0].visual_key, 'r1')
-})
-test('R: die View zeigt bei 0 bildfertigen einen kontrollierten Hinweis, keine leere Stille', () => {
-  assert.match(viewTsx, /finale\.length === 0 && r\.kandidaten\.length > 0/)
-  assert.match(viewTsx, /keine Fahrzeugdarstellung/)
-})
-test('S: der zweite gleiche ensure-Aufruf nutzt den Backend-Cache (status "ready")', () => {
-  // "ready" (aus dem Manifest, ohne Neu-Generierung) zählt genauso als bildfertig
-  const k = poolKand('s1', 'generic_fallback')
-  const out = waehleImageReady([k], [erg({ visual_key: 's1', status: 'ready' })], 'http://be:8000')
-  assert.equal(out.length, 1)
-})
-test('T: History-Restore lädt on-demand-Bilder frisch aus dem aktuellen Cache', async () => {
-  const gespeichert: AutoFinderResponse = resp({
-    kandidaten: [
-      poolKand('t1', 'generated_cached', 'http://alt:8000/api/v1/autofinder/img/t1'),
-      poolKand('t2', 'curated', '/cars/t2.webp'),
-    ],
-  })
-  let gefragt: string[] = []
-  const fakeEnsure = async (items: { visual_key: string }[]) => {
-    gefragt = items.map((i) => i.visual_key)
-    return [erg({ visual_key: 't1', status: 'ready', image_url: '/api/v1/autofinder/img/t1' })]
-  }
-  const upd = await aktualisiereGespeicherteBilder(gespeichert, fakeEnsure as never, 'http://neu:9000')
-  assert.deepEqual(gefragt, ['t1'])                 // nur on-demand-Keys, nicht das kuratierte t2
-  assert.ok(upd)
-  assert.equal(upd!.kandidaten[0].image_url, 'http://neu:9000/api/v1/autofinder/img/t1')
-  assert.equal(upd!.kandidaten[1].image_url, '/cars/t2.webp')   // kuratiert unangetastet
-})
-test('T: die View ruft beim Restore aktualisiereGespeicherteBilder auf', () => {
-  assert.match(viewTsx, /aktualisiereGespeicherteBilder\(s\.response, apiAutoFinderImagesEnsure, API_BASE_URL\)/)
-})
 
 // ── Suchhistorie (§Punkt 5 / BUG 2) ──────────────────────────────────────
 import {
@@ -642,4 +499,122 @@ test('O: coverageState bildet no_internal_match und Low-Coverage ab', () => {
   assert.equal(coverageState(resp({ kandidaten: [] })).kind, 'none')
   assert.equal(coverageState(resp({ warnings: ['Nur wenige passende Fahrzeuge im internen Bestand gefunden — die Auswahl ist entsprechend klein.'] })).kind, 'low')
   assert.equal(coverageState(resp()).kind, 'ok')
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// VEHICLE IDENTITY RUNDE — AutoFinder ohne Fahrzeugbilder (Matrix A-P)
+//
+// Produktentscheidung: keine modellgenauen Fahrzeugbilder mehr. Statt eines
+// Bildes trägt jede Karte links das gestaltete VIRA Vehicle Identity Panel.
+// Diese Tests sichern beides zu: dass das Panel die Fahrzeugidentität wirklich
+// zeigt — und dass nirgends mehr ein Bild gerendert oder nachgeladen wird.
+// ══════════════════════════════════════════════════════════════════════════
+
+const panelTsx = read('VehicleIdentityPanel.tsx')
+
+test('A: die ResultCard rendert ohne jede Bildangabe (liest keine Bildfelder)', () => {
+  // Bildfelder dürfen im Contract bleiben — die Karte darf sie nur nicht lesen.
+  const codeOhneKommentare = cardTsx
+    .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  for (const feld of ['image_url', 'image_type', 'image_confidence', 'ai_generated']) {
+    assert.doesNotMatch(codeOhneKommentare, new RegExp(`k\.${feld}`), `${feld} wird noch gelesen`)
+  }
+  assert.doesNotMatch(codeOhneKommentare, /imagePending|imgBroken|CarPlaceholder/)
+})
+
+test('B: kein <img> und kein Bild-Asset in der AutoFinder-ResultCard', () => {
+  assert.doesNotMatch(cardTsx, /<img/)
+  assert.doesNotMatch(panelTsx, /<img/)
+  assert.doesNotMatch(panelTsx, /\.webp|\.png|\.jpg/)
+})
+
+test('C-G: das Identity Panel zeigt Marke, Modell, Generation, Motor und Leistung', () => {
+  assert.match(panelTsx, /\{k\.marke\}/)          // C: Marke
+  assert.match(panelTsx, /\{k\.modell\}/)         // D: Modell
+  assert.match(panelTsx, /k\.generation/)         // E: Generation
+  assert.match(panelTsx, /k\.motor/)              // F: Motor
+  assert.match(panelTsx, /k\.leistung_ps/)        // G: Leistung
+  assert.match(panelTsx, /PS/)
+})
+
+test('H: das Panel zeigt Karosserie-, Kraftstoff- und Getriebe-Chips', () => {
+  assert.match(panelTsx, /k\.karosserie/)
+  assert.match(panelTsx, /k\.kraftstoff/)
+  assert.match(panelTsx, /k\.getriebe/)
+  assert.match(panelTsx, /KAROSSERIE_LABEL/)
+  assert.match(panelTsx, /GETRIEBE_LABEL/)
+})
+
+test('I: der Fit-Score bleibt sichtbar in der Karte', () => {
+  assert.match(cardTsx, /\{k\.user_fit\}%/)
+  assert.match(cardTsx, /Passung/)
+})
+
+test('J/K: keine Bild-Disclosure mehr — weder KI-Hinweis noch Symbolbild', () => {
+  for (const quelle of [cardTsx, panelTsx, viewTsx]) {
+    assert.doesNotMatch(quelle, /KI-generierte Modelldarstellung/)
+    assert.doesNotMatch(quelle, /Symbolbild/)
+  }
+  assert.doesNotMatch(read('logic.ts').replace(/\/\/[^\n]*/g, ''), /imageDisclosure/)
+})
+
+test('L: die Suche löst KEINEN Image-Ensure-Call aus', () => {
+  assert.doesNotMatch(viewTsx, /ImagesEnsure/)
+  assert.doesNotMatch(viewTsx, /images\/ensure/)
+  // auch der API-Client hat keinen Ensure-Pfad mehr (nur noch ein Kommentar)
+  const clientCode = clientTs.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.doesNotMatch(clientCode, /images\/ensure/)
+  assert.doesNotMatch(clientCode, /apiAutoFinderImagesEnsure/)
+})
+
+test('M: History-Restore löst KEINEN Image-Call aus (0 Provider-Requests)', () => {
+  assert.doesNotMatch(viewTsx, /aktualisiereGespeicherteBilder/)
+  const logic = read('logic.ts').replace(/\/\/[^\n]*/g, '')
+  assert.doesNotMatch(logic, /export async function aktualisiereGespeicherteBilder/)
+  // Restore setzt die gespeicherte Antwort direkt — ohne Nachladeschritt
+  assert.match(viewTsx, /setResp\(s\.response\)/)
+})
+
+test('N: maximal 5 fachliche Ergebnisse, ohne Image-Gate', () => {
+  assert.equal(MAX_CARDS, 5)
+  assert.match(viewTsx, /slice\(0,\s*MAX_CARDS\)/)
+  // die Antwort wird unverändert übernommen — kein Aussortieren wegen Bildern
+  assert.match(viewTsx, /setResp\(r\)/)
+  assert.doesNotMatch(viewTsx, /waehleImageReady|fehlendeBilder/)
+})
+
+test('N: keine Fake-Wartephase "Fahrzeugdarstellungen" mehr im Fortschritt', () => {
+  assert.doesNotMatch(viewTsx, /Fahrzeugdarstellungen werden vorbereitet/)
+  // die vier fachlichen Schritte bleiben
+  assert.match(viewTsx, /Passende Fahrzeuge werden gefiltert/)
+  assert.match(viewTsx, /Motorvarianten werden verglichen/)
+  assert.match(viewTsx, /Stärken und mögliche Nachteile werden geprüft/)
+  assert.match(viewTsx, /Preisorientierung wird eingeordnet/)
+})
+
+test('O: History-Restore funktioniert unverändert (Filter + Ergebnisse)', () => {
+  assert.match(viewTsx, /takeSucheRestore\(\)/)
+  assert.match(viewTsx, /setForm\(s\.form\)/)
+  assert.match(viewTsx, /setRestauriert\(true\)/)
+  assert.match(viewTsx, /Neu suchen/)
+})
+
+test('P: die KaufCheck-CTA funktioniert weiterhin aus jeder Karte', () => {
+  assert.match(cardTsx, /stageKaufCheckPrefill\(k\)/)
+  assert.match(cardTsx, /navigate\(KAUFCHECK_ROUTE\)/)
+  assert.match(cardTsx, /Mit KaufCheck prüfen/)
+})
+
+test('Panel: nutzt das Identity Panel statt einer Bildspalte', () => {
+  assert.match(cardTsx, /<VehicleIdentityPanel k=\{k\} rank=\{rank\} \/>/)
+  assert.match(panelTsx, /data-testid="vehicle-identity-panel"/)
+  // Wasserzeichen wird nie erfunden: ohne Generation kein Kürzel
+  assert.match(panelTsx, /wasserzeichenText/)
+  assert.match(panelTsx, /return ''/)
+})
+
+test('Panel: responsive — links auf Desktop, oben auf Mobile', () => {
+  assert.match(panelTsx, /sm:w-64|sm:w-72/)
+  assert.match(panelTsx, /sm:border-b-0/)
+  assert.match(cardTsx, /sm:flex/)
 })

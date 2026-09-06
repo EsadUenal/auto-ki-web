@@ -5,14 +5,13 @@ import {
   CheckCircle, AlertTriangle, Info, Tag,
 } from 'lucide-react'
 import {
-  imageDisclosure,
   marketplaceFilters,
   formatPriceRange,
   stageKaufCheckPrefill,
   KAUFCHECK_ROUTE,
   type AutoFinderKandidat,
 } from './logic'
-import CarPlaceholder from './CarPlaceholder'
+import VehicleIdentityPanel from './VehicleIdentityPanel'
 
 const BUDGET_LABEL: Record<AutoFinderKandidat['budget_status'], string | null> = {
   IN_BUDGET: 'Im Budget',
@@ -30,24 +29,21 @@ function summary(k: AutoFinderKandidat): string | null {
 interface Props {
   k: AutoFinderKandidat
   rank: number
-  /** true, solange das Bild für diesen visual_key noch nacherzeugt wird. */
-  imagePending?: boolean
 }
 
-export default function ResultCard({ k, rank, imagePending = false }: Props) {
+// PRODUKTENTSCHEIDUNG: AutoFinder zeigt keine Fahrzeugbilder mehr. Die Karte
+// liest deshalb KEINE Bildfelder der API (image_url/image_type/
+// image_confidence/ai_generated) — sie bleiben im Contract, werden hier aber
+// vollständig ignoriert. Links steht stattdessen das gestaltete
+// VehicleIdentityPanel.
+export default function ResultCard({ k, rank }: Props) {
   const [open, setOpen] = useState(false)
-  const [imgBroken, setImgBroken] = useState(false)
   const navigate = useNavigate()
 
-  const disclosure = imageDisclosure(k)
   const budgetLabel = BUDGET_LABEL[k.budget_status]
   const filters = marketplaceFilters(k)
   const preis = formatPriceRange(k)
   const titel = [k.marke, k.modell].filter(Boolean).join(' ')
-  const untertitel = [k.generation, k.motor].filter(Boolean).join(' · ')
-  const hatEchtesBild = k.image_type === 'generated_cached' || k.image_type === 'curated'
-  const showImg = k.image_url && !imgBroken && (hatEchtesBild || !imagePending)
-  const zeigeSkeleton = imagePending && !hatEchtesBild && !imgBroken
 
   function toKaufCheck() {
     stageKaufCheckPrefill(k)
@@ -57,44 +53,17 @@ export default function ResultCard({ k, rank, imagePending = false }: Props) {
   return (
     <article className="ez-card rounded-2xl border border-[#e6e1da] bg-white overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
       <div className="sm:flex sm:items-start">
-        {/* Bild */}
-        <div className="relative sm:w-56 md:w-64 shrink-0 bg-white border-b sm:border-b-0 sm:border-r border-[#efe9df]">
-          <div className="aspect-[16/10] flex items-center justify-center">
-            {zeigeSkeleton ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-3 text-center">
-                <div className="w-8 h-8 rounded-full border-2 border-orange-300 border-t-transparent animate-spin" />
-                <span className="text-[11px] text-gray-400 leading-tight">Fahrzeugdarstellung wird vorbereitet …</span>
-              </div>
-            ) : showImg ? (
-              <img
-                src={k.image_url}
-                alt={titel}
-                className="w-full h-full object-contain transition-opacity duration-300"
-                onError={() => setImgBroken(true)}
-              />
-            ) : (
-              <div className="w-full h-full p-3">
-                <CarPlaceholder karosserie={k.karosserie} className="w-full h-full" />
-              </div>
-            )}
-          </div>
-          {!zeigeSkeleton && disclosure && (
-            <span className="absolute bottom-2 left-2 text-[10px] leading-tight text-gray-500 bg-white/90 backdrop-blur-sm rounded-md px-1.5 py-0.5 shadow-sm">
-              {disclosure}
-            </span>
-          )}
-          <span className="absolute top-2 left-2 text-[10px] font-bold tracking-widest uppercase text-white bg-gray-900/90 rounded-full px-2.5 py-1 shadow-sm">
-            #{rank}
-          </span>
-        </div>
+        <VehicleIdentityPanel k={k} rank={rank} />
 
         {/* Kopf */}
         <div className="flex-1 p-4 sm:p-5 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-lg font-bold text-gray-900 tracking-tight truncate">{titel}</h3>
-              {untertitel && (
-                <p className="mt-0.5 text-xs font-medium text-gray-400 uppercase tracking-wide truncate">{untertitel}</p>
+              {k.baujahr_von && (
+                <p className="mt-0.5 text-xs font-medium text-gray-400 truncate">
+                  Baujahre {k.baujahr_von}{k.baujahr_bis ? `–${k.baujahr_bis}` : ' →'}
+                </p>
               )}
             </div>
             <div className="shrink-0 inline-flex flex-col items-center justify-center rounded-2xl bg-orange-50 border border-orange-200/80 px-3 py-1.5">

@@ -9,8 +9,6 @@ import type {
 import type {
   AutoFinderPayload,
   AutoFinderResponse,
-  ImageEnsureItem,
-  ImageEnsureResult,
 } from '../components/autofinder/logic'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -831,24 +829,12 @@ export async function apiAutoFinder(payload: AutoFinderPayload): Promise<AutoFin
   return response.json() as Promise<AutoFinderResponse>
 }
 
-/** §Punkt 1: fehlende finale Fahrzeugbilder nacherzeugen lassen (gecacht,
- *  separater Endpunkt — der Such-Endpunkt bleibt bildgenerierungsfrei).
- *  Fehler werden geschluckt: fehlt das Bild, zeigt die Karte das Symbolbild. */
-export async function apiAutoFinderImagesEnsure(items: ImageEnsureItem[]): Promise<ImageEnsureResult[]> {
-  if (items.length === 0) return []
-  try {
-    const response = await fetch(`${BASE_URL}/api/v1/autofinder/images/ensure`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ items: items.slice(0, 8) }),
-    })
-    if (!response.ok) return []
-    const data = await response.json()
-    return Array.isArray(data?.results) ? (data.results as ImageEnsureResult[]) : []
-  } catch {
-    return []
-  }
-}
+// `apiAutoFinderImagesEnsure` ist ersatzlos entfallen: AutoFinder zeigt keine
+// Fahrzeugbilder mehr, und der zugehoerige Endpunkt
+// POST /api/v1/autofinder/images/ensure ist backendseitig abgeschaltet (er war
+// der einzige Weg, ueber den ein Consumer-Request kostenpflichtige
+// Bildgenerierung ausloesen konnte). Es gibt damit keinen Client-Pfad mehr,
+// der Bildkosten verursachen kann.
 
 // ---- Kauf-Check ----
 export async function runKaufCheck(

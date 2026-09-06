@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, SlidersHorizontal, Car, Clock, RotateCcw, Check, ChevronRight } from 'lucide-react'
-import { apiAutoFinder, apiAutoFinderImagesEnsure, API_BASE_URL } from '../../api/client'
+import { apiAutoFinder } from '../../api/client'
 import {
   EMPTY_FORM,
   KAROSSERIE_OPTIONS,
@@ -13,9 +13,6 @@ import {
   validateForm,
   coverageState,
   humanError,
-  fehlendeBilder,
-  waehleImageReady,
-  aktualisiereGespeicherteBilder,
   ladeSuchen,
   speichereSuche,
   loescheSuchen,
@@ -25,7 +22,6 @@ import {
   MAX_CARDS,
   type AutoFinderForm,
   type AutoFinderResponse,
-  type ImageEnsureResult,
   type GespeicherteSuche,
 } from './logic'
 import ResultCard from './ResultCard'
@@ -37,7 +33,6 @@ const PROGRESS_STEPS = [
   'Motorvarianten werden verglichen …',
   'Stärken und mögliche Nachteile werden geprüft …',
   'Preisorientierung wird eingeordnet …',
-  'Fahrzeugdarstellungen werden vorbereitet …',
 ]
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -86,7 +81,6 @@ export default function AutoFinderView() {
   const [progressStep, setProgressStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [resp, setResp] = useState<AutoFinderResponse | null>(null)
-  const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set())
   const [historie, setHistorie] = useState<GespeicherteSuche[]>([])
   const [showHistorie, setShowHistorie] = useState(false)
   const [restauriert, setRestauriert] = useState(false)   // Ergebnisse aus dem Verlauf, nicht frisch gesucht
@@ -117,9 +111,8 @@ export default function AutoFinderView() {
       if (s.response) {
         setResp(s.response)
         setRestauriert(true)
-        // §8: gespeicherte on-demand-Bilder frisch aus dem aktuellen Cache lösen
-        void aktualisiereGespeicherteBilder(s.response, apiAutoFinderImagesEnsure, API_BASE_URL)
-          .then((upd) => { if (upd) setResp(upd) })
+        // Gespeicherte Suchen tragen keine Bilddaten mehr — sofort rendern,
+        // NULL Netzwerk-/Provider-Calls beim Wiederherstellen.
         setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 120)
       } else {
         window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -150,7 +143,7 @@ export default function AutoFinderView() {
     if (progressTimer.current) clearInterval(progressTimer.current)
     progressTimer.current = setInterval(() => {
       // bis Schritt 4 automatisch weiterlaufen; Schritt 5 (Bilder) ist real.
-      setProgressStep((s) => (s < 3 ? s + 1 : s))
+      setProgressStep((s) => (s < PROGRESS_STEPS.length - 1 ? s + 1 : s))
     }, 3500)
   }
   function stopProgress() {
@@ -164,38 +157,17 @@ export default function AutoFinderView() {
     setError(null)
     setResp(null)
     setRestauriert(false)
-    setPendingKeys(new Set())
     startProgress()
     try {
       const r = await apiAutoFinder(buildPayload(f))
 
-      // ── Image-Guarantee (FIX 3) ────────────────────────────────────────────
-      // Das Backend liefert einen qualifizierten Pool (bis 8, alle >= Fit-
-      // Schwelle). Fehlende Bilder werden JETZT — vor dem Anzeigen — über den
-      // separaten Endpunkt nachgezogen. Danach wird nur das finale image-ready
-      // Set (<= 5) gerendert: kein Symbolbild, keine Karte, die erst erscheint
-      // und dann verschwindet (§Punkt 7).
-      const fehlen = fehlendeBilder(r.kandidaten)
-      let ensureResults: ImageEnsureResult[] = []
-      if (fehlen.length > 0) {
-        setProgressStep(4)
-        setPendingKeys(new Set(fehlen.map((i) => i.visual_key)))
-        ensureResults = await apiAutoFinderImagesEnsure(fehlen)
-      }
-      const finale = waehleImageReady(r.kandidaten, ensureResults, API_BASE_URL)
-      const warnings = [...r.warnings]
-      if (finale.length === 0 && r.kandidaten.length > 0) {
-        warnings.push(
-          'Für die besten Treffer konnte gerade keine Fahrzeugdarstellung ' +
-          'vorbereitet werden. Bitte versuche es in einem Moment noch einmal.',
-        )
-      }
-      const finalResp: AutoFinderResponse = { ...r, kandidaten: finale, warnings }
-
+      // Kein Bild-Schritt mehr: die finale Liste steht mit der Antwort fest
+      // (Candidate Integrity + Fit + Budget + Enrichment). Bilder haben keinen
+      // Einfluss mehr auf die Auswahl — es wird nichts nachgeladen, nichts
+      // ersetzt und kein Kandidat wegen eines fehlenden Bildes entfernt.
       stopProgress()
-      setPendingKeys(new Set())
-      setResp(finalResp)
-      setHistorie(speichereSuche(f, finalResp))
+      setResp(r)
+      setHistorie(speichereSuche(f, r))
       setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 80)
     } catch (err) {
       stopProgress()
@@ -221,9 +193,8 @@ export default function AutoFinderView() {
       setResp(s.response)
       setRestauriert(true)
       setError(null)
-      // §8: on-demand-Bilder frisch aus dem aktuellen Cache lösen
-      void aktualisiereGespeicherteBilder(s.response, apiAutoFinderImagesEnsure, API_BASE_URL)
-        .then((upd) => { if (upd) setResp(upd) })
+      // Kein Bild-Nachladen mehr: das Identity Panel rendert rein aus den
+      // bereits gespeicherten Fahrzeugdaten.
       setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 120)
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -547,7 +518,6 @@ export default function AutoFinderView() {
                       <ResultCard
                         key={k.candidate_id || `${k.marke}-${k.modell}-${i}`}
                         k={k} rank={i + 1}
-                        imagePending={pendingKeys.has(k.visual_key)}
                       />
                     ))}
                   </div>
