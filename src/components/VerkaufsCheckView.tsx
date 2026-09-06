@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { TrendingUp, ImagePlus, X, Loader2, Clock, History, Lock, ChevronDown } from 'lucide-react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { TrendingUp, ImagePlus, X, Loader2, Clock, History, ChevronDown } from 'lucide-react'
 import { runVerkaufsCheck, apiSaveCheck, PaymentRequiredError } from '../api/client'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
@@ -9,6 +8,8 @@ import KeyFindings from './KeyFindings'
 import InseratPanel from './InseratPanel'
 import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport, ResearchFailedCard, DeepeningStatus } from './ResultSummary'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
+import { useAuth } from '../context/AuthContext'
+import PurchaseGate, { PaymentReturnHinweis, usePaymentReturn } from './PurchaseGate'
 
 const ZUSTAND_OPTIONS = [
   { value: 'sehr_gut', label: 'Sehr gut', desc: 'Kaum Gebrauchsspuren, gepflegt' },
@@ -44,13 +45,21 @@ interface VerkaufsCheckViewProps {
 }
 
 export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSaved }: VerkaufsCheckViewProps) {
-  const navigate = useNavigate()
   const [form, setForm] = useState<VerkaufsCheckForm>(EMPTY)
   const [images, setImages] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<VerkaufsCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentRequired, setPaymentRequired] = useState(false)
+
+  // Rueckkehr von Stripe: `?payment=success` ist KEIN Zahlungsnachweis, sondern
+  // nur das Signal, den Kontingentstand beim Server nachzufragen. Ist er da,
+  // verschwindet das Kauf-Gate; sonst bleibt es sichtbar.
+  const { refreshUser } = useAuth()
+  const zahlungZustand = usePaymentReturn('verkaufscheck', useCallback(() => {
+    setPaymentRequired(false)
+    refreshUser()
+  }, [refreshUser]))
   const [showMore, setShowMore] = useState(false)
   // Check-ID für die Persistenz der Analyse-Rückfragen (analog Kauf-Check):
   // frisch erstellt → ID trifft nach dem Speichern ein; runId hält den Chat stabil.
@@ -351,36 +360,10 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{error}</div>
           )}
 
+          <PaymentReturnHinweis zustand={zahlungZustand} />
+
           {paymentRequired && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Lock size={18} className="text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-amber-900 mb-1">Kein Check-Kontingent mehr</p>
-                  <p className="text-sm text-amber-700 mb-3">
-                    Du hast aktuell kein Check-Guthaben. Auf der Preisseite findest du die verfügbaren Optionen.
-                  </p>
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/pricing')}
-                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Preise ansehen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentRequired(false)}
-                      className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-sm transition-colors"
-                    >
-                      Schließen
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <PurchaseGate produkt="verkaufscheck" onSchliessen={() => setPaymentRequired(false)} />
           )}
 
           {!savedCheck && (

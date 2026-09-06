@@ -37,7 +37,11 @@ export interface AuthUser {
   id: number
   email: string
   abo_typ: 'none' | 'light' | 'pro' | 'max'
+  /** Generisches Alt-Kontingent — gilt weiterhin fuer BEIDE Check-Arten. */
   checks_verbleibend: number
+  /** Consumer V1: getrennt gekaufte Berechtigungen je Check-Art. */
+  kaufchecks_verbleibend?: number
+  verkaufschecks_verbleibend?: number
   ersatzteil_suchen_verbleibend: number
   abo_kuendigt_zum?: string | null
   ist_haendler?: boolean    // manueller DB-Override (Testaccounts/Support/Sonderfälle)
@@ -58,6 +62,17 @@ function extractMessage(data: unknown): string {
     if (f && typeof f === 'object' && 'nachricht' in f) return String((f as Record<string, unknown>).nachricht)
   }
   return 'Unbekannter Fehler'
+}
+
+/**
+ * Erkennt den strukturierten Tageslimit-Fehler des Backends
+ * (`{ fehler: { code: 'tageslimit_erreicht', nachricht } }`).
+ */
+export function istTageslimit(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false
+  const f = (data as Record<string, unknown>).fehler
+  if (!f || typeof f !== 'object') return false
+  return (f as Record<string, unknown>).code === 'tageslimit_erreicht'
 }
 
 function consumerServiceError(aktion: string, status?: number): string {
@@ -368,6 +383,10 @@ export async function streamChat(
     response = await fetch(`${BASE_URL}/api/v1/chat`, {
       method: 'POST',
       headers: authHeaders(),
+      // Auth-Cookie mitsenden, damit das serverseitige Tageskontingent am KONTO
+      // haengt und nicht an der IP (Frontend/Backend sind verschiedene Origins;
+      // ohne dies wuerde der Default 'same-origin' kein Cookie senden).
+      credentials: 'include',
       body: JSON.stringify({
         message,
         verlauf,
@@ -385,6 +404,15 @@ export async function streamChat(
   }
 
   if (!response.ok) {
+    // Ein erreichtes TAGESlimit ist etwas anderes als eine kurzzeitige
+    // Drosselung: "Bitte warte kurz" waere hier schlicht falsch. Der Server
+    // liefert dafuer einen eigenen Fehlercode samt fertiger Nutzertext —
+    // dieser wird uebernommen, roher Status/JSON nie angezeigt.
+    const grund = await response.json().catch(() => null)
+    if (istTageslimit(grund)) {
+      callbacks.onError(extractMessage(grund))
+      return
+    }
     callbacks.onError(consumerServiceError('Der KI-Chat', response.status))
     return
   }
@@ -480,6 +508,10 @@ export async function streamAnalyseFrage(
     response = await fetch(`${BASE_URL}/api/v1/analyse-frage`, {
       method: 'POST',
       headers: authHeaders(),
+      // Wie beim Chat: Cookie mitsenden, damit das Tageskontingent am Konto
+      // haengt. Rueckfragen zaehlen serverseitig in einen EIGENEN Topf und
+      // verbrauchen das kostenlose Chat-Kontingent nicht.
+      credentials: 'include',
       body: JSON.stringify({
         analyse_kontext: analyseKontext,
         frage,
@@ -495,6 +527,11 @@ export async function streamAnalyseFrage(
   }
 
   if (!response.ok) {
+    const grund = await response.json().catch(() => null)
+    if (istTageslimit(grund)) {
+      callbacks.onError(extractMessage(grund))
+      return
+    }
     callbacks.onError(consumerServiceError('Die Antwort', response.status))
     return
   }
@@ -550,19 +587,26 @@ async function paymentFetch(path: string, init?: RequestInit): Promise<Response>
 export interface PaymentStatus {
   abo_typ: 'none' | 'light' | 'pro' | 'max'
   checks_verbleibend: number
+  kaufchecks_verbleibend?: number
+  verkaufschecks_verbleibend?: number
+  /** MAX-Abo: Kontingente spielen keine Rolle. */
+  unbegrenzt?: boolean
   hat_abo: boolean
 }
 
+export type CheckProdukt = 'kaufcheck' | 'verkaufscheck'
+
 export async function apiCreateCheckoutSession(
-  typ: 'abo' | 'einzelkauf',
+  typ: 'check' | 'abo' | 'einzelkauf',
   abo_typ: 'light' | 'pro' | 'max' | undefined,
   agbAkzeptiert: boolean,
   widerrufVerzicht: boolean,
+  produkt?: CheckProdukt,
 ): Promise<{ url: string }> {
   const res = await paymentFetch('/checkout-session', {
     method: 'POST',
     body: JSON.stringify({
-      typ, abo_typ,
+      typ, abo_typ, produkt,
       agb_akzeptiert: agbAkzeptiert,
       widerruf_verzicht: widerrufVerzicht,
     }),
@@ -570,6 +614,21 @@ export async function apiCreateCheckoutSession(
   const data = await res.json()
   if (!res.ok) throw new Error(extractMessage(data))
   return data as { url: string }
+}
+
+/**
+ * Startet den Kauf EINER Check-Berechtigung.
+ *
+ * Es wird bewusst nur der Produktschluessel gesendet — nie ein Betrag. Preis
+ * und Stripe-Price-ID bestimmt ausschliesslich der Server; ein manipulierter
+ * Client kann damit weder billiger kaufen noch ein anderes Produkt erhalten.
+ */
+export async function apiKaufeCheck(
+  produkt: CheckProdukt,
+  agbAkzeptiert: boolean,
+  widerrufVerzicht: boolean,
+): Promise<{ url: string }> {
+  return apiCreateCheckoutSession('check', undefined, agbAkzeptiert, widerrufVerzicht, produkt)
 }
 
 export async function apiPaymentStatus(): Promise<PaymentStatus | null> {

@@ -353,9 +353,31 @@ export default function SettingsView() {
 
           {!hatAbo && (
             <Row>
+              {/* Verstaendliche Bestandsanzeige — bewusst KEINE technische
+                  Ledger-/Transaktionsansicht. Das generische Alt-Guthaben wird
+                  nur dann als eigene Zeile gezeigt, wenn tatsaechlich welches
+                  vorhanden ist; sonst wuerde eine Null verwirren. */}
+              <div className="mb-3 space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">KaufChecks verfügbar</span>
+                  <span className="font-semibold text-gray-900">{user.kaufchecks_verbleibend ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">VerkaufsChecks verfügbar</span>
+                  <span className="font-semibold text-gray-900">{user.verkaufschecks_verbleibend ?? 0}</span>
+                </div>
+                {user.checks_verbleibend > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      Guthaben aus früherem Zugang <span className="text-gray-400">(für beide Checks)</span>
+                    </span>
+                    <span className="font-semibold text-gray-900">{user.checks_verbleibend}</span>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-gray-500 mb-3">
-                {user.checks_verbleibend > 0
-                  ? `${user.checks_verbleibend} Check${user.checks_verbleibend !== 1 ? 's' : ''} verfügbar.`
+                {(user.kaufchecks_verbleibend ?? 0) + (user.verkaufschecks_verbleibend ?? 0) + user.checks_verbleibend > 0
+                  ? 'Checks werden einmalig pro Analyse verbraucht.'
                   : 'Aktuell ist kein Check-Guthaben vorhanden.'}
               </p>
               <button

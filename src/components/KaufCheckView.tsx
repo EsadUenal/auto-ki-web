@@ -1,23 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ShoppingCart,
-  ImagePlus,
-  X,
-  Loader2,
-  CheckCircle,
-  MinusCircle,
-  XCircle,
-  AlertTriangle,
-  Wrench,
-  History,
-  Lock,
-  ChevronDown,
-  Store,
-  ArrowRight,
-} from 'lucide-react'
+import { ShoppingCart, ImagePlus, X, Loader2, CheckCircle, MinusCircle, XCircle, AlertTriangle, Wrench, History, ChevronDown, Store, ArrowRight } from 'lucide-react'
 import { runKaufCheck, apiSaveCheck, apiDealerFromCheck, PaymentRequiredError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import PurchaseGate, { PaymentReturnHinweis, usePaymentReturn } from './PurchaseGate'
 import SourceBadge from './SourceBadge'
 import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
@@ -52,13 +38,21 @@ interface KaufCheckViewProps {
 }
 
 export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }: KaufCheckViewProps) {
-  const navigate = useNavigate()
   const [form, setForm] = useState<KaufCheckForm>(EMPTY)
   const [screenshot, setScreenshot] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<KaufCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentRequired, setPaymentRequired] = useState(false)
+
+  // Rueckkehr von Stripe: `?payment=success` ist KEIN Zahlungsnachweis, sondern
+  // nur das Signal, den Kontingentstand beim Server nachzufragen. Ist er da,
+  // verschwindet das Kauf-Gate; sonst bleibt es sichtbar.
+  const { refreshUser } = useAuth()
+  const zahlungZustand = usePaymentReturn('kaufcheck', useCallback(() => {
+    setPaymentRequired(false)
+    refreshUser()
+  }, [refreshUser]))
   const [showMore, setShowMore] = useState(false)
   // Check-ID für die Persistenz der Analyse-Rückfragen. Bei einem frisch
   // erstellten Check trifft sie erst nach dem Speichern ein. runId hält den
@@ -341,36 +335,10 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{error}</div>
           )}
 
+          <PaymentReturnHinweis zustand={zahlungZustand} />
+
           {paymentRequired && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Lock size={18} className="text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-amber-900 mb-1">Kein Check-Kontingent mehr</p>
-                  <p className="text-sm text-amber-700 mb-3">
-                    Du hast aktuell kein Check-Guthaben. Auf der Preisseite findest du die verfügbaren Optionen.
-                  </p>
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/pricing')}
-                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Preise ansehen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentRequired(false)}
-                      className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-sm transition-colors"
-                    >
-                      Schließen
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <PurchaseGate produkt="kaufcheck" onSchliessen={() => setPaymentRequired(false)} />
           )}
 
           {!savedCheck && (
