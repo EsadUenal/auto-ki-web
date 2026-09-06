@@ -56,8 +56,11 @@ function verfuegbar(status: Awaited<ReturnType<typeof apiPaymentStatus>>, produk
  */
 export function usePaymentReturn(produkt: CheckProdukt, onFreigeschaltet: () => void) {
   const [zustand, setZustand] = useState<Bestaetigung>('inaktiv')
+  const [start, setStart] = useState(0)
   const gestartet = useRef(false)
 
+  // 1) Auslöser: den Rückkehr-Parameter EINMAL auswerten und sofort aus der URL
+  //    entfernen. Dieser Effekt besitzt bewusst keinen Timer.
   useEffect(() => {
     if (gestartet.current) return
     gestartet.current = true
@@ -66,23 +69,33 @@ export function usePaymentReturn(produkt: CheckProdukt, onFreigeschaltet: () => 
     const payment = params.get('payment')
     if (payment !== 'success' && payment !== 'cancelled') return
 
-    // Query-Parameter sofort entfernen: er ist kein Zahlungsnachweis und soll
-    // beim Neuladen/Teilen der URL nichts erneut auslösen.
+    // Der Parameter ist kein Zahlungsnachweis und soll beim Neuladen oder Teilen
+    // der URL nichts erneut auslösen.
     window.history.replaceState({}, '', PRODUKT_INFO[produkt].route)
 
     if (payment === 'cancelled') {
       setZustand('abgebrochen')
       return
     }
-
+    setStart(Date.now())
     setZustand('laeuft')
-    const start = Date.now()
-    let abgebrochen = false
+  }, [produkt])
+
+  // 2) Timer: laeuft nur, solange bestaetigt wird. Bewusst ein EIGENER Effekt —
+  //    React räumt ihn beim Unmount auf und stellt ihn danach wieder her.
+  //    Läge das Pollen im Auslöser-Effekt oben (der per Ref nur einmal laufen
+  //    darf), würde dessen Cleanup die Schleife abräumen, ohne dass sie je
+  //    wieder startet: der Nutzer sähe dann dauerhaft "Zahlung wird bestätigt"
+  //    und nie den Zeitüberschreitungs-Hinweis.
+  useEffect(() => {
+    if (zustand !== 'laeuft') return
+    let aktiv = true
 
     const pruefe = async () => {
-      if (abgebrochen) return
+      if (!aktiv) return
       try {
         const status = await apiPaymentStatus()
+        if (!aktiv) return
         if (verfuegbar(status, produkt)) {
           setZustand('freigeschaltet')
           onFreigeschaltet()
@@ -91,16 +104,17 @@ export function usePaymentReturn(produkt: CheckProdukt, onFreigeschaltet: () => 
       } catch {
         // Netzwerk-Aussetzer: weiter versuchen, bis das Zeitfenster endet.
       }
+      if (!aktiv) return
       if (Date.now() - start >= BESTAETIGUNG_TIMEOUT_MS) {
         setZustand('zeitueberschreitung')
         return
       }
-      window.setTimeout(pruefe, BESTAETIGUNG_INTERVALL_MS)
+      timer = window.setTimeout(pruefe, BESTAETIGUNG_INTERVALL_MS)
     }
-    pruefe()
 
-    return () => { abgebrochen = true }
-  }, [produkt, onFreigeschaltet])
+    let timer = window.setTimeout(pruefe, 0)
+    return () => { aktiv = false; window.clearTimeout(timer) }
+  }, [zustand, start, produkt, onFreigeschaltet])
 
   return zustand
 }

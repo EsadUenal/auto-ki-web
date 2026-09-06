@@ -90,6 +90,23 @@ test('Rueckkehr endet nicht in einem unendlichen Spinner', () => {
   assert.match(gate, /abgebrochen/)
 })
 
+test('Regression: der Bestaetigungs-Timer stirbt nicht am StrictMode-Cleanup', () => {
+  // Gefunden in der Browser-QA: lagen Ausloeser und Timer in EINEM per Ref
+  // einmalig gefeuerten Effekt, raeumte React 18 (StrictMode ruft Effekte
+  // doppelt auf) die Schleife nach dem ersten Durchlauf ab. Der Ref-Guard
+  // verhinderte den Neustart -> "Zahlung wird bestätigt" blieb dauerhaft
+  // stehen und der Zeitueberschreitungs-Zweig wurde nie erreicht.
+  // Der Timer muss deshalb in einem EIGENEN Effekt liegen, der von `zustand`
+  // abhaengt: den stellt React nach einem Cleanup von selbst wieder her.
+  const effekte = gate.match(/useEffect\(\(\) => \{/g) || []
+  assert.ok(effekte.length >= 2, 'Ausloeser und Timer liegen in getrennten Effekten')
+  assert.match(gate, /\}, \[zustand, start, produkt, onFreigeschaltet\]\)/)
+  // Der Ref-Guard darf NUR den Ausloeser schuetzen, nie den Timer.
+  const timerBlock = gate.slice(gate.indexOf("if (zustand !== 'laeuft') return"))
+  assert.doesNotMatch(timerBlock, /gestartet\.current/)
+  assert.match(timerBlock, /BESTAETIGUNG_TIMEOUT_MS/)
+})
+
 test('abgebrochene Zahlung schaltet nichts frei', () => {
   assert.match(gate, /Die Zahlung wurde abgebrochen\. Es wurde nichts berechnet und nichts freigeschaltet\./)
   // Der cancelled-Zweig kehrt zurueck, ohne den Status zu pollen.
