@@ -221,7 +221,7 @@ export default function Sidebar({
           // Ersatzteile: technisch im Repo geparkt, aber NICHT im Consumer-UI
           // freigegeben — kein Sidebar-Eintrag, keine sichtbare Navigation.
           { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },
-          { to: '/pricing',       Icon: CreditCard,    label: 'Preise & Abo' },
+          { to: '/pricing',       Icon: CreditCard,    label: 'Preise' },
         ].map(({ to, Icon, label }) => (
           <NavLink
             key={to}
@@ -382,7 +382,7 @@ export default function Sidebar({
                 <div className="text-xs text-sidebar-muted">
                   {user.checks_verbleibend > 0
                     ? <>{user.checks_verbleibend} Gratis-Check{user.checks_verbleibend !== 1 ? 's' : ''} übrig</>
-                    : 'Kein Abo aktiv'}
+                    : 'Kostenloser Zugang'}
                 </div>
               )}
             </div>
@@ -394,7 +394,7 @@ export default function Sidebar({
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors text-left"
               >
                 <CreditCard size={15} className="text-sidebar-muted shrink-0" />
-                Alle Tarife anzeigen
+                Preise anzeigen
               </button>
 
               <div className="my-1 border-t border-sidebar-border" />

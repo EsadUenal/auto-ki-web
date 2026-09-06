@@ -360,7 +360,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                 <div className="flex-1">
                   <p className="font-semibold text-amber-900 mb-1">Kein Check-Kontingent mehr</p>
                   <p className="text-sm text-amber-700 mb-3">
-                    Du hast alle verfügbaren Checks verbraucht. Kaufe einen Einzelcheck oder schließe ein Abo ab.
+                    Du hast aktuell kein Check-Guthaben. Auf der Preisseite findest du die verfügbaren Optionen.
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <button
@@ -368,7 +368,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                       onClick={() => navigate('/pricing')}
                       className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
                     >
-                      Preise & Abo ansehen
+                      Preise ansehen
                     </button>
                     <button
                       type="button"

@@ -415,7 +415,7 @@ function AppContent() {
           />
           <Route path="/ebooks" element={<Guard authed={!!user} loading={isLoading}><EbookView /></Guard>} />
           <Route path="/ersatzteile" element={<Guard authed={!!user} loading={isLoading}><ErsatzteileView /></Guard>} />
-          <Route path="/pricing" element={<Guard authed={!!user} loading={isLoading}><PricingView /></Guard>} />
+          <Route path="/pricing" element={<PricingView />} />
           <Route path="/settings" element={<Guard authed={!!user} loading={isLoading}><SettingsView /></Guard>} />
           <Route path="/help" element={<Guard authed={!!user} loading={isLoading}><HelpView /></Guard>} />
         </Routes>

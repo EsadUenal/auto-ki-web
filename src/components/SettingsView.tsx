@@ -143,7 +143,7 @@ export default function SettingsView() {
             <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Einstellungen</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.02em] mb-1">Einstellungen</h1>
-          <p className="text-sm text-gray-500">Konto, Abo und Darstellung verwalten</p>
+          <p className="text-sm text-gray-500">Konto und Zugang verwalten</p>
         </div>
 
         {/* ── Konto ── */}
@@ -212,7 +212,7 @@ export default function SettingsView() {
                 </div>
                 <p className="text-xs text-red-700">
                   Du wirst sofort ausgeloggt und kannst dich nicht mehr einloggen.
-                  Aktive Abos bitte vorher kündigen.
+                  {hatAbo ? 'Dein aktives Abo musst du vorher kündigen.' : 'Dieser Schritt kann nicht rückgängig gemacht werden.'}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -266,12 +266,13 @@ export default function SettingsView() {
           </Row>
         </Section>
 
-        {/* ── Abo ── */}
-        <Section title="Abo verwalten">
+        {/* Bestehende Legacy-Abos bleiben verwaltbar; neuen Nutzern wird nur
+            der kostenlose Zugang samt vorhandenem Check-Guthaben gezeigt. */}
+        <Section title={hatAbo ? 'Abo verwalten' : 'Zugang & Guthaben'}>
           <Row>
             <div className="flex items-center justify-between">
               <div>
-                <Label>Aktuelles Abo</Label>
+                <Label>{hatAbo ? 'Aktuelles Abo' : 'Aktueller Zugang'}</Label>
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${abo.cls}`}>
                     {abo.icon}
@@ -294,7 +295,7 @@ export default function SettingsView() {
                 onClick={() => navigate('/pricing')}
                 className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors"
               >
-                Tarife <ChevronRight size={14} />
+                Preise <ChevronRight size={14} />
               </button>
             </div>
           </Row>
@@ -353,14 +354,16 @@ export default function SettingsView() {
           {!hatAbo && (
             <Row>
               <p className="text-sm text-gray-500 mb-3">
-                Noch kein Abo aktiv. Entdecke unsere Tarife.
+                {user.checks_verbleibend > 0
+                  ? `${user.checks_verbleibend} Check${user.checks_verbleibend !== 1 ? 's' : ''} verfügbar.`
+                  : 'Aktuell ist kein Check-Guthaben vorhanden.'}
               </p>
               <button
                 onClick={() => navigate('/pricing')}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
                 style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 8px 18px -6px rgba(249,115,22,0.5)' }}
               >
-                Jetzt upgraden <ChevronRight size={14} />
+                Preise ansehen <ChevronRight size={14} />
               </button>
             </Row>
           )}

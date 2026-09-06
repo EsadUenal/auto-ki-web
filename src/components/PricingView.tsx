@@ -1,157 +1,113 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
-import { Check, Zap, Star, Crown, ShoppingCart, CheckCircle, X } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Calculator,
+  Car,
+  Check,
+  MessageSquare,
+  Search,
+  ShieldCheck,
+  ShoppingCart,
+  TrendingUp,
+  User,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { apiCreateCheckoutSession, apiVerifyPayment } from '../api/client'
+import { RETURN_TO_KEY } from './autofinder/logic'
 
-interface PlanConfig {
-  id: 'light' | 'pro' | 'max'
-  name: string
-  preis: string
-  preisHinweis: string
-  checks: string
-  features: string[]
-  icon: React.ReactNode
-  highlight?: boolean
-  farbe: string
-  bg: string
-  border: string
-}
-
-const PLANS: PlanConfig[] = [
-  {
-    id: 'light',
-    name: 'LIGHT',
-    preis: '5,99 €',
-    preisHinweis: 'pro Monat',
-    checks: '3 Checks / Monat',
-    features: [
-      '3 Kauf- oder Verkaufs-Checks',
-      'Besserer KI-Chat (mehr Anfragen)',
-      'Längere Chat-Nachrichten',
-    ],
-    icon: <Zap size={22} />,
-    farbe: 'text-blue-600',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-  },
-  {
-    id: 'pro',
-    name: 'PRO',
-    preis: '19,99 €',
-    preisHinweis: 'pro Monat',
-    checks: '10 Checks / Monat',
-    features: [
-      '10 Kauf- oder Verkaufs-Checks',
-      'Alle LIGHT-Features',
-      '10% Rabatt auf E-Books',
-      'Prioritäts-Support',
-    ],
-    icon: <Star size={22} />,
-    highlight: true,
-    farbe: 'text-orange-600',
-    bg: 'bg-orange-50',
-    border: 'border-orange-400',
-  },
-  {
-    id: 'max',
-    name: 'MAX',
-    preis: '49,99 €',
-    preisHinweis: 'pro Monat',
-    checks: 'Unbegrenzte Checks',
-    features: [
-      'Unbegrenzte Kauf- & Verkaufs-Checks',
-      'VIRA Dealer – Bestand, Margen & Fahrzeugverwaltung',
-      'Alle PRO-Features',
-      'Frühzugang zu neuen Features',
-      'Direkter Support',
-    ],
-    icon: <Crown size={22} />,
-    farbe: 'text-purple-600',
-    bg: 'bg-purple-50',
-    border: 'border-purple-200',
-  },
+const FREE_FEATURES = [
+  { icon: <Search size={16} />, text: 'AutoFinder' },
+  { icon: <Calculator size={16} />, text: 'Autokosten' },
+  { icon: <MessageSquare size={16} />, text: 'KI-Chat im kostenlosen Zugang' },
+  { icon: <User size={16} />, text: 'VIRA Account und gespeicherte Verläufe' },
 ]
 
-// Hover-Glow je Plan im jeweiligen Akzent-RGB — dieselbe Idee wie der
-// fahrzeugeigene Glow auf der Entdecken-Seite (car.glow), konsistent übernommen.
-const GLOW_RGB: Record<string, string> = {
-  light:     '59,130,246',   // blau
-  pro:       '249,115,22',   // orange
-  max:       '168,85,247',   // lila
-  einzelkauf: '17,24,39',    // neutral (grau-900)
+const KAUFCHECK_FEATURES = [
+  'Fahrzeuganalyse mit Ergebnisübersicht',
+  'Bekannte Schwachstellen der Baureihe',
+  'Motor- und Baureihenprüfung',
+  'Einordnung von Datenqualität und Quellenlage',
+  'Konkrete kaufrelevante Hinweise',
+]
+
+const VERKAUFSCHECK_FEATURES = [
+  'Fahrzeug- und Zustandsanalyse',
+  'Preisorientierung bei ausreichender Datenlage',
+  'Verkaufsstrategie und Ergebnisübersicht',
+  'Prüfung des Inseratstexts',
+  'Argumente für einen nachvollziehbaren Verkauf',
+]
+
+function FeatureList({ features, accent }: { features: string[]; accent: string }) {
+  return (
+    <ul className="space-y-2.5 mb-7 flex-1">
+      {features.map((feature) => (
+        <li key={feature} className="flex items-start gap-2.5 text-sm leading-relaxed text-gray-600">
+          <Check size={16} className={`${accent} shrink-0 mt-0.5`} />
+          <span>{feature}</span>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
-// Hover-Signatur der Entdecken-Karten, konsistent übernommen (nicht stärker).
-const CARD_TRANSITION =
-  'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.32s ease, border-color 0.2s ease'
-
-function cardHoverStyle(id: string, hovered: boolean, restingShadow: string): React.CSSProperties {
-  return {
-    transform: hovered ? 'translateY(-6px) scale(1.02)' : 'translateY(0) scale(1)',
-    boxShadow: hovered
-      ? `0 24px 50px rgba(0,0,0,0.10), 0 0 40px rgba(${GLOW_RGB[id]},0.16)`
-      : restingShadow,
-    transition: CARD_TRANSITION,
-    willChange: 'transform',
-  }
+function PaidCard({
+  title,
+  price,
+  intro,
+  features,
+  icon,
+  accent,
+  iconClass,
+  buttonClass,
+  cta,
+  onStart,
+}: {
+  title: string
+  price: string
+  intro: string
+  features: string[]
+  icon: ReactNode
+  accent: string
+  iconClass: string
+  buttonClass: string
+  cta: string
+  onStart: () => void
+}) {
+  return (
+    <article className="rounded-3xl border border-[#e6e1da] bg-white p-6 sm:p-7 shadow-[0_18px_48px_-30px_rgba(40,25,10,0.28)] flex flex-col">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${iconClass}`}>
+        {icon}
+      </div>
+      <h2 className="text-xl font-bold tracking-[-0.02em] text-gray-900">{title}</h2>
+      <p className="text-sm text-gray-500 mt-1 mb-5">{intro}</p>
+      <div className="mb-6">
+        <span className="text-4xl font-bold tracking-[-0.04em] text-gray-900">{price}</span>
+        <span className="ml-2 text-sm text-gray-500">einmalig pro Check</span>
+      </div>
+      <FeatureList features={features} accent={accent} />
+      <button
+        type="button"
+        onClick={onStart}
+        className={`w-full rounded-xl px-5 py-3 text-sm font-semibold transition-colors ${buttonClass}`}
+      >
+        {cta}
+      </button>
+    </article>
+  )
 }
 
 export default function PricingView() {
-  const { user, refreshUser } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [loading, setLoading] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
-  const [agbChecked, setAgbChecked] = useState(false)
-  const [widerrufChecked, setWiderrufChecked] = useState(false)
-  const consentOk = agbChecked && widerrufChecked
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
-  const paymentParam = searchParams.get('payment')
-  const sessionIdParam = searchParams.get('session_id')
-
-  // Nach erfolgreicher Zahlung: Freischaltung serverseitig verifizieren (Fallback
-  // zum Webhook), dann User-Daten aktualisieren.
-  useEffect(() => {
-    if (paymentParam === 'success') {
-      const verify = sessionIdParam
-        ? apiVerifyPayment(sessionIdParam).catch(() => {})
-        : Promise.resolve()
-      verify.finally(() => refreshUser())
-      const t = setTimeout(() => {
-        setSearchParams({}, { replace: true })
-      }, 5000)
-      return () => clearTimeout(t)
+  function startCheck(path: '/kaufcheck' | '/verkaufscheck') {
+    if (!user) {
+      sessionStorage.setItem(RETURN_TO_KEY, path)
+      navigate('/login')
+      return
     }
-  }, [paymentParam, sessionIdParam, refreshUser, setSearchParams])
-
-  async function handleAbo(aboTyp: 'light' | 'pro' | 'max') {
-    if (!consentOk) return
-    setLoading(aboTyp)
-    setError(null)
-    try {
-      const { url } = await apiCreateCheckoutSession('abo', aboTyp, agbChecked, widerrufChecked)
-      window.location.href = url
-    } catch (e) {
-      setError((e as Error).message)
-      setLoading(null)
-    }
+    navigate(path)
   }
-
-  async function handleEinzelkauf() {
-    if (!consentOk) return
-    setLoading('einzelkauf')
-    setError(null)
-    try {
-      const { url } = await apiCreateCheckoutSession('einzelkauf', undefined, agbChecked, widerrufChecked)
-      window.location.href = url
-    } catch (e) {
-      setError((e as Error).message)
-      setLoading(null)
-    }
-  }
-
-  const aktuellerPlan = user?.abo_typ ?? 'none'
 
   return (
     <div
@@ -159,196 +115,89 @@ export default function PricingView() {
       style={{ background: 'radial-gradient(120% 60% at 50% 0%, #fdfaf6 0%, #faf7f3 40%, #f4f0ea 100%)' }}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
-        <div className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
+        <div
+          className="ez-aurora absolute left-1/2 -translate-x-1/2 -top-40 w-[720px] h-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }}
+        />
       </div>
 
-      <div className="ez-rise relative max-w-5xl mx-auto px-4 py-12">
-
-        {/* Header */}
-        <div className="text-center mb-10">
+      <div className="ez-rise relative max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        <header className="text-center max-w-2xl mx-auto mb-9">
           <div className="inline-flex items-center gap-2.5 mb-5">
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
-              <Star size={12} />
+              <ShieldCheck size={13} />
             </span>
             <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Preise</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3 tracking-[-0.03em] leading-[1.0]">
-            Ein Plan, <span className="text-gray-400">der mitwächst.</span>
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.04em] leading-[1.02]">
+            Nur zahlen, wenn du <span className="text-gray-400">einen Check brauchst.</span>
           </h1>
-          <p className="text-gray-500 text-base max-w-xl mx-auto">
-            Wähle den Plan, der zu deiner Nutzung passt. Alle Pläne können monatlich gekündigt werden.
+          <p className="text-gray-500 text-base mt-4 leading-relaxed">
+            AutoFinder, Autokosten und der Basiszugang bleiben kostenlos. KaufCheck und
+            VerkaufsCheck bezahlst du jeweils nur bei konkretem Bedarf.
           </p>
-          {user && aktuellerPlan !== 'none' && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-2 rounded-full">
-              <CheckCircle size={15} />
-              Aktueller Plan: <strong className="uppercase">{aktuellerPlan}</strong>
-              {aktuellerPlan !== 'max' && (
-                <span className="text-green-600">
-                  · {user.checks_verbleibend} Check{user.checks_verbleibend !== 1 ? 's' : ''} verbleibend
-                </span>
-              )}
-            </div>
-          )}
-          {user && aktuellerPlan === 'none' && user.checks_verbleibend > 0 && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-sm px-4 py-2 rounded-full">
-              <CheckCircle size={15} />
-              {user.checks_verbleibend} Gratis-Check noch verfügbar
-            </div>
-          )}
+        </header>
+
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-9 text-xs font-medium text-gray-600">
+          {['Einmalige Zahlung pro Check', 'Keine automatische Verlängerung', 'Kein verstecktes Abo'].map((item) => (
+            <span key={item} className="inline-flex items-center gap-1.5">
+              <Check size={14} className="text-emerald-600" />
+              {item}
+            </span>
+          ))}
         </div>
 
-        {/* Zahlung erfolgreich / abgebrochen */}
-        {paymentParam === 'success' && (
-          <div className="mb-8 bg-green-50 border border-green-200 rounded-2xl px-6 py-4 flex items-start gap-3">
-            <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-green-800">Zahlung erfolgreich!</p>
-              <p className="text-sm text-green-700 mt-0.5">
-                Dein Konto wird in Kürze freigeschaltet. Das kann einen Moment dauern.
-              </p>
-            </div>
-          </div>
-        )}
-        {paymentParam === 'cancelled' && (
-          <div className="mb-8 bg-gray-50 border border-gray-200 rounded-2xl px-6 py-4 flex items-start gap-3">
-            <X size={20} className="text-gray-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-gray-600">Zahlung abgebrochen. Du kannst jederzeit erneut starten.</p>
-          </div>
-        )}
-
-        {/* Fehler */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* Pflicht-Zustimmungen — gelten für alle Käufe (Abo + Einzelkauf) */}
-        <div className="max-w-2xl mx-auto mb-8 bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)] space-y-3">
-          <label className="flex items-start gap-2.5 cursor-pointer select-none">
-            <input type="checkbox" checked={agbChecked} onChange={(e) => setAgbChecked(e.target.checked)}
-              className="mt-0.5 shrink-0 w-4 h-4 accent-orange-500" />
-            <span className="text-xs text-gray-600 leading-relaxed">
-              Ich akzeptiere die <Link to="/agb" className="underline hover:text-orange-600">AGB</Link>
-              {' '}und die <Link to="/datenschutz" className="underline hover:text-orange-600">Datenschutzerklärung</Link>.
-            </span>
-          </label>
-          <label className="flex items-start gap-2.5 cursor-pointer select-none">
-            <input type="checkbox" checked={widerrufChecked} onChange={(e) => setWiderrufChecked(e.target.checked)}
-              className="mt-0.5 shrink-0 w-4 h-4 accent-orange-500" />
-            <span className="text-xs text-gray-600 leading-relaxed">
-              Ich stimme ausdrücklich zu, dass vor Ablauf der Widerrufsfrist mit der Ausführung des Vertrags
-              begonnen wird. Mir ist bekannt, dass ich dadurch mein{' '}
-              <Link to="/widerruf" className="underline hover:text-orange-600">Widerrufsrecht</Link> verliere.
-            </span>
-          </label>
-        </div>
-
-        {/* Abo-Karten */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-          {PLANS.map((plan) => {
-            const istAktuell = aktuellerPlan === plan.id
-            const istHighlight = plan.highlight
-
-            return (
-              <div
-                key={plan.id}
-                onMouseEnter={() => setHoveredCard(plan.id)}
-                onMouseLeave={() => setHoveredCard(null)}
-                className={`relative rounded-2xl border-2 p-6 flex flex-col ${plan.border} bg-white`}
-                style={cardHoverStyle(
-                  plan.id,
-                  hoveredCard === plan.id,
-                  istHighlight
-                    ? '0 8px 24px rgba(249,115,22,0.10)'
-                    : '0 1px 3px rgba(0,0,0,0.05)',
-                )}
-              >
-                {istHighlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full tracking-wide">
-                    BELIEBT
-                  </div>
-                )}
-                {istAktuell && (
-                  <div className="absolute -top-3 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                    AKTIV
-                  </div>
-                )}
-
-                {/* Icon + Name */}
-                <div className={`w-11 h-11 rounded-xl ${plan.bg} ${plan.farbe} flex items-center justify-center mb-4`}>
-                  {plan.icon}
-                </div>
-                <h2 className={`text-lg font-bold ${plan.farbe} mb-1`}>{plan.name}</h2>
-                <div className="mb-1">
-                  <span className="text-2xl font-bold text-gray-900">{plan.preis}</span>
-                  <span className="text-sm text-gray-400 ml-1">{plan.preisHinweis}</span>
-                </div>
-                <p className="text-sm font-medium text-gray-600 mb-4">{plan.checks}</p>
-
-                {/* Features */}
-                <ul className="space-y-2 mb-6 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                      <Check size={15} className={`${plan.farbe} shrink-0 mt-0.5`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* CTA */}
-                <button
-                  onClick={() => handleAbo(plan.id)}
-                  disabled={!!loading || istAktuell || !consentOk}
-                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    istAktuell
-                      ? 'bg-gray-100 text-gray-400 cursor-default border border-transparent'
-                      : istHighlight
-                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm border border-transparent'
-                        : `${plan.bg} ${plan.farbe} hover:opacity-80 border ${plan.border}`
-                  } disabled:opacity-60`}
-                >
-                  {loading === plan.id
-                    ? 'Weiterleitung…'
-                    : istAktuell
-                      ? 'Aktueller Plan'
-                      : `${plan.name} wählen`}
-                </button>
+        <section className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-7 shadow-[0_16px_40px_-30px_rgba(5,150,105,0.4)]">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+            <div className="flex items-start gap-4 lg:w-64 shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <Car size={22} />
               </div>
-            )
-          })}
-        </div>
-
-        {/* Einzelkauf */}
-        <div
-          onMouseEnter={() => setHoveredCard('einzelkauf')}
-          onMouseLeave={() => setHoveredCard(null)}
-          className="bg-white border border-[#e6e1da] rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-6"
-          style={cardHoverStyle('einzelkauf', hoveredCard === 'einzelkauf', '0 8px 24px -16px rgba(40,25,10,0.2)')}
-        >
-          <div className="w-11 h-11 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
-            <ShoppingCart size={22} />
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">VIRA Free</h2>
+                <p className="mt-1"><span className="text-3xl font-bold text-gray-900">0 €</span></p>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3 flex-1">
+              {FREE_FEATURES.map(({ icon, text }) => (
+                <div key={text} className="flex items-center gap-2.5 text-sm text-gray-700">
+                  <span className="text-emerald-700 shrink-0">{icon}</span>
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-bold text-gray-900 mb-1">Einzelkauf: 12,99 €</h2>
-            <p className="text-sm text-gray-500">
-              Kein Abo nötig. Kaufe einen einzelnen Kauf- oder Verkaufs-Check als Einmalzahlung.
-              Ideal für gelegentliche Nutzung.
-            </p>
-          </div>
-          <button
-            onClick={handleEinzelkauf}
-            disabled={!!loading || !consentOk}
-            className="shrink-0 px-6 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold transition-colors disabled:opacity-60 whitespace-nowrap"
-          >
-            {loading === 'einzelkauf' ? 'Weiterleitung…' : '1 Check kaufen'}
-          </button>
-        </div>
+        </section>
 
-        {/* Hinweis */}
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Alle Preise inkl. MwSt. · Abo monatlich kündbar
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <PaidCard
+            title="KaufCheck"
+            price="9,99 €"
+            intro="Entscheidungshilfe vor dem Fahrzeugkauf"
+            features={KAUFCHECK_FEATURES}
+            icon={<ShoppingCart size={22} />}
+            accent="text-blue-600"
+            iconClass="bg-blue-50 text-blue-600"
+            buttonClass="bg-blue-600 hover:bg-blue-700 text-white"
+            cta="KaufCheck starten"
+            onStart={() => startCheck('/kaufcheck')}
+          />
+          <PaidCard
+            title="VerkaufsCheck"
+            price="7,99 €"
+            intro="Orientierung und Vorbereitung für deinen Verkauf"
+            features={VERKAUFSCHECK_FEATURES}
+            icon={<TrendingUp size={22} />}
+            accent="text-emerald-600"
+            iconClass="bg-emerald-50 text-emerald-600"
+            buttonClass="bg-emerald-600 hover:bg-emerald-700 text-white"
+            cta="VerkaufsCheck starten"
+            onStart={() => startCheck('/verkaufscheck')}
+          />
+        </section>
+
+        <p className="text-center text-xs text-gray-400 mt-7">
+          Preise inkl. MwSt. · Der KI-Chat ist im kostenlosen Zugang enthalten.
         </p>
       </div>
     </div>

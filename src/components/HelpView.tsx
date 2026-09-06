@@ -16,24 +16,9 @@ const FAQ_ITEMS = [
       'Du gibst die Fahrzeugdaten ein (Marke, Modell, Baujahr, Kilometerstand, Preis), entweder manuell oder als Freitext aus einem Inserat. Die KI analysiert den Zustand, prüft bekannte Schwachstellen der Baureihe, vergleicht den Preis mit dem Markt und gibt dir eine klare Empfehlung: kaufen, verhandeln oder Finger weg.',
   },
   {
-    frage: 'Was ist im Abo enthalten?',
-    antwort:
-      'Das Light-Abo enthält 3 Kauf- oder Verkaufs-Checks pro Monat. Das Pro-Abo gibt dir 10 Checks. Das Max-Abo bietet unbegrenzte Checks plus zukünftige Premium-Funktionen. Alle Abos nutzen dieselbe KI-Analyse, der Unterschied liegt nur im Volumen.',
-  },
-  {
-    frage: 'Wie kündige ich mein Abo?',
-    antwort:
-      'Gehe zu Einstellungen → Abo verwalten → Abo kündigen. Das Abo läuft bis zum Ende der bezahlten Periode weiter, du verlierst nichts, was du schon bezahlt hast. Danach wechselst du automatisch zurück auf den kostenlosen Plan.',
-  },
-  {
-    frage: 'Welche Zahlungsmethoden werden akzeptiert?',
-    antwort:
-      'Aktuell Kreditkarte und Debitkarte über Stripe. Weitere Methoden (PayPal, SEPA-Lastschrift) sind geplant.',
-  },
-  {
     frage: 'Sind meine Daten sicher?',
     antwort:
-      'Passwörter werden mit bcrypt gehasht und niemals im Klartext gespeichert. Zahlungen laufen ausschließlich über Stripe. Wir sehen keine Kartendaten. Deine Chat-Verläufe und Checks sind nur für dich sichtbar.',
+      'Passwörter werden sicher gehasht und niemals im Klartext gespeichert. Deine Chat-Verläufe und Checks sind nur für dich sichtbar.',
   },
 ]
 
