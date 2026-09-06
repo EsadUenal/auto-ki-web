@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -8,17 +9,27 @@ import {
   Search,
   ShieldCheck,
   ShoppingCart,
+  Sparkles,
   TrendingUp,
   User,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { PlusCheckout } from './PurchaseGate'
 import { RETURN_TO_KEY } from './autofinder/logic'
 
 const FREE_FEATURES = [
-  { icon: <Search size={16} />, text: 'AutoFinder' },
-  { icon: <Calculator size={16} />, text: 'Autokosten' },
-  { icon: <MessageSquare size={16} />, text: 'KI-Chat im kostenlosen Zugang' },
+  { icon: <Search size={16} />, text: '5 AutoFinder-Suchen pro Monat' },
+  { icon: <MessageSquare size={16} />, text: '20 KI-Chat-Nachrichten pro Monat' },
+  { icon: <Calculator size={16} />, text: 'Autokosten unbegrenzt' },
   { icon: <User size={16} />, text: 'VIRA Account und gespeicherte Verläufe' },
+]
+
+const PLUS_FEATURES = [
+  '5 KaufChecks pro Monat',
+  '1 VerkaufsCheck pro Monat',
+  '50 AutoFinder-Suchen pro Monat',
+  '100 KI-Chat-Nachrichten pro Monat',
+  'Autokosten unbegrenzt',
 ]
 
 const KAUFCHECK_FEATURES = [
@@ -85,6 +96,7 @@ function PaidCard({
         <span className="ml-2 text-sm text-gray-500">einmalig pro Check</span>
       </div>
       <FeatureList features={features} accent={accent} />
+      <p className="text-xs text-gray-400 mb-4 -mt-3">Dein Guthaben verfällt nicht.</p>
       <button
         type="button"
         onClick={onStart}
@@ -99,6 +111,18 @@ function PaidCard({
 export default function PricingView() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [plusCheckout, setPlusCheckout] = useState(false)
+
+  // Plus laeuft ueber den bestehenden Checkout — anonym zuerst ueber Login mit
+  // ReturnTo, damit der Nutzer nach der Anmeldung wieder hier landet.
+  function startPlus() {
+    if (!user) {
+      sessionStorage.setItem(RETURN_TO_KEY, '/pricing')
+      navigate('/login')
+      return
+    }
+    setPlusCheckout(true)
+  }
 
   function startCheck(path: '/kaufcheck' | '/verkaufscheck') {
     if (!user) {
@@ -130,16 +154,16 @@ export default function PricingView() {
             <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Preise</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.04em] leading-[1.02]">
-            Nur zahlen, wenn du <span className="text-gray-400">einen Check brauchst.</span>
+            Einzeln kaufen oder <span className="text-gray-400">monatlich mehr bekommen.</span>
           </h1>
           <p className="text-gray-500 text-base mt-4 leading-relaxed">
-            AutoFinder, Autokosten und der Basiszugang bleiben kostenlos. KaufCheck und
-            VerkaufsCheck bezahlst du jeweils nur bei konkretem Bedarf.
+            Starte kostenlos. Bezahle einzelne Checks nur bei Bedarf — oder hol dir mit
+            VIRA Plus jeden Monat ein festes Kontingent.
           </p>
         </header>
 
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-9 text-xs font-medium text-gray-600">
-          {['Einmalige Zahlung pro Check', 'Keine automatische Verlängerung', 'Kein verstecktes Abo'].map((item) => (
+          {['Einzelchecks ohne Abo', 'Gekauftes Guthaben verfällt nicht', 'Plus monatlich kündbar'].map((item) => (
             <span key={item} className="inline-flex items-center gap-1.5">
               <Check size={14} className="text-emerald-600" />
               {item}
@@ -172,7 +196,7 @@ export default function PricingView() {
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <PaidCard
             title="KaufCheck"
-            price="9,99 €"
+            price="5,99 €"
             intro="Entscheidungshilfe vor dem Fahrzeugkauf"
             features={KAUFCHECK_FEATURES}
             icon={<ShoppingCart size={22} />}
@@ -184,7 +208,7 @@ export default function PricingView() {
           />
           <PaidCard
             title="VerkaufsCheck"
-            price="7,99 €"
+            price="8,99 €"
             intro="Orientierung und Vorbereitung für deinen Verkauf"
             features={VERKAUFSCHECK_FEATURES}
             icon={<TrendingUp size={22} />}
@@ -196,8 +220,56 @@ export default function PricingView() {
           />
         </section>
 
+        <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 sm:p-7 shadow-[0_18px_48px_-30px_rgba(249,115,22,0.35)]">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            <div className="lg:w-72 shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-5">
+                <Sparkles size={22} />
+              </div>
+              <h2 className="text-xl font-bold tracking-[-0.02em] text-gray-900">VIRA Plus</h2>
+              <p className="text-sm text-gray-500 mt-1 mb-5">Für alle, die regelmäßig Autos prüfen</p>
+              <div>
+                <span className="text-4xl font-bold tracking-[-0.04em] text-gray-900">16,99 €</span>
+                <span className="ml-2 text-sm text-gray-500">pro Monat</span>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-2.5 mb-5">
+                {PLUS_FEATURES.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2.5 text-sm leading-relaxed text-gray-600">
+                    <Check size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Abo-Transparenz: fachlich korrekt formuliert. Stripe kuendigt zum
+                  Periodenende, nicht sofort — deshalb steht hier kein "jederzeit
+                  sofort beendbar". */}
+              <p className="text-xs text-gray-500 leading-relaxed mb-5">
+                16,99 € pro Monat. Verlängert sich automatisch um einen Monat, bis du kündigst.
+                Nach der Kündigung läuft Plus bis zum Ende des bezahlten Monats weiter.
+                Keine Mindestlaufzeit, keine Jahresbindung. Monatliche Kontingente verfallen
+                zum Monatsende — <strong>einzeln gekaufte Checks behältst du dauerhaft.</strong>
+              </p>
+
+              <button
+                type="button"
+                onClick={startPlus}
+                className="w-full sm:w-auto rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 10px 24px -8px rgba(249,115,22,0.5)' }}
+              >
+                VIRA Plus starten
+              </button>
+
+              {plusCheckout && <PlusCheckout onAbbrechen={() => setPlusCheckout(false)} />}
+            </div>
+          </div>
+        </section>
+
         <p className="text-center text-xs text-gray-400 mt-7">
-          Preise inkl. MwSt. · Der KI-Chat ist im kostenlosen Zugang enthalten.
+          Alle Preise inkl. MwSt.
         </p>
       </div>
     </div>

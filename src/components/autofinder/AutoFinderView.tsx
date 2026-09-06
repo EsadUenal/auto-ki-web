@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, SlidersHorizontal, Car, Clock, RotateCcw, Check, ChevronRight } from 'lucide-react'
 import { apiAutoFinder } from '../../api/client'
 import {
@@ -75,11 +76,15 @@ function GroupTitle({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 export default function AutoFinderView() {
+  const navigate = useNavigate()
   const [form, setForm] = useState<AutoFinderForm>(EMPTY_FORM)
   const [showMore, setShowMore] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progressStep, setProgressStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // Getrennt vom Fehlertext: nur bei einem erreichten Kontingent ist eine
+  // Plus-CTA sinnvoll — bei einem Serverfehler waere sie irrefuehrend.
+  const [limitErreicht, setLimitErreicht] = useState(false)
   const [resp, setResp] = useState<AutoFinderResponse | null>(null)
   const [historie, setHistorie] = useState<GespeicherteSuche[]>([])
   const [showHistorie, setShowHistorie] = useState(false)
@@ -108,6 +113,7 @@ export default function AutoFinderView() {
       setForm(s.form)
       setShowHistorie(false)
       setError(null)
+    setLimitErreicht(false)
       if (s.response) {
         setResp(s.response)
         setRestauriert(true)
@@ -172,6 +178,7 @@ export default function AutoFinderView() {
     } catch (err) {
       stopProgress()
       setError(humanError(err))
+      setLimitErreicht(err instanceof Error && err.name === 'MonatslimitFehler')
       setResp(null)
     } finally {
       stopProgress()
@@ -440,9 +447,21 @@ export default function AutoFinderView() {
           {/* CTA-Leiste — bewusst abgesetzt, damit der Haupt-Call-to-Action klar heraussticht */}
           <div className="p-5 sm:p-6 bg-[#faf8f5] border-t border-[#efe9df]">
             {error && (
-              <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
+              limitErreicht ? (
+                /* Erreichtes Monatskontingent ist kein Defekt — deshalb neutral
+                   statt rot, mit dem Weg nach vorn statt "erneut versuchen". */
+                <div role="alert" className="mb-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+                  <p className="text-sm text-gray-700">{error}</p>
+                  <button type="button" onClick={() => navigate('/pricing')}
+                    className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800 underline">
+                    VIRA Plus ansehen
+                  </button>
+                </div>
+              ) : (
+                <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )
             )}
             <button type="submit" disabled={loading}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 py-3.5 text-white font-semibold text-[15px] shadow-[0_14px_28px_-12px_rgba(249,115,22,0.55)] hover:bg-orange-600 hover:shadow-[0_16px_32px_-10px_rgba(249,115,22,0.6)] disabled:opacity-60 disabled:shadow-none transition-all">

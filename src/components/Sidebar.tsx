@@ -4,6 +4,7 @@ import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   LogOut, Pencil, Trash2, Check, X, CreditCard,
   Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Store, Car, Calculator,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -364,8 +365,20 @@ export default function Sidebar({
                   {user.email}
                 </span>
               </div>
-              {/* Abo-Status */}
-              {user.abo_typ !== 'none' ? (
+              {/* Abo-Status. VIRA Plus laeuft ueber eigene Felder (nicht ueber
+                  abo_typ) und wird deshalb zuerst geprueft — sonst saehe ein
+                  zahlender Plus-Kunde hier "Kostenloser Zugang". */}
+              {user.plus_aktiv ? (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300">
+                    <Sparkles size={11} />
+                    VIRA Plus
+                  </span>
+                  <span className="text-xs text-sidebar-muted">
+                    {(user.plus_kaufchecks_verbleibend ?? 0)} KaufCheck{(user.plus_kaufchecks_verbleibend ?? 0) !== 1 ? 's' : ''} übrig
+                  </span>
+                </div>
+              ) : user.abo_typ !== 'none' ? (
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${ABO_CONFIG[user.abo_typ].cls}`}>
                     {ABO_CONFIG[user.abo_typ].icon}
@@ -448,7 +461,12 @@ export default function Sidebar({
                 </span>
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                {user.abo_typ !== 'none' ? (
+                {user.plus_aktiv ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-px rounded-full bg-orange-500/15 text-orange-300">
+                    <Sparkles size={9} />
+                    VIRA Plus
+                  </span>
+                ) : user.abo_typ !== 'none' ? (
                   <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-px rounded-full ${ABO_CONFIG[user.abo_typ].cls}`}>
                     {ABO_CONFIG[user.abo_typ].icon}
                     {ABO_CONFIG[user.abo_typ].label}

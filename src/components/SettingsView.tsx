@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, AlertTriangle, ChevronRight, Zap, Star, Crown } from 'lucide-react'
+import { CheckCircle, AlertTriangle, ChevronRight, Zap, Star, Crown, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { apiChangePassword, apiDeleteAccount, apiCancelSubscription } from '../api/client'
 
@@ -24,6 +24,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ children }: { children: React.ReactNode }) {
   return <div className="px-6 py-5">{children}</div>
+}
+
+function Verbrauch({ label, rest, gesamt }: { label: string; rest: number; gesamt: number }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-gray-600">{label}</span>
+      <span className="font-semibold text-gray-900">{rest} / {gesamt}</span>
+    </div>
+  )
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -118,7 +127,10 @@ export default function SettingsView() {
 
   if (!user) return null
   const abo = ABO_INFO[user.abo_typ]
-  const hatAbo = user.abo_typ !== 'none'
+  const hatLegacyAbo = user.abo_typ !== 'none'
+  // VIRA Plus laeuft ueber eigene Felder (siehe app/plus.py) und nicht ueber
+  // abo_typ — fuer Verwaltung und Kuendigung zaehlt es trotzdem als Abo.
+  const hatAbo = hatLegacyAbo || !!user.plus_aktiv
 
   const fmt = (d: string) =>
     new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -274,20 +286,22 @@ export default function SettingsView() {
               <div>
                 <Label>{hatAbo ? 'Aktuelles Abo' : 'Aktueller Zugang'}</Label>
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${abo.cls}`}>
-                    {abo.icon}
-                    {abo.label}
+                  <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    user.plus_aktiv ? 'bg-orange-100 text-orange-700' : abo.cls}`}>
+                    {user.plus_aktiv ? <Sparkles size={12} /> : abo.icon}
+                    {user.plus_aktiv ? 'VIRA Plus' : abo.label}
                   </span>
-                  {hatAbo && user.abo_typ !== 'max' && (
+                  {hatLegacyAbo && user.abo_typ !== 'max' && (
                     <span className="text-xs text-gray-500">{user.checks_verbleibend} Checks verbleibend</span>
                   )}
-                  {hatAbo && user.abo_typ === 'max' && (
+                  {hatLegacyAbo && user.abo_typ === 'max' && (
                     <span className="text-xs text-gray-500">Unbegrenzte Checks</span>
                   )}
                 </div>
-                {user.abo_kuendigt_zum && (
+                {(user.abo_kuendigt_zum || user.plus_kuendigt_zum) && (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mt-3 w-fit">
-                    Dein Abo endet am {fmt(user.abo_kuendigt_zum)} · danach zurück auf Kostenlos
+                    Dein Abo endet am {fmt((user.abo_kuendigt_zum || user.plus_kuendigt_zum)!)} · danach zurück auf Kostenlos.
+                    Einzeln gekaufte Checks behältst du.
                   </p>
                 )}
               </div>
@@ -300,11 +314,12 @@ export default function SettingsView() {
             </div>
           </Row>
 
-          {hatAbo && !user.abo_kuendigt_zum && (
+          {hatAbo && !user.abo_kuendigt_zum && !user.plus_kuendigt_zum && (
             <Row>
               {cancelOk && (
                 <SuccessBanner
-                  msg={`Kündigung bestätigt. Dein Abo endet am ${user.abo_kuendigt_zum ? fmt(user.abo_kuendigt_zum) : '…'}`}
+                  msg={`Kündigung bestätigt. Dein Abo endet am ${
+                    (user.abo_kuendigt_zum || user.plus_kuendigt_zum) ? fmt((user.abo_kuendigt_zum || user.plus_kuendigt_zum)!) : '…'}`}
                   onClose={() => setCancelOk(false)}
                 />
               )}
@@ -351,19 +366,58 @@ export default function SettingsView() {
             </Row>
           )}
 
-          {!hatAbo && (
+          {!hatLegacyAbo && (
             <Row>
               {/* Verstaendliche Bestandsanzeige — bewusst KEINE technische
                   Ledger-/Transaktionsansicht. Das generische Alt-Guthaben wird
                   nur dann als eigene Zeile gezeigt, wenn tatsaechlich welches
                   vorhanden ist; sonst wuerde eine Null verwirren. */}
-              <div className="mb-3 space-y-1.5">
+              {/* Verstaendliche Bestandsanzeige — bewusst KEINE technische
+                  Ledger-/Transaktionsansicht. Monatliche Plus-Kontingente und
+                  dauerhaft gekauftes Guthaben stehen getrennt, damit sichtbar
+                  ist, was zum Monatsende verfaellt und was bleibt. */}
+              {user.plus_aktiv && (
+                <div className="mb-4 space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-orange-600 mb-1">
+                    In VIRA Plus enthalten (diesen Monat)
+                  </p>
+                  <Verbrauch label="KaufChecks" rest={user.plus_kaufchecks_verbleibend ?? 0} gesamt={5} />
+                  <Verbrauch label="VerkaufsChecks" rest={user.plus_verkaufschecks_verbleibend ?? 0} gesamt={1} />
+                </div>
+              )}
+
+              <div className="mb-4 space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                  Nutzung diesen Monat
+                </p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">KaufChecks verfügbar</span>
+                  <span className="text-gray-600">AutoFinder</span>
+                  <span className="font-semibold text-gray-900">
+                    {user.autofinder_genutzt ?? 0} / {user.autofinder_limit ?? 5}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">KI-Chat</span>
+                  <span className="font-semibold text-gray-900">
+                    {user.chat_genutzt ?? 0} / {user.chat_limit ?? 20}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Autokosten</span>
+                  <span className="font-semibold text-gray-900">unbegrenzt</span>
+                </div>
+              </div>
+
+              <div className="mb-3 space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                  Zusätzlich gekauft <span className="normal-case font-normal text-gray-400">(verfällt nicht)</span>
+                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">KaufChecks</span>
                   <span className="font-semibold text-gray-900">{user.kaufchecks_verbleibend ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">VerkaufsChecks verfügbar</span>
+                  <span className="text-gray-600">VerkaufsChecks</span>
                   <span className="font-semibold text-gray-900">{user.verkaufschecks_verbleibend ?? 0}</span>
                 </div>
                 {user.checks_verbleibend > 0 && (
@@ -375,11 +429,6 @@ export default function SettingsView() {
                   </div>
                 )}
               </div>
-              <p className="text-sm text-gray-500 mb-3">
-                {(user.kaufchecks_verbleibend ?? 0) + (user.verkaufschecks_verbleibend ?? 0) + user.checks_verbleibend > 0
-                  ? 'Checks werden einmalig pro Analyse verbraucht.'
-                  : 'Aktuell ist kein Check-Guthaben vorhanden.'}
-              </p>
               <button
                 onClick={() => navigate('/pricing')}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"

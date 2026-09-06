@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Lock, Loader2 } from 'lucide-react'
-import { apiKaufeCheck, apiPaymentStatus } from '../api/client'
+import { apiKaufeCheck, apiKaufePlus, apiPaymentStatus } from '../api/client'
 import type { CheckProdukt } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
@@ -26,8 +26,8 @@ import { useAuth } from '../context/AuthContext'
  */
 
 export const PRODUKT_INFO: Record<CheckProdukt, { titel: string; preis: string; route: string }> = {
-  kaufcheck:     { titel: 'KaufCheck',     preis: '9,99 €', route: '/kaufcheck' },
-  verkaufscheck: { titel: 'VerkaufsCheck', preis: '7,99 €', route: '/verkaufscheck' },
+  kaufcheck:     { titel: 'KaufCheck',     preis: '5,99 €', route: '/kaufcheck' },
+  verkaufscheck: { titel: 'VerkaufsCheck', preis: '8,99 €', route: '/verkaufscheck' },
 }
 
 /** Wie lange nach der Rückkehr auf den Webhook gewartet wird. */
@@ -147,6 +147,93 @@ export function PaymentReturnHinweis({ zustand }: { zustand: Bestaetigung }) {
         Deine Zahlung wird noch verarbeitet. Das dauert normalerweise nur wenige Sekunden.
         Lade die Seite gleich neu — sobald die Zahlung bestätigt ist, kannst du den Check starten.
       </p>
+    </div>
+  )
+}
+
+/**
+ * Pflicht-Zustimmungen vor einem digitalen Kauf. Identisch fuer Einzelcheck und
+ * Abo — das Backend erzwingt beide unabhaengig vom Frontend.
+ */
+export function Zustimmungen({
+  agb, setAgb, widerruf, setWiderruf, farbe = 'amber',
+}: {
+  agb: boolean; setAgb: (v: boolean) => void
+  widerruf: boolean; setWiderruf: (v: boolean) => void
+  farbe?: 'amber' | 'orange'
+}) {
+  const text = farbe === 'orange' ? 'text-gray-500' : 'text-amber-800'
+  const box = farbe === 'orange' ? 'accent-orange-600' : 'accent-amber-700'
+  return (
+    <div className="space-y-2.5 mb-4">
+      <label className="flex items-start gap-2.5 cursor-pointer select-none">
+        <input type="checkbox" checked={agb} onChange={(e) => setAgb(e.target.checked)}
+          className={`mt-0.5 shrink-0 w-4 h-4 ${box}`} />
+        <span className={`text-xs ${text} leading-relaxed`}>
+          Ich akzeptiere die <Link to="/agb" className="underline">AGB</Link>
+          {' '}und die <Link to="/datenschutz" className="underline">Datenschutzerklärung</Link>.
+        </span>
+      </label>
+      <label className="flex items-start gap-2.5 cursor-pointer select-none">
+        <input type="checkbox" checked={widerruf} onChange={(e) => setWiderruf(e.target.checked)}
+          className={`mt-0.5 shrink-0 w-4 h-4 ${box}`} />
+        <span className={`text-xs ${text} leading-relaxed`}>
+          Ich stimme ausdrücklich zu, dass vor Ablauf der Widerrufsfrist mit der Ausführung
+          begonnen wird. Mir ist bekannt, dass ich dadurch mein{' '}
+          <Link to="/widerruf" className="underline">Widerrufsrecht</Link> verliere.
+        </span>
+      </label>
+    </div>
+  )
+}
+
+/**
+ * Abschluss von VIRA Plus. Sendet nur den Produktschluessel; Preis und
+ * Intervall bestimmt der Server.
+ */
+export function PlusCheckout({ onAbbrechen }: { onAbbrechen?: () => void }) {
+  const [agb, setAgb] = useState(false)
+  const [widerruf, setWiderruf] = useState(false)
+  const [laedt, setLaedt] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
+
+  const starten = useCallback(async () => {
+    if (!agb || !widerruf || laedt) return
+    setLaedt(true); setFehler(null)
+    try {
+      const { url } = await apiKaufePlus(agb, widerruf)
+      window.location.href = url
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : 'Der Abschluss konnte nicht gestartet werden.')
+      setLaedt(false)
+    }
+  }, [agb, widerruf, laedt])
+
+  return (
+    <div className="rounded-2xl border border-orange-200 bg-orange-50/50 p-5 mt-4">
+      <p className="font-semibold text-gray-900 mb-1">VIRA Plus abschließen</p>
+      <p className="text-sm text-gray-600 mb-4">
+        16,99 € pro Monat, monatlich kündbar. Die Verlängerung erfolgt automatisch,
+        bis du kündigst.
+      </p>
+      <Zustimmungen agb={agb} setAgb={setAgb} widerruf={widerruf} setWiderruf={setWiderruf} farbe="orange" />
+      {fehler && (
+        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{fehler}</p>
+      )}
+      <div className="flex gap-2 flex-wrap">
+        <button type="button" onClick={starten} disabled={!agb || !widerruf || laedt}
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all hover:opacity-90 flex items-center gap-2"
+          style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)' }}>
+          {laedt && <Loader2 size={15} className="animate-spin" />}
+          Weiter zur Zahlung
+        </button>
+        {onAbbrechen && (
+          <button type="button" onClick={onAbbrechen}
+            className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+            Abbrechen
+          </button>
+        )}
+      </div>
     </div>
   )
 }

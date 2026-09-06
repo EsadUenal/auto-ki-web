@@ -484,6 +484,15 @@ export function takeSucheRestore(): GespeicherteSuche | null {
  *  (AGENTS.md "Externe Ausfälle getrennt berichten"). */
 export function humanError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err ?? '')
+  // Ein erreichtes Monatskontingent ist kein technischer Fehler: der Server
+  // liefert dafür bereits einen fertigen Nutzertext (inkl. Zahl und Zeitraum).
+  // Ihn hier auf einen Standardsatz abzubilden würde die eigentliche
+  // Information vernichten.
+  //
+  // Geprüft wird über den Fehlernamen statt per `instanceof`, weil diese Datei
+  // bewusst NICHTS aus dem API-Client importiert (siehe Kopfkommentar) — die
+  // Entkopplung ist mehr wert als der Typ-Check.
+  if (err instanceof Error && err.name === 'MonatslimitFehler') return msg
   if (/failed to fetch|networkerror|load failed|verbindung/i.test(msg))
     return 'Der VIRA-Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.'
   if (/\b(429|rate)\b/i.test(msg))

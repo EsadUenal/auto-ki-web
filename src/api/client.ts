@@ -39,9 +39,20 @@ export interface AuthUser {
   abo_typ: 'none' | 'light' | 'pro' | 'max'
   /** Generisches Alt-Kontingent — gilt weiterhin fuer BEIDE Check-Arten. */
   checks_verbleibend: number
-  /** Consumer V1: getrennt gekaufte Berechtigungen je Check-Art. */
+  /** Dauerhaft gekaufte Berechtigungen je Check-Art — verfallen nie. */
   kaufchecks_verbleibend?: number
   verkaufschecks_verbleibend?: number
+  /** VIRA Plus: monatliche Kontingente, verfallen zum Periodenende. */
+  plus_aktiv?: boolean
+  plus_kaufchecks_verbleibend?: number
+  plus_verkaufschecks_verbleibend?: number
+  plus_period_end?: string | null
+  plus_kuendigt_zum?: string | null
+  /** Verbrauch des laufenden Kalendermonats. */
+  chat_genutzt?: number
+  chat_limit?: number
+  autofinder_genutzt?: number
+  autofinder_limit?: number
   ersatzteil_suchen_verbleibend: number
   abo_kuendigt_zum?: string | null
   ist_haendler?: boolean    // manueller DB-Override (Testaccounts/Support/Sonderfälle)
@@ -67,14 +78,36 @@ function extractMessage(data: unknown): string {
 export type MeldungsArt = 'fehler' | 'hinweis'
 
 /**
- * Erkennt den strukturierten Tageslimit-Fehler des Backends
- * (`{ fehler: { code: 'tageslimit_erreicht', nachricht } }`).
+ * Ein erreichtes Monatskontingent. Eigener Typ, damit die Oberflaeche den
+ * bereits nutzerfertigen Servertext unveraendert anzeigen kann, statt ihn wie
+ * einen technischen Fehler auf einen Standardsatz abzubilden.
  */
-export function istTageslimit(data: unknown): boolean {
+export class MonatslimitFehler extends Error {
+  /** true, wenn ein Wechsel zu VIRA Plus die Grenze tatsaechlich anheben wuerde. */
+  readonly plusHilft: boolean
+  constructor(nachricht: string, plusHilft: boolean) {
+    super(nachricht)
+    this.name = 'MonatslimitFehler'
+    this.plusHilft = plusHilft
+  }
+}
+
+function plusHilftAus(data: unknown): boolean {
   if (!data || typeof data !== 'object') return false
   const f = (data as Record<string, unknown>).fehler
   if (!f || typeof f !== 'object') return false
-  return (f as Record<string, unknown>).code === 'tageslimit_erreicht'
+  return (f as Record<string, unknown>).plus_hilft !== false
+}
+
+/**
+ * Erkennt den strukturierten Monatslimit-Fehler des Backends
+ * (`{ fehler: { code: 'monatslimit_erreicht', nachricht, plus_hilft } }`).
+ */
+export function istMonatslimit(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false
+  const f = (data as Record<string, unknown>).fehler
+  if (!f || typeof f !== 'object') return false
+  return (f as Record<string, unknown>).code === 'monatslimit_erreicht'
 }
 
 function consumerServiceError(aktion: string, status?: number): string {
@@ -417,7 +450,7 @@ export async function streamChat(
     // liefert dafuer einen eigenen Fehlercode samt fertiger Nutzertext —
     // dieser wird uebernommen, roher Status/JSON nie angezeigt.
     const grund = await response.json().catch(() => null)
-    if (istTageslimit(grund)) {
+    if (istMonatslimit(grund)) {
       callbacks.onError(extractMessage(grund), 'hinweis')
       return
     }
@@ -542,7 +575,7 @@ export async function streamAnalyseFrage(
 
   if (!response.ok) {
     const grund = await response.json().catch(() => null)
-    if (istTageslimit(grund)) {
+    if (istMonatslimit(grund)) {
       callbacks.onError(extractMessage(grund), 'hinweis')
       return
     }
@@ -603,6 +636,15 @@ export interface PaymentStatus {
   checks_verbleibend: number
   kaufchecks_verbleibend?: number
   verkaufschecks_verbleibend?: number
+  plus_aktiv?: boolean
+  plus_kaufchecks_verbleibend?: number
+  plus_verkaufschecks_verbleibend?: number
+  plus_period_end?: string | null
+  plus_kuendigt_zum?: string | null
+  chat_genutzt?: number
+  chat_limit?: number
+  autofinder_genutzt?: number
+  autofinder_limit?: number
   /** MAX-Abo: Kontingente spielen keine Rolle. */
   unbegrenzt?: boolean
   hat_abo: boolean
@@ -611,7 +653,7 @@ export interface PaymentStatus {
 export type CheckProdukt = 'kaufcheck' | 'verkaufscheck'
 
 export async function apiCreateCheckoutSession(
-  typ: 'check' | 'abo' | 'einzelkauf',
+  typ: 'check' | 'plus' | 'abo' | 'einzelkauf',
   abo_typ: 'light' | 'pro' | 'max' | undefined,
   agbAkzeptiert: boolean,
   widerrufVerzicht: boolean,
@@ -628,6 +670,19 @@ export async function apiCreateCheckoutSession(
   const data = await res.json()
   if (!res.ok) throw new Error(extractMessage(data))
   return data as { url: string }
+}
+
+/**
+ * Startet das VIRA-Plus-Abo (Stripe mode=subscription).
+ *
+ * Wie beim Einzelkauf wird nur der Produktschluessel gesendet — Preis und
+ * Abrechnungsintervall bestimmt ausschliesslich der Server.
+ */
+export async function apiKaufePlus(
+  agbAkzeptiert: boolean,
+  widerrufVerzicht: boolean,
+): Promise<{ url: string }> {
+  return apiCreateCheckoutSession('plus', undefined, agbAkzeptiert, widerrufVerzicht)
 }
 
 /**
@@ -901,10 +956,17 @@ export async function apiAutoFinder(payload: AutoFinderPayload): Promise<AutoFin
   const response = await fetch(`${BASE_URL}/api/v1/autofinder`, {
     method: 'POST',
     headers: authHeaders(),
+    // Auth-Cookie mitsenden, damit das monatliche Kontingent am KONTO haengt
+    // und nicht an der IP (Frontend/Backend sind verschiedene Origins).
+    // Ohne Login greift serverseitig weiterhin der IP-Anker.
+    credentials: 'include',
     body: JSON.stringify(payload),
   })
   if (!response.ok) {
     const data = await response.json().catch(() => null)
+    // Ein erreichtes Monatskontingent ist ein normaler Produktzustand: der
+    // fertige Servertext wird unveraendert gezeigt, ohne Statuscode davor.
+    if (istMonatslimit(data)) throw new MonatslimitFehler(extractMessage(data), plusHilftAus(data))
     const msg = data ? extractMessage(data) : `Server-Fehler ${response.status}`
     throw new Error(`${response.status} ${msg}`)
   }

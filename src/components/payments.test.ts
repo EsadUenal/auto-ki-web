@@ -66,10 +66,12 @@ test('I/J: jede Check-Seite kauft ausschliesslich ihr eigenes Produkt', () => {
 })
 
 test('Preise stehen im Gate genau einmal und passen zur Preisseite', () => {
-  assert.match(gate, /kaufcheck:\s*\{ titel: 'KaufCheck',\s*preis: '9,99 €'/)
-  assert.match(gate, /verkaufscheck: \{ titel: 'VerkaufsCheck', preis: '7,99 €'/)
-  assert.match(pricing, /price="9,99 €"/)
-  assert.match(pricing, /price="7,99 €"/)
+  assert.match(gate, /kaufcheck:\s*\{ titel: 'KaufCheck',\s*preis: '5,99 €'/)
+  assert.match(gate, /verkaufscheck: \{ titel: 'VerkaufsCheck', preis: '8,99 €'/)
+  assert.match(pricing, /price="5,99 €"/)
+  assert.match(pricing, /price="8,99 €"/)
+  // Gate und Preisseite duerfen nie auseinanderlaufen.
+  assert.doesNotMatch(gate, /9,99|7,99/)
 })
 
 test('Frontend-Erfolg ist NIE ein Zahlungsnachweis', () => {
@@ -121,19 +123,40 @@ test('Pflicht-Zustimmungen werden vor dem Kauf eingeholt', () => {
 })
 
 test('Account zeigt beide Kontingente verstaendlich, ohne Ledger-Tabelle', () => {
-  assert.match(settings, /KaufChecks verfügbar/)
-  assert.match(settings, /VerkaufsChecks verfügbar/)
+  assert.match(settings, /Zusätzlich gekauft/)
+  assert.match(settings, /Nutzung diesen Monat/)
   assert.match(settings, /kaufchecks_verbleibend/)
   assert.match(settings, /verkaufschecks_verbleibend/)
+  // Monatliche Plus-Kontingente stehen getrennt vom dauerhaft Gekauften.
+  assert.match(settings, /In VIRA Plus enthalten \(diesen Monat\)/)
+  assert.match(settings, /plus_kaufchecks_verbleibend/)
+  assert.match(settings, /verfällt nicht/)
   assert.doesNotMatch(ohneKommentare(settings), /stripe_session|payment_intent|event_id|ledger/i)
 })
 
-test('R/S: das Tageslimit wird als eigener Zustand behandelt, nicht als Drosselung', () => {
-  assert.match(client, /export function istTageslimit/)
-  assert.match(client, /code === 'tageslimit_erreicht'/)
+test('R/S: das Monatslimit wird als eigener Zustand behandelt, nicht als Drosselung', () => {
+  assert.match(client, /export function istMonatslimit/)
+  assert.match(client, /code === 'monatslimit_erreicht'/)
+  assert.doesNotMatch(client, /tageslimit_erreicht/)
   // Chat UND Rueckfragen nutzen denselben Weg.
-  const treffer = client.match(/if \(istTageslimit\(grund\)\) \{/g) || []
+  const treffer = client.match(/if \(istMonatslimit\(grund\)\) \{/g) || []
   assert.equal(treffer.length, 2)
+})
+
+test('AutoFinder zeigt bei erreichtem Monatslimit keinen rohen Statuscode', () => {
+  const block = client.slice(client.indexOf('/api/v1/autofinder'),
+                             client.indexOf('/api/v1/autofinder') + 1200)
+  // Eigener Fehlertyp statt generischem Error: nur so kann die Oberflaeche den
+  // fertigen Servertext durchreichen, statt ihn auf einen Standardsatz
+  // abzubilden (siehe humanError in autofinder/logic.ts).
+  assert.match(block, /throw new MonatslimitFehler\(extractMessage\(data\), plusHilftAus\(data\)\)/)
+  assert.match(client, /export class MonatslimitFehler extends Error/)
+  const logic = readFileSync(new URL('./autofinder/logic.ts', import.meta.url), 'utf8')
+  assert.match(logic, /err\.name === 'MonatslimitFehler'/)
+  // logic.ts bleibt bewusst frei von API-Client-Importen.
+  assert.doesNotMatch(logic, /from '\.\.\/\.\.\/api\/client'/)
+  // Das Kontingent haengt am Konto, nicht an der IP.
+  assert.match(block, /credentials: 'include'/)
 })
 
 test('U: kein roher Status, kein JSON, kein Stacktrace in der Oberflaeche', () => {
@@ -143,7 +166,7 @@ test('U: kein roher Status, kein JSON, kein Stacktrace in der Oberflaeche', () =
   assert.match(client, /callbacks\.onError\(extractMessage\(grund\), 'hinweis'\)/)
 })
 
-test('ein erreichtes Tageslimit wird nicht als Fehler dargestellt', () => {
+test('ein erreichtes Monatslimit wird nicht als Fehler dargestellt', () => {
   const chatView = readFileSync(new URL('./ChatView.tsx', import.meta.url), 'utf8')
   // Das Limit ist ein normaler Produktzustand: der Chat setzt davor kein
   // "Fehler:"-Praefix mehr. Echte Fehler behalten es.
