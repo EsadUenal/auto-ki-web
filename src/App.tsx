@@ -15,6 +15,7 @@ import SettingsView from './components/SettingsView'
 import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
+import LandingView from './components/landing/LandingView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
 import AutokostenView from './components/autokosten/AutokostenView'
 import { setReturnTo } from './components/autofinder/logic'
@@ -64,6 +65,15 @@ function Guard({ authed, loading, children }: { authed: boolean; loading: boolea
   if (authed) return <>{children}</>
   setReturnTo(location.pathname + location.search)
   return <Navigate to="/login" replace />
+}
+
+// ── Startseite ────────────────────────────────────────────────────────────────
+// Muss innerhalb des AuthProvider stehen (nutzt useAuth).
+function Startseite() {
+  const { user, isLoading } = useAuth()
+  if (isLoading) return null            // kurzer Leerzustand statt Flackern
+  if (user) return <Navigate to="/chat" replace />
+  return <LandingView />
 }
 
 // ── Inner app — muss innerhalb von AuthProvider sein um useAuth() zu nutzen ──
@@ -346,8 +356,6 @@ function AppContent() {
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
         <Routes>
-          <Route path="/" element={<Navigate to="/chat" replace />} />
-
           {/* AutoFinder + Autokosten — öffentliche, kostenlose Werkzeuge, KEIN
               <Guard>. Laufen trotzdem in dieser Shell (Sidebar/Footer/Hinter-
               grund) wie jedes andere Werkzeug. Autokosten ist rein deterministisch
@@ -447,6 +455,12 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
+              {/* Startseite: Marketing fuer Besucher ohne Konto, bewusst OHNE
+                  App-Shell (keine Sidebar) — eine Werkzeugnavigation sagt
+                  jemandem ohne Konto nichts. Eingeloggte Nutzer landen
+                  weiterhin im Chat, genau wie bisher: fuer sie ist "/" der
+                  Einstieg in die App, nicht eine Verkaufsseite. */}
+              <Route path="/" element={<Startseite />} />
               <Route path="/login" element={<LoginView />} />
               {/* Rechtsseiten öffentlich (ohne Login) erreichbar — Impressum &
                   Datenschutz müssen für jeden zugänglich sein. Eigenständig,

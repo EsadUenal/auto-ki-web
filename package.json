@@ -10,7 +10,8 @@
     "test:autofinder": "node --test src/components/autofinder/autofinder.test.ts",
     "test:autokosten": "node --test src/components/autokosten/autokosten.test.ts",
     "test:pricing": "node --test src/components/pricing.test.ts",
-    "test:payments": "node --test src/components/payments.test.ts"
+    "test:payments": "node --test src/components/payments.test.ts",
+    "test:landing": "node --test src/components/landing/landing.test.ts"
   },
   "dependencies": {
     "react": "^18.2.0",
