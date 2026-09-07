@@ -618,3 +618,59 @@ test('Panel: responsive — links auf Desktop, oben auf Mobile', () => {
   assert.match(panelTsx, /sm:border-b-0/)
   assert.match(cardTsx, /sm:flex/)
 })
+
+// ── Anonyme Demo vs. Konto-Kontingent ───────────────────────────────────────
+// Der Server unterscheidet zwei Kontingent-Zustaende mit unterschiedlichem Weg
+// nach vorn. Das Frontend darf sie nicht zusammenwerfen: nach der verbrauchten
+// Demo hat der Nutzer sein Free-Kontingent noch vollstaendig vor sich — ein
+// Plus-Angebot waere dort sachlich falsch.
+
+// `clientTs` und `viewTsx` sind oben bereits eingelesen und werden hier
+// wiederverwendet — kein zweites Einlesen derselben Dateien.
+const loginTsx = readFileSync(join(here, '..', 'LoginView.tsx'), 'utf8')
+
+test('Demo: der Client erkennt beide Kontingent-Codes', () => {
+  assert.match(clientTs, /'monatslimit_erreicht'/)
+  assert.match(clientTs, /'demo_limit_erreicht'/)
+})
+
+test('Demo: der Fehlertyp traegt anmeldenHilft und den Subtext', () => {
+  assert.match(clientTs, /readonly anmeldenHilft: boolean/)
+  assert.match(clientTs, /readonly hinweis: string/)
+  // Beide Signale kommen VOM SERVER — das Frontend leitet sie nicht selbst ab.
+  assert.match(clientTs, /f\.anmelden_hilft === true/)
+})
+
+test('Demo: die Ansicht zeigt "Kostenlos anmelden" statt der Plus-CTA', () => {
+  assert.match(viewTsx, /anmeldenHilft \? \(/)
+  assert.match(viewTsx, /Kostenlos anmelden/)
+  assert.match(viewTsx, /VIRA Plus ansehen/)
+})
+
+test('Demo: die Anmelde-CTA zeigt auf eine EXISTIERENDE Route', () => {
+  // '/register' gibt es nicht — Registrieren ist ein Tab in '/login'.
+  assert.doesNotMatch(viewTsx, /navigate\('\/register'\)/)
+  assert.match(viewTsx, /navigate\('\/login\?modus=register'\)/)
+  assert.match(appTsx, /<Route path="\/login"/)
+  assert.doesNotMatch(appTsx, /<Route path="\/register"/)
+})
+
+test('Demo: LoginView oeffnet bei ?modus=register direkt den Registrieren-Tab', () => {
+  assert.match(loginTsx, /suchparameter\.get\('modus'\) === 'register' \? 'register' : 'login'/)
+})
+
+test('Demo: der Rueckweg nach der Anmeldung fuehrt zum AutoFinder', () => {
+  assert.match(viewTsx, /setReturnTo\('\/autofinder'\)/)
+})
+
+test('Demo: der Subtext des Servers wird angezeigt, nicht neu erfunden', () => {
+  assert.match(viewTsx, /\{limitHinweis\}/)
+  // Kein im Frontend hartkodierter Kontingent-Satz.
+  assert.doesNotMatch(viewTsx, /5 AutoFinder-Suchen pro Monat/)
+})
+
+test('Demo: das Limit ist serverseitig — kein localStorage als Autoritaet', () => {
+  const zaehlerVerdacht = /(localStorage|sessionStorage)[^\n]*(demo|limit|kontingent|counter|verbrauch)/i
+  assert.doesNotMatch(viewTsx, zaehlerVerdacht)
+  assert.doesNotMatch(read('logic.ts'), zaehlerVerdacht)
+})

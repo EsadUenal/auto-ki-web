@@ -149,7 +149,13 @@ test('AutoFinder zeigt bei erreichtem Monatslimit keinen rohen Statuscode', () =
   // Eigener Fehlertyp statt generischem Error: nur so kann die Oberflaeche den
   // fertigen Servertext durchreichen, statt ihn auf einen Standardsatz
   // abzubilden (siehe humanError in autofinder/logic.ts).
-  assert.match(block, /throw new MonatslimitFehler\(extractMessage\(data\), plusHilftAus\(data\)\)/)
+  // Auf die Zusicherung geprueft, nicht auf die Zeilenumbrueche: geworfen wird
+  // der eigene Typ mit dem Servertext und dem plus_hilft-Signal. Die Aufrufform
+  // ist inzwischen mehrzeilig (Demo-Zustand kam als weiteres Argument dazu).
+  assert.match(block, /throw new MonatslimitFehler\(/)
+  assert.match(block, /extractMessage\(data\)/)
+  assert.match(block, /plusHilftAus\(data\)/)
+  assert.doesNotMatch(block, /throw new Error\(`\$\{response\.status\} \$\{msg\}`\)[\s\S]{0,80}istMonatslimit/)
   assert.match(client, /export class MonatslimitFehler extends Error/)
   const logic = readFileSync(new URL('./autofinder/logic.ts', import.meta.url), 'utf8')
   assert.match(logic, /err\.name === 'MonatslimitFehler'/)

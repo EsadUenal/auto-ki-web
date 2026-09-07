@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { takeReturnTo } from './autofinder/logic'
@@ -9,8 +9,16 @@ type Mode = 'login' | 'register'
 export default function LoginView() {
   const { login, register } = useAuth()
   const navigate = useNavigate()
+  const [suchparameter] = useSearchParams()
 
-  const [mode, setMode] = useState<Mode>('login')
+  // `?modus=register` oeffnet direkt den Registrieren-Tab. Gebraucht wird das
+  // vom AutoFinder: wer seine anonyme Demo verbraucht hat, hat per Definition
+  // noch KEIN Konto — ihn auf dem Anmelden-Tab landen zu lassen waere ein
+  // unnoetiger Zwischenschritt. Nur der Starttab haengt daran; umschalten kann
+  // der Nutzer weiterhin frei, und der Login-Weg bleibt der Standard.
+  const [mode, setMode] = useState<Mode>(
+    suchparameter.get('modus') === 'register' ? 'register' : 'login',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

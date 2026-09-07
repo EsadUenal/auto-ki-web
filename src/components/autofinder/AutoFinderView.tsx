@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, SlidersHorizontal, Car, Clock, RotateCcw, Check, ChevronRight } from 'lucide-react'
-import { apiAutoFinder } from '../../api/client'
+import { apiAutoFinder, MonatslimitFehler } from '../../api/client'
 import {
   EMPTY_FORM,
   KAROSSERIE_OPTIONS,
@@ -18,6 +18,7 @@ import {
   speichereSuche,
   loescheSuchen,
   takeSucheRestore,
+  setReturnTo,
   HISTORY_EVENT,
   RESTORE_EVENT,
   MAX_CARDS,
@@ -85,6 +86,12 @@ export default function AutoFinderView() {
   // Getrennt vom Fehlertext: nur bei einem erreichten Kontingent ist eine
   // Plus-CTA sinnvoll — bei einem Serverfehler waere sie irrefuehrend.
   const [limitErreicht, setLimitErreicht] = useState(false)
+  // Verbrauchte anonyme Demo ist ein EIGENER Zustand: der richtige naechste
+  // Schritt ist die kostenlose Anmeldung (das Free-Kontingent liegt noch
+  // vollstaendig vor dem Nutzer), nicht ein Blick auf ein kostenpflichtiges
+  // Abo. Welcher Fall vorliegt, entscheidet der Server.
+  const [anmeldenHilft, setAnmeldenHilft] = useState(false)
+  const [limitHinweis, setLimitHinweis] = useState('')
   const [resp, setResp] = useState<AutoFinderResponse | null>(null)
   const [historie, setHistorie] = useState<GespeicherteSuche[]>([])
   const [showHistorie, setShowHistorie] = useState(false)
@@ -178,7 +185,11 @@ export default function AutoFinderView() {
     } catch (err) {
       stopProgress()
       setError(humanError(err))
-      setLimitErreicht(err instanceof Error && err.name === 'MonatslimitFehler')
+      const kontingent = err instanceof Error && err.name === 'MonatslimitFehler'
+        ? (err as MonatslimitFehler) : null
+      setLimitErreicht(!!kontingent)
+      setAnmeldenHilft(!!kontingent?.anmeldenHilft)
+      setLimitHinweis(kontingent?.hinweis ?? '')
       setResp(null)
     } finally {
       stopProgress()
@@ -448,14 +459,29 @@ export default function AutoFinderView() {
           <div className="p-5 sm:p-6 bg-[#faf8f5] border-t border-[#efe9df]">
             {error && (
               limitErreicht ? (
-                /* Erreichtes Monatskontingent ist kein Defekt — deshalb neutral
-                   statt rot, mit dem Weg nach vorn statt "erneut versuchen". */
+                /* Erreichtes Kontingent ist kein Defekt — deshalb neutral statt
+                   rot, mit dem Weg nach vorn statt "erneut versuchen".
+                   Der Weg unterscheidet sich: nach der anonymen Demo ist es die
+                   kostenlose Anmeldung (das Free-Kontingent liegt noch komplett
+                   vor dem Nutzer), bei einem ausgeschoepften Konto-Kontingent
+                   ist es Plus. */
                 <div role="alert" className="mb-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
                   <p className="text-sm text-gray-700">{error}</p>
-                  <button type="button" onClick={() => navigate('/pricing')}
-                    className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800 underline">
-                    VIRA Plus ansehen
-                  </button>
+                  {limitHinweis && (
+                    <p className="mt-1 text-sm text-gray-600">{limitHinweis}</p>
+                  )}
+                  {anmeldenHilft ? (
+                    <button type="button"
+                      onClick={() => { setReturnTo('/autofinder'); navigate('/login?modus=register') }}
+                      className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800 underline">
+                      Kostenlos anmelden
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => navigate('/pricing')}
+                      className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800 underline">
+                      VIRA Plus ansehen
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

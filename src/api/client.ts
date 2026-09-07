@@ -78,36 +78,60 @@ function extractMessage(data: unknown): string {
 export type MeldungsArt = 'fehler' | 'hinweis'
 
 /**
- * Ein erreichtes Monatskontingent. Eigener Typ, damit die Oberflaeche den
- * bereits nutzerfertigen Servertext unveraendert anzeigen kann, statt ihn wie
- * einen technischen Fehler auf einen Standardsatz abzubilden.
+ * Ein erreichtes Kontingent. Eigener Typ, damit die Oberflaeche den bereits
+ * nutzerfertigen Servertext unveraendert anzeigen kann, statt ihn wie einen
+ * technischen Fehler auf einen Standardsatz abzubilden.
+ *
+ * Deckt zwei Zustaende mit unterschiedlichem Weg nach vorn ab:
+ *   - erreichtes Monatskontingent eines Kontos  -> `plusHilft`
+ *   - verbrauchte anonyme AutoFinder-Demo       -> `anmeldenHilft`
+ * Die Unterscheidung kommt vom Server; das Frontend erfindet sie nicht.
  */
 export class MonatslimitFehler extends Error {
   /** true, wenn ein Wechsel zu VIRA Plus die Grenze tatsaechlich anheben wuerde. */
   readonly plusHilft: boolean
-  constructor(nachricht: string, plusHilft: boolean) {
+  /** true, wenn eine kostenlose Anmeldung der richtige naechste Schritt ist. */
+  readonly anmeldenHilft: boolean
+  /** Optionaler Subtext des Servers (z. B. was die Anmeldung bringt). */
+  readonly hinweis: string
+  constructor(nachricht: string, plusHilft: boolean, anmeldenHilft = false, hinweis = '') {
     super(nachricht)
     this.name = 'MonatslimitFehler'
     this.plusHilft = plusHilft
+    this.anmeldenHilft = anmeldenHilft
+    this.hinweis = hinweis
   }
 }
 
-function plusHilftAus(data: unknown): boolean {
-  if (!data || typeof data !== 'object') return false
+function fehlerFeld(data: unknown): Record<string, unknown> | null {
+  if (!data || typeof data !== 'object') return null
   const f = (data as Record<string, unknown>).fehler
-  if (!f || typeof f !== 'object') return false
-  return (f as Record<string, unknown>).plus_hilft !== false
+  if (!f || typeof f !== 'object') return null
+  return f as Record<string, unknown>
+}
+
+function plusHilftAus(data: unknown): boolean {
+  const f = fehlerFeld(data)
+  return f ? f.plus_hilft !== false : false
+}
+
+function anmeldenHilftAus(data: unknown): boolean {
+  const f = fehlerFeld(data)
+  return f ? f.anmelden_hilft === true : false
+}
+
+function hinweisAus(data: unknown): string {
+  const f = fehlerFeld(data)
+  return f && typeof f.hinweis === 'string' ? f.hinweis : ''
 }
 
 /**
- * Erkennt den strukturierten Monatslimit-Fehler des Backends
- * (`{ fehler: { code: 'monatslimit_erreicht', nachricht, plus_hilft } }`).
+ * Erkennt die strukturierten Kontingent-Fehler des Backends:
+ * `{ fehler: { code: 'monatslimit_erreicht' | 'demo_limit_erreicht', ... } }`.
  */
 export function istMonatslimit(data: unknown): boolean {
-  if (!data || typeof data !== 'object') return false
-  const f = (data as Record<string, unknown>).fehler
-  if (!f || typeof f !== 'object') return false
-  return (f as Record<string, unknown>).code === 'monatslimit_erreicht'
+  const f = fehlerFeld(data)
+  return !!f && (f.code === 'monatslimit_erreicht' || f.code === 'demo_limit_erreicht')
 }
 
 function consumerServiceError(aktion: string, status?: number): string {
@@ -966,7 +990,10 @@ export async function apiAutoFinder(payload: AutoFinderPayload): Promise<AutoFin
     const data = await response.json().catch(() => null)
     // Ein erreichtes Monatskontingent ist ein normaler Produktzustand: der
     // fertige Servertext wird unveraendert gezeigt, ohne Statuscode davor.
-    if (istMonatslimit(data)) throw new MonatslimitFehler(extractMessage(data), plusHilftAus(data))
+    if (istMonatslimit(data)) {
+      throw new MonatslimitFehler(extractMessage(data), plusHilftAus(data),
+                                  anmeldenHilftAus(data), hinweisAus(data))
+    }
     const msg = data ? extractMessage(data) : `Server-Fehler ${response.status}`
     throw new Error(`${response.status} ${msg}`)
   }
