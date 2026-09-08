@@ -32,6 +32,8 @@ const storyStage = lies('StoryStage.tsx')
 const storyPanels = lies('StoryPanels.tsx')
 const plusStage = lies('PlusStage.tsx')
 const styles = lies('styles.ts')
+const identitaet = lies('StageIdentitaet.tsx')
+const untergrund = lies('StageUntergrund.tsx')
 const appTsx = readFileSync(join(here, '..', '..', 'App.tsx'), 'utf8')
 
 /**
@@ -45,6 +47,7 @@ const appTsx = readFileSync(join(here, '..', '..', 'App.tsx'), 'utf8')
 const DATEIEN = [
   view, header, footer, links, fixture, showcase,
   motion, heroDemo, storyStage, storyPanels, plusStage, styles,
+  identitaet, untergrund,
 ]
 const alles = DATEIEN.join('\n')
 
@@ -235,11 +238,47 @@ test('R: keine fremden Fahrzeugbilder, Marktplatz- oder Stock-Assets', () => {
   assert.doesNotMatch(alles, /url\(['"]?https?:/i)
 })
 
-test('R: die Produktvisuals nutzen das echte VehicleIdentityPanel', () => {
-  assert.match(heroDemo, /import VehicleIdentityPanel from '\.\.\/autofinder\/VehicleIdentityPanel'/)
-  assert.match(storyPanels, /import VehicleIdentityPanel from '\.\.\/autofinder\/VehicleIdentityPanel'/)
-  assert.match(heroDemo, /<VehicleIdentityPanel /)
-  assert.match(storyPanels, /<VehicleIdentityPanel /)
+test('R: die Fahrzeugidentitaet ist Teil der Buehne, kein eingeklebtes Panel', () => {
+  // `autofinder/VehicleIdentityPanel` ist fuer die Ergebnisliste gebaut und
+  // bringt eigenen Hintergrund, eigenes Raster und eine harte Trennkante mit.
+  // Im Hero las sich das als Bild, das in eine weisse Karte geklebt wurde.
+  assert.doesNotMatch(codeAlles, /VehicleIdentityPanel/)
+  assert.match(heroDemo, /<StageIdentitaet /)
+  assert.match(storyPanels, /<StageIdentitaet /)
+  // Die Identitaet bringt selbst KEINEN Kasten mit …
+  const code = ohneKommentare(identitaet)
+  assert.doesNotMatch(code, /\bbg-\[#|\bborder-r\b|backgroundImage/)
+  // … Untergrund, Raster und Wasserzeichen gehoeren der Buehne.
+  assert.match(untergrund, /backgroundImage/)
+  assert.match(untergrund, /maskImage/)
+  assert.match(heroDemo, /<StageUntergrund /)
+  assert.match(storyPanels, /<StageUntergrund /)
+})
+
+test('R: Identitaet und Analyse liegen in DEMSELBEN Buehnen-Container', () => {
+  // Beide Spalten in einem gemeinsamen `relative`-Container, darin der
+  // geteilte Untergrund und die weiche Naht. Nur so lesen sie als eine Flaeche.
+  for (const [name, quelle] of Object.entries({ HeroDemo: heroDemo, StoryPanels: storyPanels })) {
+    const abschnitt = quelle.slice(quelle.indexOf('<StageUntergrund'), quelle.indexOf('<StageIdentitaet') + 200)
+    assert.match(abschnitt, /<StageUntergrund /, `${name}: kein geteilter Untergrund`)
+    assert.match(abschnitt, /<StageNaht \/>/, `${name}: keine weiche Naht`)
+    assert.match(abschnitt, /<StageIdentitaet /, `${name}: Identitaet nicht in der Buehne`)
+  }
+})
+
+test('R: die Naht ist ein Verlauf, keine harte Kante', () => {
+  const naht = untergrund.slice(untergrund.indexOf('export function StageNaht'))
+  assert.match(naht, /linear-gradient\(to bottom, transparent/)
+  assert.match(naht, /w-px/)
+  assert.doesNotMatch(naht, /border-r|border-l/)
+})
+
+test('R: das Wasserzeichen laeuft ueber die Naht, statt eine Box zu betonen', () => {
+  // Ein Element, das die Trennung ueberquert, ist das staerkste Signal
+  // dafuer, dass darunter kein zweites Bild liegt.
+  const code = ohneKommentare(untergrund)
+  assert.match(code, /left-\[9\.5rem\]/)          // Identitaet ist 15rem breit
+  assert.match(code, /rgba\(40,25,10,0\.045\)/)   // sehr zurueckhaltend
 })
 
 test('R: die Vorschaudaten sind echt und ungeschönt übernommen', () => {
@@ -346,21 +385,56 @@ test('Motion: die Sticky-Story hat vier Schritte und eine Scrollstrecke', () => 
     assert.match(showcase, new RegExp(`id: '${s}'`), `Story-Schritt fehlt: ${s}`)
   }
   assert.match(storyStage, /className="sticky top-0/)
-  // Jeder Schritt hat einen eigenen Marker in der Spur. Aktiv ist der, der den
-  // oberen Bildschirmrand kreuzt — das kann keinen Schritt ueberspringen.
+  // Marker je Schritt: Sprungziele der Navigation und nachvollziehbare
+  // Aufteilung der Spur.
   assert.match(storyStage, /data-schritt-marker=\{i\}/)
   assert.match(storyStage, /top: `\$\{i \* SCHRITT_VH\}vh`/)
-  assert.match(storyStage, /rootMargin: '0px 0px -96% 0px'/)
-  assert.match(storyStage, /setAktiv\(Math\.max\(\.\.\.treffend\)\)/)
-  // Die Spur ist nur noch so lang wie noetig: SCHRITT_VH je Schritt plus die
-  // eine Bildschirmhoehe, die die klebende Buehne selbst einnimmt.
+  // Die Spur ist so lang wie noetig: SCHRITT_VH je Schritt plus die eine
+  // Bildschirmhoehe, die die klebende Buehne selbst einnimmt.
   assert.match(storyStage, /height: `\$\{anzahl \* SCHRITT_VH \+ 100\}vh`/)
-  assert.match(storyStage, /aria-current=\{ist \? 'step' : undefined\}/)
+  assert.match(storyStage, /aria-current=\{Math\.round\(fortschritt\) === i \? 'step' : undefined\}/)
 })
 
-test('Motion: der Hintergrund wechselt bei "Prüfen" ins Dunkle', () => {
-  assert.match(storyStage, /const dunkel = aktiv >= 2/)
-  assert.match(storyStage, /backgroundColor: dunkel \? '#111014'/)
+test('Motion: der Hintergrund kippt DURCHGEHEND ins Dunkle, nicht an einer Kante', () => {
+  assert.match(storyStage, /function dunkelheitBei\(fortschritt: number\)/)
+  assert.match(storyStage, /klemme\(\(fortschritt - 1\.25\) \/ 0\.75\)/)
+  assert.match(storyStage, /backgroundColor: mischeFarbe\(HELL, DUNKEL, dunkelheit\)/)
+  // Kein Umschalten auf einen festen Farbwert mehr.
+  // Nur die Desktop-Buehne: die gestapelten Mobil-Bloecke duerfen sehr wohl
+  // eine feste Farbe je Abschnitt tragen, dort gibt es keine Interpolation.
+  const desktopTeil = storyStage.slice(
+    storyStage.indexOf('function StoryDesktop'), storyStage.indexOf('function StoryBlock'))
+  assert.doesNotMatch(desktopTeil, /backgroundColor: dunkel \? '#111014'/)
+  assert.match(motion, /export function mischeFarbe/)
+})
+
+test('Motion: die Story interpoliert kontinuierlich zwischen den Ebenen', () => {
+  // Der Fortschritt ist eine Kommazahl, kein Schritt-Index.
+  assert.match(storyStage, /useStoryFortschritt<HTMLDivElement>\(SCHRITT_VH, anzahl\)/)
+  assert.match(motion, /export function useStoryFortschritt/)
+  // Jede Ebene berechnet ihren Anteil aus dem Abstand zum Fortschritt …
+  // Asymmetrische Blende: die alte Ebene geht, BEVOR die neue kommt. Eine
+  // symmetrische haette auf halbem Weg beide bei 0,5 — zwei unlesbare Texte
+  // uebereinander.
+  assert.match(storyStage, /klemme\(\(0\.38 - d\) \/ 0\.16\)/)
+  assert.match(storyStage, /klemme\(\(0\.62 \+ d\) \/ 0\.16\)/)
+  // Rechnerischer Nachweis, dass nie zwei Ebenen gleichzeitig lesbar sind:
+  // die abtretende ist ab d = 0,38 weg, die auftretende erst ab d = 0,62 da.
+  const raus = (d: number) => Math.min(1, Math.max(0, (0.38 - d) / 0.16))
+  const rein = (d: number) => Math.min(1, Math.max(0, (0.62 + d) / 0.16))
+  for (let f = 0; f <= 1; f += 0.01) {
+    const beide = Math.min(raus(f), rein(f - 1))
+    assert.ok(beide < 0.16, `bei ${f.toFixed(2)} sind zwei Ebenen gleichzeitig sichtbar (${beide.toFixed(2)})`)
+  }
+  // … und bewegt sich dabei (Deckkraft, Verschiebung, Groesse).
+  assert.match(storyStage, /opacity: anteil/)
+  assert.match(storyStage, /translateY\(\$\{-d \* 68\}px\) scale\(/)
+  // Auch die Zaehler starten, bevor die Ebene ganz da ist.
+  assert.match(storyStage, /aktiv=\{anteil > 0\.35\}/)
+  // Die Fortschrittslinie laeuft mit, statt in vier Stufen zu springen.
+  assert.match(storyStage, /width: `\$\{\(fortschritt \/ \(anzahl - 1\)\) \* 100\}%`/)
+  // Und die Fuellung der Schrittbalken ebenso.
+  assert.match(storyStage, /const fuellung = klemme\(fortschritt - i \+ 1\)/)
 })
 
 test('Motion: bewegt werden nur transform und opacity', () => {
@@ -371,13 +445,17 @@ test('Motion: bewegt werden nur transform und opacity', () => {
   assert.match(codeMotion, /opacity:/)
 })
 
-test('Motion: der aktive Schritt haengt NICHT an Scroll-Ereignissen', () => {
+test('Motion: der Fortschritt haengt NICHT an Scroll-Ereignissen', () => {
   // Ein `scroll`-Listener waere naheliegend, aber nicht verlaesslich: in
   // eingebetteten oder nicht sichtbaren Ansichten aendert sich scrollY, ohne
-  // dass ein Ereignis zugestellt wird. Die Story bliebe dann auf Schritt 1
-  // stehen. Genau das ist in einer frueheren Browser-Pruefung passiert.
-  assert.doesNotMatch(ohneKommentare(storyStage), /addEventListener\('scroll'/)
-  assert.match(storyStage, /new IntersectionObserver/)
+  // dass ein Ereignis zugestellt wird. Die Story bliebe dann stehen. Genau das
+  // ist in einer frueheren Browser-Pruefung passiert.
+  const hook = ohneKommentare(motion).slice(
+    ohneKommentare(motion).indexOf('export function useStoryFortschritt'))
+  assert.doesNotMatch(hook, /addEventListener\('scroll'/)
+  assert.match(hook, /requestAnimationFrame\(messen\)/)
+  assert.match(hook, /new IntersectionObserver/)
+  assert.match(hook, /cancelAnimationFrame/)
 })
 
 test('D: die vier Schritte sind auf dem Desktop anklickbar und fokussierbar', () => {
@@ -393,17 +471,19 @@ test('D: die vier Schritte sind auf dem Desktop anklickbar und fokussierbar', ()
   assert.match(storyStage, /behavior: reduziert \? 'auto' : 'smooth'/)
 })
 
-test('Story: die Scrollstrecke je Schritt liegt im vereinbarten Rahmen', () => {
+test('Story: die Gesamtlaenge liegt im vereinbarten Rahmen', () => {
   const treffer = storyStage.match(/const SCHRITT_VH = (\d+)/)
   assert.ok(treffer, 'SCHRITT_VH nicht gefunden')
   const vh = Number(treffer![1])
-  assert.ok(vh >= 55 && vh <= 70, `SCHRITT_VH = ${vh}vh liegt ausserhalb von 55-70vh`)
+  const gesamt = vh * 4
+  assert.ok(gesamt >= 180 && gesamt <= 220,
+    `Story-Gesamtlaenge ${gesamt}vh liegt ausserhalb von 180-220vh`)
 })
 
 test('Story: dezenter Einstiegshinweis, der wieder verschwindet', () => {
   assert.match(storyStage, /Weiterscrollen/)
-  // Nur beim ersten Schritt, sonst stoert er dauerhaft.
-  assert.match(storyStage, /opacity: inSpur && aktiv === 0 \? 1 : 0/)
+  // Blendet weich aus, sobald die Bewegung erkennbar begonnen hat.
+  assert.match(storyStage, /opacity: klemme\(1 - fortschritt \/ 0\.6\)/)
 })
 
 test('G: der Header faerbt sich ueber dunklen Flaechen mit', () => {
@@ -549,7 +629,7 @@ test('Accessibility: Icon-only-Buttons tragen ein aria-label, Deko ist versteckt
 
 test('Accessibility: die ausgeblendeten Story-Schritte sind aria-hidden', () => {
   // Sonst läse ein Screenreader vier Schritte gleichzeitig vor.
-  assert.match(storyStage, /aria-hidden=\{i !== aktiv\}/)
+  assert.match(storyStage, /aria-hidden=\{anteil <= 0\.5\}/)
 })
 
 // ── Polish-Pass: Hero-Groesse und menschliche Copy ──────────────────────────

@@ -1,5 +1,6 @@
 import { Check, Loader2, Search, ShoppingCart, Sparkles } from 'lucide-react'
-import VehicleIdentityPanel from '../autofinder/VehicleIdentityPanel'
+import StageIdentitaet from './StageIdentitaet'
+import StageUntergrund, { StageNaht } from './StageUntergrund'
 import { useReducedMotion, usePhasen, useSequenz, useZaehler } from './motion'
 import { SHOWCASE_ANFORDERUNGEN, SHOWCASE_FAHRZEUG, SHOWCASE_WEITERE } from './showcase'
 
@@ -26,6 +27,15 @@ import { SHOWCASE_ANFORDERUNGEN, SHOWCASE_FAHRZEUG, SHOWCASE_WEITERE } from './s
  * war nur noch halb zu sehen. Ein Grid, in dem beide Kinder dieselbe Zelle
  * belegen, ist genauso gestapelt, nimmt aber automatisch die Höhe des
  * grösseren an. Es kann gar nicht mehr abschneiden.
+ *
+ * EINE OBERFLÄCHE, ZWEI BEREICHE
+ * ------------------------------
+ * Identität links und Analyse rechts teilen sich Untergrund, Raster und
+ * Wasserzeichen. Vorher brachte die Identität ihren eigenen Hintergrund, ihr
+ * eigenes Raster und eine harte Trennkante mit; das las sich als Bild, das in
+ * eine weisse Karte geklebt wurde. Jetzt liegt der Untergrund auf der Bühne,
+ * das Wasserzeichen läuft über die Naht hinweg, und die Naht selbst ist ein
+ * Verlauf statt einer Linie.
  *
  * Bei reduzierter Bewegung steht die Demo still auf der letzten Phase, dem
  * fertigen Ergebnis. Sichtbar ist dann alles, nur nicht der Weg dorthin.
@@ -54,7 +64,7 @@ export default function HeroDemo() {
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-[#e6e1da] bg-white shadow-[0_36px_70px_-32px_rgba(40,25,10,0.42)]"
+      className="relative overflow-hidden rounded-3xl border border-[#e6e1da] bg-gradient-to-r from-[#fdfbf8] via-white to-white shadow-[0_36px_70px_-32px_rgba(40,25,10,0.42)]"
       aria-label="Produktvorschau: eine AutoFinder-Suche von der Eingabe bis zum Ergebnis"
       role="img"
     >
@@ -126,16 +136,19 @@ export default function HeroDemo() {
           }}
           aria-hidden={phase < PHASE_TREFFER}
         >
-          <div className="sm:flex sm:items-stretch">
-            <div
-              className="transition-all duration-700 ease-out"
-              style={reduziert ? undefined : {
-                opacity: phase >= PHASE_FOKUS ? 1 : 0.45,
-                filter: phase >= PHASE_FOKUS ? 'none' : 'saturate(0.4)',
-              }}
-            >
-              <VehicleIdentityPanel k={k} rank={1} />
-            </div>
+          <div className="relative">
+            <StageUntergrund wasserzeichen={k.generation} />
+            <StageNaht />
+
+            <div className="relative sm:flex sm:items-stretch">
+              <div
+                className="transition-all duration-700 ease-out"
+                style={reduziert ? undefined : {
+                  opacity: phase >= PHASE_FOKUS ? 1 : 0.5,
+                }}
+              >
+                <StageIdentitaet k={k} rank={1} />
+              </div>
 
             <div className="min-w-0 flex-1 p-5">
               <div className="flex items-start justify-between gap-3">
@@ -221,10 +234,16 @@ export default function HeroDemo() {
                 <Sparkles size={13} aria-hidden="true" className="ml-auto opacity-70" />
               </div>
             </div>
+            </div>
           </div>
 
-          {/* Die übrigen Treffer fahren gestaffelt ein */}
-          <div className="border-t border-[#efe9df] px-5 py-3.5">
+          {/* Die übrigen Treffer: dieselbe Oberfläche, nur dezent abgesetzt.
+              Kein eigener Kasten und keine kräftige Kante, sonst wirken sie wie
+              ein angehängter Fusszeilenblock. */}
+          <div
+            className="px-5 py-3.5"
+            style={{ borderTop: '1px solid rgba(40,25,10,0.06)' }}
+          >
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">
               Weitere Treffer
             </p>

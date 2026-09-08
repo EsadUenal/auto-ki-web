@@ -1,7 +1,8 @@
 import {
   AlertTriangle, Check, Cog, Fuel, Gauge, PiggyBank, ShieldCheck, Wrench,
 } from 'lucide-react'
-import VehicleIdentityPanel from '../autofinder/VehicleIdentityPanel'
+import StageIdentitaet from './StageIdentitaet'
+import StageUntergrund, { StageNaht } from './StageUntergrund'
 import { formatEuro, formatProKm } from '../autokosten/logic'
 import { useSequenz, useZaehler } from './motion'
 import {
@@ -36,15 +37,19 @@ export function PanelFinden({ aktiv, reduziert }: PanelProps) {
   const frei = useSequenz(SHOWCASE_WEITERE.length + 1, aktiv, reduziert, 180)
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-[#e6e1da] bg-white shadow-[0_30px_60px_-34px_rgba(40,25,10,0.4)]">
+    <div className="overflow-hidden rounded-3xl border border-[#e6e1da] bg-gradient-to-r from-[#fdfbf8] via-white to-white shadow-[0_30px_60px_-34px_rgba(40,25,10,0.4)]">
       <div className="flex items-center gap-2 border-b border-[#efe9df] bg-[#faf8f5] px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-gray-400">
           Vira · AutoFinder · 5 Treffer
         </span>
       </div>
 
-      <div className="sm:flex sm:items-stretch">
-        <VehicleIdentityPanel k={k} rank={1} />
+      <div className="relative">
+        <StageUntergrund wasserzeichen={k.generation} />
+        <StageNaht />
+
+        <div className="relative sm:flex sm:items-stretch">
+        <StageIdentitaet k={k} rank={1} />
         <div className="min-w-0 flex-1 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -81,9 +86,10 @@ export function PanelFinden({ aktiv, reduziert }: PanelProps) {
             ))}
           </ul>
         </div>
+        </div>
       </div>
 
-      <div className="border-t border-[#efe9df] px-5 py-3.5">
+      <div className="px-5 py-3.5" style={{ borderTop: '1px solid rgba(40,25,10,0.06)' }}>
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Weitere Treffer</p>
         <ul className="mt-2.5 space-y-1.5">
           {SHOWCASE_WEITERE.map((w, i) => (
@@ -263,11 +269,14 @@ export function PanelEntscheiden({ aktiv, reduziert }: PanelProps) {
 
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#16151a] shadow-[0_40px_80px_-40px_rgba(0,0,0,0.9)]">
-      <div className="border-b border-white/10 px-5 py-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-400">Dein Ergebnis</p>
-        <p className="mt-1 text-lg font-bold tracking-tight text-white">
-          {k.marke} {k.modell} <span className="text-white/40">{k.generation} · {k.motor}</span>
-        </p>
+      <div className="relative border-b border-white/10">
+        <StageUntergrund wasserzeichen={k.generation} dunkel />
+        <div className="relative px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-400">Dein Ergebnis</p>
+          <p className="mt-1 text-lg font-bold tracking-tight text-white">
+            {k.marke} {k.modell} <span className="text-white/40">{k.generation} · {k.motor}</span>
+          </p>
+        </div>
       </div>
 
       <ul className="divide-y divide-white/[0.07]">

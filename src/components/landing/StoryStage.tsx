@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ChevronDown } from 'lucide-react'
-import { reveal, useInView, useReducedMotion } from './motion'
+import {
+  klemme, mischeFarbe, reveal, useInView, useReducedMotion, useStoryFortschritt,
+} from './motion'
 import { PanelEntscheiden, PanelFinden, PanelPruefen, PanelVerstehen } from './StoryPanels'
 import { STORY_SCHRITTE } from './showcase'
 import { KAUFCHECK_ROUTE, AUTOFINDER_ROUTE, AUTOKOSTEN_ROUTE } from './links'
@@ -32,15 +34,42 @@ import { FOKUS_RING } from './styles'
  * der Gesamtlänge, es kann keinen Schritt überspringen, und die Strecke lässt
  * sich frei kürzen: `SCHRITT_VH` ist der einzige Stellwert.
  *
- * WARUM KÜRZER
- * ------------
- * Vorher bekam jeder Schritt eine volle Bildschirmhöhe, zusammen 400 vh
- * Scrollstrecke. Das fühlte sich an, als hänge die Seite. 62 vh je Schritt
- * reichen, damit man den Wechsel bewusst wahrnimmt, ohne festzustecken.
+ * DURCHGEHEND STATT IN STUFEN
+ * ---------------------------
+ * Der Fortschritt ist eine Kommazahl, kein Schritt-Index. Bei 1,5 steht man
+ * genau zwischen „Verstehen" und „Prüfen", und beide Bühnen sind zur Hälfte da:
+ * die eine schrumpft und verblasst, während die andere schon heranwächst. Mit
+ * einem ganzzahligen Schritt gäbe es dazwischen nichts, und die Story läse sich
+ * als vier ausgetauschte Bildschirme statt als eine Bewegung.
+ *
+ * Auch der Hell/Dunkel-Wechsel läuft mit: der Hintergrund kippt über die
+ * Strecke zwischen „Verstehen" und „Prüfen" hinweg, nicht an einer Kante.
+ *
+ * WARUM KURZ
+ * ----------
+ * Ursprünglich bekam jeder Schritt eine volle Bildschirmhöhe, zusammen 400 vh.
+ * Das fühlte sich an, als hänge die Seite. 50 vh je Schritt reichen: mit
+ * durchgehender Bewegung sieht man schon nach zwei, drei Radbewegungen, dass
+ * sich etwas verändert.
  */
 
 /** Scrollstrecke je Schritt in Prozent der Bildschirmhöhe. Einziger Stellwert. */
-const SCHRITT_VH = 62
+const SCHRITT_VH = 50
+
+/** Bühnenfarben, zwischen denen der Hintergrund überblendet. */
+const HELL: [number, number, number] = [250, 248, 245]
+const DUNKEL: [number, number, number] = [17, 16, 20]
+
+/**
+ * Wie „dunkel" die Bühne bei einer bestimmten Position ist.
+ *
+ * Der Wechsel beginnt kurz vor „Prüfen" und ist mit dessen Erreichen fertig.
+ * Ein Sprung genau auf der Schrittgrenze wäre der harte Weiss/Schwarz-Wechsel,
+ * den es gerade nicht sein soll.
+ */
+function dunkelheitBei(fortschritt: number): number {
+  return klemme((fortschritt - 1.25) / 0.75)
+}
 
 const TEXTE = [
   {
@@ -73,17 +102,28 @@ const TEXTE = [
   },
 ]
 
-function StoryText({ i, dunkel }: { i: number; dunkel: boolean }) {
+/** `dunkelheit` ist 0 (helle Bühne) bis 1 (dunkle Bühne), auch dazwischen. */
+function StoryText({ i, dunkelheit }: { i: number; dunkelheit: number }) {
   const t = TEXTE[i]
+  const dunkel = dunkelheit > 0.5
+  // Die Schrift schlaegt STEILER um als der Hintergrund. Der Hintergrund darf
+  // gemaechlich durchs Graue wandern, das sieht man gern; Text im selben Tempo
+  // waere dort aber grau auf grau. Mit der steileren Kurve ist die Schrift
+  // entweder klar dunkel oder klar hell, und der schmale Rest faellt mit der
+  // Ueberblendung zusammen, in der sie ohnehin fast unsichtbar ist.
+  const schrift = klemme((dunkelheit - 0.5) * 2.6 + 0.5)
   return (
     <div>
-      <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${dunkel ? 'text-orange-400' : 'text-orange-500'}`}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.2em]"
+        style={{ color: mischeFarbe([249, 115, 22], [251, 146, 60], schrift) }}>
         {STORY_SCHRITTE[i].kicker}
       </p>
-      <h3 className={`mt-3 text-3xl sm:text-4xl font-bold leading-[1.12] tracking-[-0.035em] ${dunkel ? 'text-white' : 'text-gray-900'}`}>
+      <h3 className="mt-3 text-3xl sm:text-4xl font-bold leading-[1.12] tracking-[-0.035em]"
+        style={{ color: mischeFarbe([17, 24, 39], [255, 255, 255], schrift) }}>
         {t.headline}
       </h3>
-      <p className={`mt-4 max-w-md text-[15px] leading-relaxed ${dunkel ? 'text-white/55' : 'text-gray-600'}`}>
+      <p className="mt-4 max-w-md text-[15px] leading-relaxed"
+        style={{ color: mischeFarbe([75, 85, 99], [166, 166, 172], schrift) }}>
         {t.text}
       </p>
       {t.cta && (
@@ -114,44 +154,13 @@ function Buehne({ i, aktiv, reduziert }: { i: number; aktiv: boolean; reduziert:
 
 function StoryDesktop() {
   const reduziert = useReducedMotion()
-  const spur = useRef<HTMLDivElement>(null)
-  const [aktiv, setAktiv] = useState(0)
-  const [inSpur, setInSpur] = useState(false)
   const anzahl = STORY_SCHRITTE.length
-  const dunkel = aktiv >= 2
+  const [spur, fortschritt] = useStoryFortschritt<HTMLDivElement>(SCHRITT_VH, anzahl)
 
-  // Aktiv ist der Marker, der gerade den oberen Bildschirmrand kreuzt. Der
-  // Beobachtungsstreifen ist dafür nur ein paar Prozent hoch.
-  useEffect(() => {
-    const el = spur.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-
-    const marker = Array.from(el.querySelectorAll<HTMLElement>('[data-schritt-marker]'))
-    const treffend = new Set<number>()
-
-    const beobachter = new IntersectionObserver(
-      (eintraege) => {
-        for (const e of eintraege) {
-          const i = Number((e.target as HTMLElement).dataset.schrittMarker)
-          if (e.isIntersecting) treffend.add(i)
-          else treffend.delete(i)
-        }
-        if (treffend.size > 0) setAktiv(Math.max(...treffend))
-      },
-      // Streifen ganz oben im Bild: von 0 bis 4 % der Fensterhöhe.
-      { rootMargin: '0px 0px -96% 0px', threshold: 0 },
-    )
-    marker.forEach((m) => beobachter.observe(m))
-
-    // Ob die Spur überhaupt im Bild ist (für den Einstiegshinweis).
-    const spurBeobachter = new IntersectionObserver(
-      ([e]) => setInSpur(e.isIntersecting),
-      { threshold: 0 },
-    )
-    spurBeobachter.observe(el)
-
-    return () => { beobachter.disconnect(); spurBeobachter.disconnect() }
-  }, [])
+  const dunkelheit = dunkelheitBei(fortschritt)
+  const dunkel = dunkelheit > 0.5
+  // Nur noch fuer Anzeige und Pruefung: welcher Schritt gerade der naechste ist.
+  const aktiv = Math.round(fortschritt)
 
   /** Springt zu einem Schritt. Gleiche Rechnung wie die Marker-Positionen. */
   const springeZu = useCallback((i: number) => {
@@ -163,7 +172,29 @@ function StoryDesktop() {
       top: Math.round(oben + i * schrittPx + 4),
       behavior: reduziert ? 'auto' : 'smooth',
     })
-  }, [reduziert])
+  }, [reduziert, spur])
+
+  /**
+   * Anteil, den Ebene `i` gerade an der Bühne hat: 1 mittig, 0 weit weg.
+   *
+   * Bewusst ASYMMETRISCH. Eine symmetrische Blende hat auf halbem Weg zwischen
+   * zwei Schritten beide Ebenen bei 0,5 — zwei halbdurchsichtige Textblöcke
+   * übereinander, beide unlesbar. Daran ändert auch ein schmaleres Fenster
+   * nichts, es verkürzt den Zustand nur.
+   *
+   * Auch ein verschobener Übergang hat aber irgendwo den Punkt gleicher
+   * Deckkraft — er wandert nur. Deshalb liegt zwischen Abgang und Auftritt eine
+   * kurze LÜCKE: die alte Ebene ist bei d = 0,38 verschwunden, die neue tritt
+   * erst ab d = -0,62 auf. Rechnerisch ist nie mehr als eine Ebene nennenswert
+   * sichtbar. Die Lücke dauert etwa 20 Pixel Scrollweg und liest sich nicht als
+   * Leere, sondern als Atemzug zwischen zwei Szenen.
+   */
+  const anteilVon = (i: number) => {
+    const d = fortschritt - i
+    return d >= 0
+      ? klemme((0.38 - d) / 0.16)     // hinter uns: tritt ab
+      : klemme((0.62 + d) / 0.16)     // vor uns: tritt auf
+  }
 
   return (
     <div
@@ -172,7 +203,9 @@ function StoryDesktop() {
       style={{ height: `${anzahl * SCHRITT_VH + 100}vh` }}
       data-story-track
     >
-      {/* Ein Marker je Schritt. Unsichtbar, aber echte Positionen in der Spur. */}
+      {/* Ein Marker je Schritt. Unsichtbar, aber echte Positionen in der Spur:
+          sie sind die Sprungziele der Navigation und machen die Aufteilung im
+          DOM nachvollziehbar. */}
       {STORY_SCHRITTE.map((s, i) => (
         <div
           key={s.id}
@@ -184,31 +217,32 @@ function StoryDesktop() {
       ))}
 
       <div
-        className="sticky top-0 flex h-screen items-center overflow-hidden transition-colors duration-700 ease-out"
-        style={{ backgroundColor: dunkel ? '#111014' : '#faf8f5' }}
+        className="sticky top-0 flex h-screen items-center overflow-hidden"
+        style={{ backgroundColor: mischeFarbe(HELL, DUNKEL, dunkelheit) }}
         data-story-stage
         data-aktiver-schritt={aktiv}
+        data-fortschritt={fortschritt.toFixed(2)}
         {...(dunkel ? { 'data-dark-section': '' } : {})}
       >
-        {/* Lichtfläche hinter der Bühne */}
+        {/* Lichtflaeche hinter der Buehne, waechst mit der Dunkelheit mit */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute right-[-10%] top-1/2 h-[42rem] w-[42rem] -translate-y-1/2 rounded-full transition-opacity duration-700"
+          className="pointer-events-none absolute right-[-10%] top-1/2 h-[42rem] w-[42rem] -translate-y-1/2 rounded-full"
           style={{
-            background: dunkel
-              ? 'radial-gradient(circle, rgba(249,115,22,0.16) 0%, transparent 68%)'
-              : 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 68%)',
+            background: `radial-gradient(circle, rgba(249,115,22,${0.10 + dunkelheit * 0.06}) 0%, transparent 68%)`,
           }}
         />
 
         <div className="relative mx-auto grid w-full max-w-6xl grid-cols-[auto_1fr_1.05fr] items-center gap-10 px-6">
-          {/* Schrittanzeige, anklickbar */}
+          {/* Schrittanzeige, anklickbar. Die Fuellung laeuft durchgehend mit. */}
           <ol className="flex flex-col gap-1" aria-label="Ablauf">
             {STORY_SCHRITTE.map((s, i) => {
-              const ist = i === aktiv
-              const war = i < aktiv
+              // Wie weit der Balken dieses Schritts gefuellt ist: waechst
+              // waehrend des Scrollens, statt bei der Grenze umzuspringen.
+              const fuellung = klemme(fortschritt - i + 1)
+              const naehe = anteilVon(i)
               return (
-                <li key={s.id} aria-current={ist ? 'step' : undefined}>
+                <li key={s.id} aria-current={Math.round(fortschritt) === i ? 'step' : undefined}>
                   <button
                     type="button"
                     onClick={() => springeZu(i)}
@@ -218,20 +252,24 @@ function StoryDesktop() {
                   >
                     <span className="relative flex h-16 w-[3px] shrink-0 items-center justify-center">
                       <span
-                        className="absolute inset-0 rounded-full transition-colors duration-500"
-                        style={{ backgroundColor: dunkel ? 'rgba(255,255,255,0.12)' : '#e6ded2' }}
+                        className="absolute inset-0 rounded-full"
+                        style={{ backgroundColor: mischeFarbe([230, 222, 210], [255, 255, 255], dunkelheit * 0.12) }}
                       />
                       <span
-                        className="absolute inset-x-0 top-0 rounded-full bg-orange-500 transition-all duration-500 ease-out"
-                        style={{ height: ist || war ? '100%' : '0%' }}
+                        className="absolute inset-x-0 top-0 rounded-full bg-orange-500"
+                        style={{ height: `${fuellung * 100}%` }}
                       />
                     </span>
                     <span
-                      className="text-sm font-bold tracking-tight transition-all duration-500"
+                      className="text-sm font-bold tracking-tight"
                       style={{
-                        color: ist ? (dunkel ? '#ffffff' : '#111827')
-                          : (dunkel ? 'rgba(255,255,255,0.32)' : '#9ca3af'),
-                        transform: ist ? 'translateX(2px)' : 'none',
+                        color: mischeFarbe(
+                          // inaktiv -> aktiv, jeweils fuer hell und dunkel
+                          dunkel ? [110, 108, 116] : [156, 163, 175],
+                          dunkel ? [255, 255, 255] : [17, 24, 39],
+                          naehe,
+                        ),
+                        transform: `translateX(${naehe * 2}px)`,
                       }}
                     >
                       {s.label}
@@ -242,64 +280,82 @@ function StoryDesktop() {
             })}
           </ol>
 
-          {/* Text, wechselt mit dem Schritt */}
+          {/* Text: die Ebenen ueberblenden ineinander, statt zu wechseln. */}
           <div className="relative min-h-[19rem]">
-            {TEXTE.map((_, i) => (
-              <div
-                key={i}
-                className="absolute inset-0 flex flex-col justify-center transition-all duration-500 ease-out"
-                style={{
-                  opacity: i === aktiv ? 1 : 0,
-                  transform: i === aktiv ? 'none' : `translateY(${i < aktiv ? -18 : 18}px)`,
-                  pointerEvents: i === aktiv ? 'auto' : 'none',
-                }}
-                aria-hidden={i !== aktiv}
-              >
-                <StoryText i={i} dunkel={dunkel} />
-              </div>
-            ))}
+            {TEXTE.map((_, i) => {
+              const d = fortschritt - i
+              const anteil = anteilVon(i)
+              return (
+                <div
+                  key={i}
+                  className="absolute inset-0 flex flex-col justify-center"
+                  style={{
+                    opacity: anteil,
+                    // Weiter Weg: waehrend der kurzen Ueberblendung sind die
+                    // beiden Ebenen raeumlich klar getrennt, statt aufeinander
+                    // zu liegen.
+                    transform: `translateY(${-d * 54}px)`,
+                    pointerEvents: anteil > 0.5 ? 'auto' : 'none',
+                  }}
+                  aria-hidden={anteil <= 0.5}
+                >
+                  <StoryText i={i} dunkelheit={dunkelheit} />
+                </div>
+              )
+            })}
           </div>
 
-          {/* Produktbühne, wechselt mit dem Schritt */}
+          {/* Produktbuehne: dieselbe Ueberblendung, dazu ein leichtes
+              Schrumpfen der weichenden Ebene. So waechst die naechste sichtbar
+              aus der vorherigen heraus. */}
           <div className="relative min-h-[27rem]">
-            {STORY_SCHRITTE.map((s, i) => (
-              <div
-                key={s.id}
-                className="absolute inset-0 flex items-center transition-all duration-600 ease-out"
-                style={{
-                  opacity: i === aktiv ? 1 : 0,
-                  transform: i === aktiv ? 'none' : `translateY(${i < aktiv ? -26 : 26}px) scale(0.97)`,
-                  pointerEvents: i === aktiv ? 'auto' : 'none',
-                }}
-                aria-hidden={i !== aktiv}
-              >
-                <div className="w-full">
-                  <Buehne i={i} aktiv={i === aktiv} reduziert={reduziert} />
+            {STORY_SCHRITTE.map((s, i) => {
+              const d = fortschritt - i
+              const anteil = anteilVon(i)
+              const entfernung = Math.min(Math.abs(d), 1)
+              return (
+                <div
+                  key={s.id}
+                  className="absolute inset-0 flex items-center"
+                  style={{
+                    opacity: anteil,
+                    transform: `translateY(${-d * 68}px) scale(${1 - entfernung * 0.08})`,
+                    pointerEvents: anteil > 0.5 ? 'auto' : 'none',
+                  }}
+                  aria-hidden={anteil <= 0.5}
+                >
+                  <div className="w-full">
+                    {/* Zaehler und Sequenzen starten schon, bevor die Ebene
+                        ganz da ist: sie sollen beim Erscheinen laufen, nicht
+                        danach anspringen. */}
+                    <Buehne i={i} aktiv={anteil > 0.35} reduziert={reduziert} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
-        {/* Dezenter Hinweis, dass hier gescrollt wird. Verschwindet, sobald der
-            erste Schritt vorbei ist, damit er nicht dauerhaft stört. */}
+        {/* Dezenter Hinweis, dass hier gescrollt wird. Verschwindet, sobald die
+            Bewegung erkennbar begonnen hat. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center transition-opacity duration-500"
-          style={{ opacity: inSpur && aktiv === 0 ? 1 : 0 }}
+          className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center"
+          style={{ opacity: klemme(1 - fortschritt / 0.6) }}
         >
-          <span className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${dunkel ? 'text-white/40' : 'text-gray-400'}`}>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]"
+            style={{ color: mischeFarbe([156, 163, 175], [255, 255, 255], dunkelheit * 0.4) }}>
             Weiterscrollen
             <ChevronDown size={13} className={reduziert ? '' : 'animate-bounce'} />
           </span>
         </div>
 
-        {/* Feine Fortschrittslinie am unteren Rand der Bühne */}
+        {/* Fortschrittslinie: laeuft durchgehend mit, nicht in vier Stufen. */}
         <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5"
-          style={{ backgroundColor: dunkel ? 'rgba(255,255,255,0.08)' : '#eee7dd' }}>
+          style={{ backgroundColor: mischeFarbe([238, 231, 221], [255, 255, 255], dunkelheit * 0.08) }}>
           <div
-            className="h-full bg-orange-500 transition-all duration-500 ease-out"
-            style={{ width: `${((aktiv + 1) / anzahl) * 100}%` }}
+            className="h-full bg-orange-500"
+            style={{ width: `${(fortschritt / (anzahl - 1)) * 100}%` }}
           />
         </div>
       </div>
@@ -316,20 +372,29 @@ function StoryBlock({ i }: { i: number }) {
   const r = reveal(sichtbar, reduziert)
 
   return (
-    <div
-      ref={ref}
-      data-story-block={STORY_SCHRITTE[i].id}
-      className="px-4 py-14 sm:px-6 sm:py-16"
-      style={{ backgroundColor: dunkel ? '#111014' : '#faf8f5' }}
-      {...(dunkel ? { 'data-dark-section': '' } : {})}
-    >
+    <>
+      {/* Weicher Uebergang genau dort, wo die Story ins Dunkle kippt. Ohne ihn
+          stiesse auf dem Telefon eine helle Flaeche hart auf eine dunkle. */}
+      {i === 2 && (
+        <div aria-hidden="true" className="h-24"
+          data-mobil-uebergang
+          style={{ background: 'linear-gradient(to bottom, #faf8f5, #111014)' }} />
+      )}
+      <div
+        ref={ref}
+        data-story-block={STORY_SCHRITTE[i].id}
+        className="px-4 py-14 sm:px-6 sm:py-16"
+        style={{ backgroundColor: dunkel ? '#111014' : '#faf8f5' }}
+        {...(dunkel ? { 'data-dark-section': '' } : {})}
+      >
       <div className={`mx-auto max-w-2xl ${r.className}`} style={r.style}>
-        <StoryText i={i} dunkel={dunkel} />
+        <StoryText i={i} dunkelheit={dunkel ? 1 : 0} />
         <div className="mt-8">
           <Buehne i={i} aktiv={sichtbar} reduziert={reduziert} />
         </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

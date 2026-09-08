@@ -217,6 +217,96 @@ export function useDunkelDarunter(abstandPx = 76): boolean {
   return dunkel
 }
 
+/**
+ * Kontinuierlicher Fortschritt durch die Story, als Kommazahl.
+ *
+ * Rueckgabe ist eine Position auf der Schrittachse: 0 = ganz bei „Finden",
+ * 1,5 = genau zwischen „Verstehen" und „Pruefen", 3 = bei „Entscheiden".
+ *
+ * WARUM EINE KOMMAZAHL UND KEIN SCHRITT-INDEX
+ * -------------------------------------------
+ * Mit einem ganzzahligen Schritt kann die Buehne nur umschalten: erst ist
+ * AutoFinder da, dann ist Autokosten da. Dazwischen passiert nichts, und genau
+ * das fuehlt sich an wie vier ausgetauschte Bildschirme statt wie eine
+ * Geschichte. Mit der Zwischenposition kann jede Ebene ihren eigenen Anteil
+ * berechnen: waehrend die eine schrumpft und verblasst, waechst die naechste
+ * schon heran.
+ *
+ * Gemessen wird in einer rAF-Schleife, die nur laeuft, solange die Spur im Bild
+ * ist (IntersectionObserver als Schalter). Bewusst KEIN `scroll`-Listener: in
+ * eingebetteten oder unsichtbaren Ansichten aendert sich `scrollY`, ohne dass
+ * ein Ereignis zugestellt wird.
+ */
+export function useStoryFortschritt<T extends HTMLElement>(
+  schrittVh: number, anzahl: number,
+): [React.RefObject<T>, number] {
+  const ref = useRef<T>(null)
+  const [fortschritt, setFortschritt] = useState(0)
+  const letzter = useRef(0)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    let rafId = 0
+    let laeuft = false
+
+    const messen = () => {
+      const rect = el.getBoundingClientRect()
+      const schrittPx = window.innerHeight * (schrittVh / 100)
+      const roh = schrittPx > 0
+        ? Math.min(anzahl - 1, Math.max(0, -rect.top / schrittPx))
+        : 0
+      if (Math.abs(roh - letzter.current) > 0.004) {
+        letzter.current = roh
+        setFortschritt(roh)
+      }
+      if (laeuft) rafId = requestAnimationFrame(messen)
+    }
+
+    const starten = () => {
+      if (laeuft) return
+      laeuft = true
+      rafId = requestAnimationFrame(messen)
+    }
+    const stoppen = () => {
+      laeuft = false
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      starten()
+      return stoppen
+    }
+    const beobachter = new IntersectionObserver(
+      ([e]) => (e.isIntersecting ? starten() : stoppen()),
+      { threshold: 0 },
+    )
+    beobachter.observe(el)
+    return () => { beobachter.disconnect(); stoppen() }
+  }, [schrittVh, anzahl])
+
+  return [ref, fortschritt]
+}
+
+/** Begrenzt einen Wert auf [0, 1]. */
+export function klemme(wert: number): number {
+  return Math.min(1, Math.max(0, wert))
+}
+
+/**
+ * Mischt zwei Farben.
+ *
+ * Gebraucht fuer den Hell/Dunkel-Wechsel der Story-Buehne: der darf nicht
+ * springen, sondern soll ueber die Scrollstrecke hinweg kippen. Mit
+ * Tailwind-Klassen ginge das nur in Stufen, deshalb hier als Zahlenwert.
+ */
+export function mischeFarbe(a: [number, number, number], b: [number, number, number], t: number): string {
+  const k = klemme(t)
+  const c = a.map((wert, i) => Math.round(wert + (b[i] - wert) * k))
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`
+}
+
 /** Reveal-Klassen: sichtbar = Endzustand, sonst leicht nach unten versetzt. */
 export function reveal(sichtbar: boolean, reduziert: boolean, verzoegerungMs = 0): {
   className: string; style: React.CSSProperties
