@@ -56,7 +56,7 @@ export const SHOWCASE_SCHWACHSTELLEN = [
     bauteil: 'Software / Infotainment',
     baujahre: '2019–2021',
     schweregrad: 'gering' as const,
-    kurz: 'Frühe Baujahre zeigen gelegentlich Bugs im iDrive 7 — meist per Update behebbar.',
+    kurz: 'Frühe Baujahre zeigen gelegentlich Bugs im iDrive 7, meist per Update behebbar.',
   },
   {
     bauteil: 'Fahrwerk (Knarzgeräusche)',

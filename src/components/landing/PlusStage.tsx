@@ -64,6 +64,7 @@ export default function PlusStage() {
       ref={ref}
       aria-labelledby="plus-titel"
       data-plus-stage
+      data-dark-section=""
       className="relative overflow-hidden bg-[#111014]"
     >
       <div
@@ -99,7 +100,7 @@ export default function PlusStage() {
             </h2>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/55">
               Wer mehrere Fahrzeuge vergleicht, bevor er sich entscheidet, prüft nicht
-              einmal — sondern fünfmal. Plus macht daraus einen festen monatlichen
+              einmal, sondern fünfmal. Plus macht daraus einen festen monatlichen
               Werkzeugkasten statt einer Reihe von Einzelkäufen.
             </p>
 
@@ -110,7 +111,7 @@ export default function PlusStage() {
 
             <p className="mt-4 max-w-md text-[13px] leading-relaxed text-white/40">
               Monatlich kündbar, keine Mindestlaufzeit. Die monatlichen Kontingente sammeln
-              sich nicht an — nicht genutzte Plus-Checks verfallen zum Monatsende. Einzeln
+              sich nicht an. Nicht genutzte Plus-Checks verfallen zum Monatsende. Einzeln
               gekaufte Checks behältst du dauerhaft.
             </p>
 

@@ -53,7 +53,7 @@ export default function LandingFooter() {
               <span className="text-lg font-bold tracking-tight text-gray-900">Vira</span>
             </div>
             <p className="mt-3.5 max-w-xs text-sm leading-relaxed text-gray-500">
-              Fahrzeuge finden, vergleichen und prüfen — von der ersten Suche bis zur
+              Fahrzeuge finden, vergleichen und prüfen. Von der ersten Suche bis zur
               Kaufentscheidung.
             </p>
           </div>

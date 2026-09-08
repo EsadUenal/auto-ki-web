@@ -73,75 +73,6 @@ export function useInView<T extends Element>(
 }
 
 /**
- * Scrollfortschritt eines Elements: 0 beim Eintreten, 1 beim Verlassen.
- *
- * Grundlage der Sticky-Story.
- *
- * WARUM KEIN SCROLL-HANDLER
- * -------------------------
- * Naheliegend waere ein `scroll`-Listener auf `window`. Der ist aber nicht
- * ueberall verlaesslich: in eingebetteten und nicht sichtbaren Ansichten
- * aendert sich `scrollY`, ohne dass ein einziges Scroll-Ereignis zugestellt
- * wird — die Story bliebe dann stumm auf Schritt 1 stehen, obwohl sie sich
- * bewegt. Genau das ist in der Browser-Pruefung dieser Seite passiert.
- *
- * Gemessen wird deshalb in einer rAF-Schleife, die AUSSCHLIESSLICH laeuft,
- * solange das Element sichtbar ist (IntersectionObserver als Schalter).
- * Ausserhalb kostet sie nichts. Gelesen wird nur `getBoundingClientRect`,
- * geschrieben nur, wenn sich der Wert nennenswert geaendert hat — sonst
- * wuerde jeder Frame ein React-Rendering ausloesen.
- */
-export function useScrollFortschritt<T extends HTMLElement>(): [React.RefObject<T>, number] {
-  const ref = useRef<T>(null)
-  const [fortschritt, setFortschritt] = useState(0)
-  const letzter = useRef(0)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    let rafId = 0
-    let laeuft = false
-
-    const messen = () => {
-      const rect = el.getBoundingClientRect()
-      const strecke = rect.height - window.innerHeight
-      const roh = strecke > 0 ? Math.min(1, Math.max(0, -rect.top / strecke)) : 0
-      // Nur bei spuerbarer Aenderung neu rendern.
-      if (Math.abs(roh - letzter.current) > 0.002) {
-        letzter.current = roh
-        setFortschritt(roh)
-      }
-      if (laeuft) rafId = requestAnimationFrame(messen)
-    }
-
-    const starten = () => {
-      if (laeuft) return
-      laeuft = true
-      rafId = requestAnimationFrame(messen)
-    }
-    const stoppen = () => {
-      laeuft = false
-      if (rafId) cancelAnimationFrame(rafId)
-    }
-
-    if (typeof IntersectionObserver === 'undefined') {
-      starten()
-      return stoppen
-    }
-
-    const beobachter = new IntersectionObserver(
-      ([eintrag]) => (eintrag.isIntersecting ? starten() : stoppen()),
-      { threshold: 0 },
-    )
-    beobachter.observe(el)
-    return () => { beobachter.disconnect(); stoppen() }
-  }, [])
-
-  return [ref, fortschritt]
-}
-
-/**
  * Zählt auf `ziel` hoch, sobald `aktiv` wird.
  *
  * `reduziert` springt sofort auf den Endwert: eine hochlaufende Zahl ist genau
@@ -212,6 +143,78 @@ export function usePhasen(anzahl: number, reduziert: boolean, haltenMs = 1500): 
   }, [anzahl, reduziert, haltenMs])
 
   return phase
+}
+
+/**
+ * True, wenn direkt unter dem Header eine dunkle Fläche liegt.
+ *
+ * WARUM MESSEN STATT MARKIEREN
+ * ----------------------------
+ * Naheliegend waere, die dunklen Abschnitte zu markieren und per
+ * IntersectionObserver zu beobachten. Das scheitert an der Story-Bühne: die ist
+ * mal hell und mal dunkel, je nachdem, bei welchem Schritt man steht. Ein
+ * Beobachter müsste bei jedem Wechsel neu gebunden werden, und der Header
+ * bräuchte Wissen über die Innereien der Story.
+ *
+ * Stattdessen wird gemessen, was tatsächlich da ist: das Element unter dem
+ * Header wird abgefragt und seine Hintergrundfarbe nach oben durchgereicht, bis
+ * eine deckende gefunden ist. Das funktioniert für jede Fläche, auch für
+ * spätere, ohne dass jemand daran denken muss, sie zu markieren.
+ *
+ * `elementFromPoint` erzwingt ein Layout, deshalb wird nicht in jedem Frame
+ * gemessen, sondern etwa zehnmal pro Sekunde, und nur solange die Seite
+ * sichtbar ist.
+ */
+export function useDunkelDarunter(abstandPx = 76): boolean {
+  const [dunkel, setDunkel] = useState(false)
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const messen = () => {
+      const el = document.elementFromPoint(Math.round(window.innerWidth / 2), abstandPx)
+      if (!el) return
+      let knoten: Element | null = el
+      while (knoten) {
+        const farbe = getComputedStyle(knoten).backgroundColor
+        const teile = farbe.match(/[\d.]+/g)
+        if (teile && teile.length >= 3) {
+          const alpha = teile.length > 3 ? Number(teile[3]) : 1
+          if (alpha > 0.5) {
+            const [r, g, b] = teile.slice(0, 3).map(Number)
+            // Wahrgenommene Helligkeit (ITU-R BT.601)
+            const helligkeit = (r * 299 + g * 587 + b * 114) / 1000
+            setDunkel(helligkeit < 110)
+            return
+          }
+        }
+        knoten = knoten.parentElement
+      }
+      setDunkel(false)
+    }
+
+    const starten = () => {
+      if (timer) return
+      messen()
+      timer = setInterval(messen, 100)
+    }
+    const stoppen = () => {
+      if (timer) clearInterval(timer)
+      timer = null
+    }
+
+    const sichtbarkeit = () => (document.hidden ? stoppen() : starten())
+    sichtbarkeit()
+    document.addEventListener('visibilitychange', sichtbarkeit)
+    window.addEventListener('resize', messen)
+    return () => {
+      stoppen()
+      document.removeEventListener('visibilitychange', sichtbarkeit)
+      window.removeEventListener('resize', messen)
+    }
+  }, [abstandPx])
+
+  return dunkel
 }
 
 /** Reveal-Klassen: sichtbar = Endzustand, sonst leicht nach unten versetzt. */

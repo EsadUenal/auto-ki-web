@@ -39,7 +39,7 @@ export function PanelFinden({ aktiv, reduziert }: PanelProps) {
     <div className="overflow-hidden rounded-3xl border border-[#e6e1da] bg-white shadow-[0_30px_60px_-34px_rgba(40,25,10,0.4)]">
       <div className="flex items-center gap-2 border-b border-[#efe9df] bg-[#faf8f5] px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-gray-400">
-          Vira · AutoFinder — 5 Treffer
+          Vira · AutoFinder · 5 Treffer
         </span>
       </div>
 
@@ -120,7 +120,7 @@ export function PanelVerstehen({ aktiv, reduziert }: PanelProps) {
     <div className="overflow-hidden rounded-3xl border border-[#e6e1da] bg-white shadow-[0_30px_60px_-34px_rgba(40,25,10,0.4)]">
       <div className="flex items-center gap-2 border-b border-[#efe9df] bg-[#faf8f5] px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-gray-400">
-          Vira · Autokosten — {k.marke} {k.modell} {k.motor}
+          Vira · Autokosten · {k.marke} {k.modell} {k.motor}
         </span>
       </div>
 
@@ -165,7 +165,7 @@ export function PanelVerstehen({ aktiv, reduziert }: PanelProps) {
 
         <p className="mt-5 border-t border-[#efe9df] pt-3.5 text-[11px] leading-relaxed text-gray-400">
           Beispielrechnung: 15.000 km/Jahr, 6,5 l/100 km (Realverbrauch), 1,75 €/l.
-          Versicherung, Steuer, Wartung, Reifen und Wertverlust sind Annahmen — im
+          Versicherung, Steuer, Wartung, Reifen und Wertverlust sind Annahmen. Im
           Rechner gibst du deine eigenen Werte ein.
         </p>
       </div>
@@ -205,7 +205,7 @@ const PRUEF_BLOECKE = [
     icon: <Check size={15} aria-hidden="true" />,
     titel: 'Kaufrelevanter Hinweis',
     inhalt: 'Software-Stand des iDrive prüfen lassen und beim Fahren auf Knarzen der '
-      + 'Vorderachse achten — beides betrifft frühe Baujahre und ist vor dem Kauf feststellbar.',
+      + 'Vorderachse achten. Beides betrifft frühe Baujahre und ist vor dem Kauf feststellbar.',
   },
 ]
 
@@ -216,7 +216,7 @@ export function PanelPruefen({ aktiv, reduziert }: PanelProps) {
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#16151a] shadow-[0_40px_80px_-40px_rgba(0,0,0,0.9)]">
       <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-white/40">
-          Vira · KaufCheck — {k.marke} {k.modell} {k.motor}
+          Vira · KaufCheck · {k.marke} {k.modell} {k.motor}
         </span>
         <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold text-orange-300">
           5,99 €
@@ -293,7 +293,7 @@ export function PanelEntscheiden({ aktiv, reduziert }: PanelProps) {
       </ul>
 
       <p className="border-t border-white/10 px-5 py-3.5 text-[11px] leading-relaxed text-white/40">
-        Vira trifft die Entscheidung nicht für dich — aber du triffst sie mit dem, was
+        Vira trifft die Entscheidung nicht für dich. Aber du triffst sie mit dem, was
         vorher niemand zusammengetragen hatte.
       </p>
     </div>

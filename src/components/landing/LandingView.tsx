@@ -42,7 +42,7 @@ import { FOKUS_RING } from './styles'
  * bestehen aus echten Oberflächen mit lokalen Showcase-Daten (showcase.ts).
  */
 
-const SEITENTITEL = 'Vira — Autos finden, prüfen und besser entscheiden'
+const SEITENTITEL = 'Vira: Autos finden, prüfen und besser entscheiden'
 const SEITENBESCHREIBUNG =
   'Vira hilft beim Finden, Vergleichen und Prüfen von Fahrzeugen: AutoFinder, '
   + 'Autokosten-Rechner und KI-Chat kostenlos starten, KaufCheck ab 5,99 €.'
@@ -152,7 +152,7 @@ const FAQ = [
   {
     frage: 'Kann ich den AutoFinder ohne Konto testen?',
     antwort: 'Ja. Eine vollständige Suche pro Tag läuft ohne Registrierung. Danach brauchst du ein '
-      + 'kostenloses Konto — deine bereits genutzte Demo wird dabei nicht angerechnet, du startest mit '
+      + 'kostenloses Konto. Deine bereits genutzte Demo wird dabei nicht angerechnet: du startest mit '
       + 'vollen 5 Suchen im Monat.',
   },
   {
@@ -168,7 +168,7 @@ const FAQ = [
   },
   {
     frage: 'Verfallen einzeln gekaufte Checks?',
-    antwort: 'Nein. Einzeln gekaufte Kauf- und VerkaufsChecks bleiben dauerhaft in deinem Konto — auch '
+    antwort: 'Nein. Einzeln gekaufte Kauf- und VerkaufsChecks bleiben dauerhaft in deinem Konto, auch '
       + 'wenn du später Vira Plus abschließt, kündigst oder Plus ausläuft. Nur die monatlichen '
       + 'Plus-Kontingente verfallen zum Monatsende.',
   },
@@ -314,7 +314,7 @@ export default function LandingView() {
                 </h1>
 
                 <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-gray-600">
-                  Vira hilft dir beim Finden, Vergleichen und Prüfen von Fahrzeugen — von der
+                  Vira hilft dir beim Finden, Vergleichen und Prüfen von Fahrzeugen. Von der
                   ersten Suche bis zur Kaufentscheidung.
                 </p>
 
@@ -327,7 +327,7 @@ export default function LandingView() {
                 </div>
 
                 <p className="mt-4 text-[13px] text-gray-500">
-                  1 Suche kostenlos testen — ohne Konto.
+                  1 Suche kostenlos testen, ganz ohne Konto.
                 </p>
               </div>
 
@@ -354,7 +354,7 @@ export default function LandingView() {
               {
                 icon: <Search size={20} aria-hidden="true" />, farbe: 'text-orange-600 bg-orange-50',
                 titel: 'AutoFinder', to: AUTOFINDER_ROUTE, cta: 'AutoFinder öffnen',
-                text: 'Beschreibe Budget, Nutzung und was dir wichtig ist — Vira schlägt passende Baureihen vor und begründet jeden Vorschlag.',
+                text: 'Beschreibe Budget, Nutzung und was dir wichtig ist. Vira schlägt passende Baureihen vor und begründet jeden Vorschlag.',
                 punkte: ['1 Demo-Suche pro Tag ohne Konto', '5 Suchen pro Monat mit kostenlosem Konto'],
               },
               {
@@ -366,7 +366,7 @@ export default function LandingView() {
               {
                 icon: <MessageSquare size={20} aria-hidden="true" />, farbe: 'text-blue-600 bg-blue-50',
                 titel: 'KI-Chat', to: CHAT_ROUTE, cta: 'Chat öffnen',
-                text: 'Fragen zu Modellen, Motoren, Wartung oder einem konkreten Inserat — in normaler Sprache, mit Bezug auf deine Fahrzeugdaten.',
+                text: 'Fragen zu Modellen, Motoren, Wartung oder einem konkreten Inserat, in normaler Sprache und mit Bezug auf deine Fahrzeugdaten.',
                 punkte: ['20 Nachrichten pro Monat im kostenlosen Konto', '100 Nachrichten pro Monat mit Vira Plus'],
               },
             ].map((w, i) => (
@@ -401,7 +401,7 @@ export default function LandingView() {
               <Ueberschrift
                 eyebrow="Die andere Richtung"
                 titel="Und wenn du verkaufen willst?"
-                text="Der VerkaufsCheck dreht dieselbe Analyse um: Was ist dein Fahrzeug wert, was solltest du vorher wissen — und wie beschreibst du es so, dass Käufer es ernst nehmen."
+                text="Der VerkaufsCheck dreht dieselbe Analyse um: Was ist dein Fahrzeug wert, was solltest du vorher wissen, und wie beschreibst du es so, dass Käufer es ernst nehmen."
               />
               <div className="mt-8 flex flex-wrap items-end gap-2.5">
                 <span className="text-4xl font-bold tracking-[-0.04em] text-gray-900">8,99 €</span>
@@ -439,7 +439,7 @@ export default function LandingView() {
               {
                 nr: '01', icon: <Database size={20} aria-hidden="true" />,
                 titel: 'Struktur statt Datenchaos',
-                text: 'Baureihen, Generationen und Motorvarianten liegen als gepflegte Datenbasis vor — '
+                text: 'Baureihen, Generationen und Motorvarianten liegen als gepflegte Datenbasis vor, '
                   + 'nicht als Suchergebnis. Deshalb weiß Vira, dass ein 118i etwas anderes ist als ein '
                   + '120i, und behandelt ihn auch so.',
                 beleg: `${k.marke} ${k.modell} ${k.generation} · ${k.motor} · ${k.leistung_ps} PS`,
@@ -448,7 +448,7 @@ export default function LandingView() {
                 nr: '02', icon: <ShieldCheck size={20} aria-hidden="true" />,
                 titel: 'Transparente Datenqualität',
                 text: 'Jede Analyse sagt dazu, worauf sie beruht. Wo die Grundlage für eine belastbare '
-                  + 'Aussage nicht reicht, steht das da — statt einer Zahl, die gut aussieht und nichts wert ist.',
+                  + 'Aussage nicht reicht, steht das da. Eine Zahl, die gut aussieht und nichts wert ist, hilft niemandem.',
                 beleg: 'Datenlage hoch · Quellen ausgewiesen',
               },
               {
@@ -492,7 +492,7 @@ export default function LandingView() {
               <Ueberschrift
                 eyebrow="Preise"
                 titel="Bezahlen nur, wenn du es brauchst"
-                text="Kostenlos starten, einzelne Checks kaufen — oder monatlich mehr bekommen."
+                text="Kostenlos starten, einzelne Checks kaufen oder monatlich mehr bekommen."
               />
             </Reveal>
 
@@ -548,7 +548,7 @@ export default function LandingView() {
             <Reveal>
               <Ueberschrift eyebrow="FAQ" titel="Häufige Fragen" />
               <p className="mt-5 text-sm leading-relaxed text-gray-500">
-                Noch etwas offen? Schreib uns — die Antwort landet in dieser Liste, wenn sie
+                Noch etwas offen? Schreib uns. Die Antwort landet in dieser Liste, wenn sie
                 mehr Leute betrifft.
               </p>
             </Reveal>
@@ -561,7 +561,7 @@ export default function LandingView() {
         </Abschnitt>
 
         {/* ── Abschluss ────────────────────────────────────────────────── */}
-        <div className="relative overflow-hidden bg-[#111014]" data-final-cta>
+        <div className="relative overflow-hidden bg-[#111014]" data-final-cta data-dark-section="">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[52rem] -translate-x-1/2 -translate-y-1/3 rounded-full"
@@ -573,7 +573,7 @@ export default function LandingView() {
                 Dein nächstes Auto beginnt mit einer besseren Entscheidung.
               </h2>
               <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-white/55">
-                Starte kostenlos — ohne Zahlungsdaten, ohne Abo.
+                Starte kostenlos. Ohne Zahlungsdaten und ohne Abo.
               </p>
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link to={REGISTER_ROUTE}

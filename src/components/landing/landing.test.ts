@@ -111,7 +111,7 @@ test('T: Header und Abschluss-CTA nutzen beide denselben Register-Weg', () => {
 // ── D/E/F) Kostenlose Kontingente ───────────────────────────────────────────
 
 test('D: die eine anonyme Demo-Suche wird korrekt erwähnt (pro Tag, ohne Konto)', () => {
-  assert.match(view, /1 Suche kostenlos testen — ohne Konto/)
+  assert.match(view, /1 Suche kostenlos testen, ganz ohne Konto/)
   assert.match(view, /1 Demo-Suche pro Tag ohne Konto/)
   assert.doesNotMatch(alles, /Demo-Suche pro Monat/)
 })
@@ -324,17 +324,20 @@ test('V: die Schwachstelle der stärkeren Modelle wird dem 118i NICHT zugeschrie
 
 test('Motion: die Seite bringt sichtbare Bewegung mit', () => {
   assert.match(motion, /export function useInView/)
-  assert.match(motion, /export function useScrollFortschritt/)
   assert.match(motion, /export function useZaehler/)
   assert.match(motion, /export function useSequenz/)
   assert.match(motion, /export function usePhasen/)
+  assert.match(motion, /export function useDunkelDarunter/)
   // und sie wird auch benutzt
   assert.match(heroDemo, /usePhasen\(/)
-  assert.match(storyStage, /useScrollFortschritt</)
   assert.match(storyPanels, /useZaehler\(/)
   assert.match(storyPanels, /useSequenz\(/)
   assert.match(plusStage, /useZaehler\(/)
   assert.match(view, /useInView</)
+  assert.match(header, /useDunkelDarunter\(\)/)
+  // kein toter Hook: der frühere Fortschrittsrechner ist mit den
+  // Schritt-Markern überflüssig geworden und wurde entfernt.
+  assert.doesNotMatch(motion, /useScrollFortschritt/)
 })
 
 test('Motion: die Sticky-Story hat vier Schritte und eine Scrollstrecke', () => {
@@ -343,11 +346,15 @@ test('Motion: die Sticky-Story hat vier Schritte und eine Scrollstrecke', () => 
     assert.match(showcase, new RegExp(`id: '${s}'`), `Story-Schritt fehlt: ${s}`)
   }
   assert.match(storyStage, /className="sticky top-0/)
-  // (anzahl + 1), weil die klebende Buehne selbst einen Bildschirm hoch ist:
-  // nur so bekommt jeder Schritt eine volle Bildschirmhoehe Scrollstrecke.
-  assert.match(storyStage, /height: `\$\{\(anzahl \+ 1\) \* 100\}vh`/)
-  // der aktive Schritt haengt am Scrollfortschritt, nicht an einem Timer
-  assert.match(storyStage, /Math\.floor\(fortschritt \* anzahl/)
+  // Jeder Schritt hat einen eigenen Marker in der Spur. Aktiv ist der, der den
+  // oberen Bildschirmrand kreuzt — das kann keinen Schritt ueberspringen.
+  assert.match(storyStage, /data-schritt-marker=\{i\}/)
+  assert.match(storyStage, /top: `\$\{i \* SCHRITT_VH\}vh`/)
+  assert.match(storyStage, /rootMargin: '0px 0px -96% 0px'/)
+  assert.match(storyStage, /setAktiv\(Math\.max\(\.\.\.treffend\)\)/)
+  // Die Spur ist nur noch so lang wie noetig: SCHRITT_VH je Schritt plus die
+  // eine Bildschirmhoehe, die die klebende Buehne selbst einnimmt.
+  assert.match(storyStage, /height: `\$\{anzahl \* SCHRITT_VH \+ 100\}vh`/)
   assert.match(storyStage, /aria-current=\{ist \? 'step' : undefined\}/)
 })
 
@@ -364,21 +371,58 @@ test('Motion: bewegt werden nur transform und opacity', () => {
   assert.match(codeMotion, /opacity:/)
 })
 
-test('Motion: der Fortschritt haengt NICHT an Scroll-Ereignissen', () => {
+test('Motion: der aktive Schritt haengt NICHT an Scroll-Ereignissen', () => {
   // Ein `scroll`-Listener waere naheliegend, aber nicht verlaesslich: in
   // eingebetteten oder nicht sichtbaren Ansichten aendert sich scrollY, ohne
-  // dass ein Ereignis zugestellt wird — die Story bliebe dann auf Schritt 1
-  // stehen. Genau das ist in der Browser-Pruefung passiert.
-  const fortschritt = codeMotion.slice(codeMotion.indexOf('export function useScrollFortschritt'))
-  assert.doesNotMatch(fortschritt, /addEventListener\('scroll'/)
-  // Gemessen wird in einer rAF-Schleife …
-  assert.match(fortschritt, /requestAnimationFrame\(messen\)/)
-  // … die nur laeuft, solange die Story sichtbar ist.
-  assert.match(fortschritt, /new IntersectionObserver/)
-  assert.match(fortschritt, /isIntersecting \? starten\(\) : stoppen\(\)/)
-  assert.match(fortschritt, /cancelAnimationFrame/)
-  // und nur bei spuerbarer Aenderung neu rendert
-  assert.match(fortschritt, /Math\.abs\(roh - letzter\.current\) > 0\.002/)
+  // dass ein Ereignis zugestellt wird. Die Story bliebe dann auf Schritt 1
+  // stehen. Genau das ist in einer frueheren Browser-Pruefung passiert.
+  assert.doesNotMatch(ohneKommentare(storyStage), /addEventListener\('scroll'/)
+  assert.match(storyStage, /new IntersectionObserver/)
+})
+
+test('D: die vier Schritte sind auf dem Desktop anklickbar und fokussierbar', () => {
+  // Echte Schaltflaechen, keine klickbaren <div>: sonst ist der Bereich nur
+  // per langem Scrollen erreichbar und mit der Tastatur gar nicht.
+  assert.match(storyStage, /<button\s+type="button"\s+onClick=\{\(\) => springeZu\(i\)\}/)
+  assert.match(storyStage, /data-schritt-knopf=\{i\}/)
+  assert.match(storyStage, /aria-label=\{`Zum Schritt \$\{s\.label\}`\}/)
+  assert.match(storyStage, /\$\{FOKUS_RING\}/)
+  // Der Sprung rechnet mit derselben Schrittlaenge wie die Marker.
+  assert.match(storyStage, /window\.innerHeight \* \(SCHRITT_VH \/ 100\)/)
+  // und respektiert reduzierte Bewegung
+  assert.match(storyStage, /behavior: reduziert \? 'auto' : 'smooth'/)
+})
+
+test('Story: die Scrollstrecke je Schritt liegt im vereinbarten Rahmen', () => {
+  const treffer = storyStage.match(/const SCHRITT_VH = (\d+)/)
+  assert.ok(treffer, 'SCHRITT_VH nicht gefunden')
+  const vh = Number(treffer![1])
+  assert.ok(vh >= 55 && vh <= 70, `SCHRITT_VH = ${vh}vh liegt ausserhalb von 55-70vh`)
+})
+
+test('Story: dezenter Einstiegshinweis, der wieder verschwindet', () => {
+  assert.match(storyStage, /Weiterscrollen/)
+  // Nur beim ersten Schritt, sonst stoert er dauerhaft.
+  assert.match(storyStage, /opacity: inSpur && aktiv === 0 \? 1 : 0/)
+})
+
+test('G: der Header faerbt sich ueber dunklen Flaechen mit', () => {
+  assert.match(header, /data-header-dunkel=\{dunkel \? 'ja' : 'nein'\}/)
+  assert.match(header, /backgroundColor: dunkel \? 'rgba\(17,16,20/)
+  assert.match(header, /transition-colors duration-500/)
+  // Gemessen wird die tatsaechliche Flaeche, nicht eine Liste von Sektionen:
+  // die Story-Buehne ist mal hell und mal dunkel.
+  assert.match(motion, /elementFromPoint/)
+  assert.match(motion, /helligkeit < 110/)
+  // Die Messung laeuft nicht, waehrend die Seite im Hintergrund liegt.
+  assert.match(motion, /document\.hidden \? stoppen\(\) : starten\(\)/)
+})
+
+test('G: die dunklen Flaechen sind als solche ausgewiesen', () => {
+  assert.match(plusStage, /data-dark-section=""/)
+  assert.match(view, /data-dark-section=""/)
+  // Die Story-Buehne traegt die Markierung nur, wenn sie gerade dunkel ist.
+  assert.match(storyStage, /dunkel \? \{ 'data-dark-section': '' \} : \{\}/)
 })
 
 test('Motion: die Sticky-Story haengt an keinem Vorfahren mit overflow', () => {
@@ -414,6 +458,8 @@ test('Reduced Motion: der Ruhezustand zeigt den ENDzustand, nicht einen leeren',
   assert.match(motion, /useState\(reduziert \? anzahl : 0\)/)
   // … und die Hero-Demo steht auf der letzten, aussagekräftigen Phase.
   assert.match(motion, /useState\(reduziert \? anzahl - 1 : 0\)/)
+  // Auch die Sprungnavigation kommt ohne Bewegung aus.
+  assert.match(storyStage, /behavior: reduziert \? 'auto' : 'smooth'/)
   // Reveal blendet nichts aus, wenn Bewegung reduziert ist.
   assert.match(motion, /if \(reduziert\) return \{ className: '', style: \{\} \}/)
 })
@@ -504,4 +550,66 @@ test('Accessibility: Icon-only-Buttons tragen ein aria-label, Deko ist versteckt
 test('Accessibility: die ausgeblendeten Story-Schritte sind aria-hidden', () => {
   // Sonst läse ein Screenreader vier Schritte gleichzeitig vor.
   assert.match(storyStage, /aria-hidden=\{i !== aktiv\}/)
+})
+
+// ── Polish-Pass: Hero-Groesse und menschliche Copy ──────────────────────────
+
+test('A: die Fahrzeugidentitaet im Hero ist vollstaendig', () => {
+  // Marke, Modell, Generation, Motor, Baujahr und Leistung muessen alle da
+  // sein — sonst wirkt die Vorschau wie ein halber Screenshot.
+  assert.match(heroDemo, /\{k\.marke\} \{k\.modell\}/)
+  assert.match(heroDemo, /\{k\.generation\} · \{k\.motor\} · Baujahre \{k\.baujahr_von\}/)
+  assert.match(heroDemo, /\{k\.leistung_ps\} PS/)
+  assert.match(heroDemo, /\{k\.kraftstoff\}/)
+  assert.match(heroDemo, /Passung/)
+  assert.match(heroDemo, /Preisorientierung/)
+})
+
+test('A: die Hero-Demo kann ihren Inhalt nicht mehr abschneiden', () => {
+  // Die beiden Phasen liegen in DERSELBEN Gitterzelle. Ein Grid nimmt die
+  // Hoehe des groesseren Kindes an; die frueheren `absolute`-Ebenen in einem
+  // Container mit fester Mindesthoehe haben "Weitere Treffer" abgeschnitten.
+  const code = ohneKommentare(heroDemo)
+  assert.match(code, /<div className="grid">/)
+  assert.match(code, /col-start-1 row-start-1/)
+  assert.doesNotMatch(code, /min-h-\[\d+px\]/)
+  assert.doesNotMatch(code, /absolute inset-0/)
+})
+
+test('B: "Weitere Treffer" ist vollstaendig vorhanden', () => {
+  assert.match(heroDemo, /Weitere Treffer/)
+  assert.match(heroDemo, /SHOWCASE_WEITERE\.map/)
+  assert.match(showcase, /export const SHOWCASE_WEITERE/)
+  const eintraege = showcase.slice(showcase.indexOf('SHOWCASE_WEITERE'))
+    .split('\n').filter((z) => /marke: '/.test(z)).length
+  assert.equal(eintraege, 3, `erwartet 3 weitere Treffer, gefunden ${eintraege}`)
+})
+
+test('E: keine Gedankenstriche in der sichtbaren Copy', () => {
+  // Em-Dashes lassen Marketingtext generiert wirken. Geprueft wird der
+  // ausgelieferte Code; in Kommentaren duerfen sie stehen bleiben.
+  const treffer: string[] = []
+  for (const [name, quelle] of Object.entries({
+    LandingView: view, LandingHeader: header, LandingFooter: footer,
+    HeroDemo: heroDemo, StoryStage: storyStage, StoryPanels: storyPanels,
+    PlusStage: plusStage, showcase, links, styles,
+  })) {
+    const code = ohneKommentare(quelle)
+    const n = (code.match(/\u2014/g) ?? []).length
+    if (n > 0) treffer.push(`${name}: ${n}`)
+  }
+  assert.deepEqual(treffer, [], `Gedankenstriche in sichtbarer Copy: ${treffer.join(', ')}`)
+})
+
+test('F: Preisbereiche behalten ihren Bis-Strich', () => {
+  // Der Halbgeviertstrich in Zahlenbereichen ist typografisch richtig und
+  // faellt ausdruecklich NICHT unter die Em-Dash-Regel.
+  assert.match(showcase, /'12\.000 \u2013 22\.000 \u20ac'/)
+  assert.match(heroDemo, /\{preisVon\}\u2013\{preisBis\}/)
+  assert.match(showcase, /baujahre: '2019\u20132021'/)
+})
+
+test('Copy: der Abschlusssatz ist der menschlich formulierte', () => {
+  assert.match(view, /Starte kostenlos\. Ohne Zahlungsdaten und ohne Abo\./)
+  assert.doesNotMatch(ohneKommentare(view), /Starte kostenlos \u2014/)
 })

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { REGISTER_ROUTE } from './links'
 import { FOKUS_RING } from './styles'
+import { useDunkelDarunter } from './motion'
 
 /**
  * Marketing-Header der Landingpage.
@@ -21,6 +22,10 @@ const NAV = [
 
 export default function LandingHeader() {
   const [offen, setOffen] = useState(false)
+  // Der Header schwebt ueber wechselnden Flaechen. Bleibt er immer hell, sitzt
+  // ueber der dunklen Pruef- und Plus-Buehne ein heller Balken, der aussieht,
+  // als gehoere er nicht zur Seite. Er faerbt sich deshalb weich mit.
+  const dunkel = useDunkelDarunter()
 
   // Hintergrund nicht scrollen lassen, solange der Drawer offen ist.
   useEffect(() => {
@@ -31,18 +36,29 @@ export default function LandingHeader() {
   }, [offen])
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#ece7e0] bg-[#fbf9f6]/90 backdrop-blur-md">
+    <header
+      data-header-dunkel={dunkel ? 'ja' : 'nein'}
+      className="sticky top-0 z-40 border-b backdrop-blur-md transition-colors duration-500 ease-out"
+      style={{
+        backgroundColor: dunkel ? 'rgba(17,16,20,0.82)' : 'rgba(251,249,246,0.90)',
+        borderColor: dunkel ? 'rgba(255,255,255,0.10)' : '#ece7e0',
+      }}
+    >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link to="/" className={`flex items-center gap-2.5 shrink-0 rounded-lg ${FOKUS_RING}`} aria-label="VIRA — Startseite">
+          <Link to="/" className={`flex items-center gap-2.5 shrink-0 rounded-lg ${FOKUS_RING}`} aria-label="Vira, Startseite">
             <img src="/logo.svg" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg" />
-            <span className="text-lg font-bold tracking-tight text-gray-900">Vira</span>
+            <span className={`text-lg font-bold tracking-tight transition-colors duration-500 ${dunkel ? 'text-white' : 'text-gray-900'}`}>Vira</span>
           </Link>
 
           <nav aria-label="Hauptnavigation" className="hidden md:flex items-center gap-1">
             {NAV.map((n) => (
               <a key={n.href} href={n.href}
-                className={`rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-[#f1ece4] hover:text-gray-900 ${FOKUS_RING}`}>
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-500 ${FOKUS_RING} ${
+                  dunkel
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                    : 'text-gray-600 hover:bg-[#f1ece4] hover:text-gray-900'
+                }`}>
                 {n.label}
               </a>
             ))}
@@ -50,7 +66,11 @@ export default function LandingHeader() {
 
           <div className="hidden md:flex items-center gap-2">
             <Link to="/login"
-              className={`rounded-lg px-3.5 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-[#f1ece4] hover:text-gray-900 ${FOKUS_RING}`}>
+              className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors duration-500 ${FOKUS_RING} ${
+                dunkel
+                  ? 'text-white/80 hover:bg-white/10 hover:text-white'
+                  : 'text-gray-700 hover:bg-[#f1ece4] hover:text-gray-900'
+              }`}>
               Anmelden
             </Link>
             <Link to={REGISTER_ROUTE}
@@ -61,7 +81,9 @@ export default function LandingHeader() {
 
           <button type="button" onClick={() => setOffen(true)}
             aria-label="Menü öffnen" aria-expanded={offen} aria-controls="landing-drawer"
-            className={`md:hidden -mr-2 rounded-lg p-2 text-gray-600 transition-colors hover:bg-[#f1ece4] ${FOKUS_RING}`}>
+            className={`md:hidden -mr-2 rounded-lg p-2 transition-colors duration-500 ${FOKUS_RING} ${
+              dunkel ? 'text-white/80 hover:bg-white/10' : 'text-gray-600 hover:bg-[#f1ece4]'
+            }`}>
             <Menu size={22} aria-hidden="true" />
           </button>
         </div>

@@ -1,64 +1,73 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
-import { reveal, useInView, useReducedMotion, useScrollFortschritt } from './motion'
+import { ArrowRight, ChevronDown } from 'lucide-react'
+import { reveal, useInView, useReducedMotion } from './motion'
 import { PanelEntscheiden, PanelFinden, PanelPruefen, PanelVerstehen } from './StoryPanels'
 import { STORY_SCHRITTE } from './showcase'
 import { KAUFCHECK_ROUTE, AUTOFINDER_ROUTE, AUTOKOSTEN_ROUTE } from './links'
 import { FOKUS_RING } from './styles'
 
 /**
- * Die Scroll-Story: FINDEN → VERSTEHEN → PRÜFEN → ENTSCHEIDEN.
+ * Die Scroll-Story: Finden, Verstehen, Prüfen, Entscheiden.
  *
  * Auf grossen Schirmen eine Sticky-Bühne: der Text links wechselt, die
  * Produktbühne rechts bleibt stehen und zeigt dasselbe Fahrzeug in einem
- * anderen Werkzeug. Der Hintergrund kippt beim Schritt „Prüfen" ins Dunkle —
- * das ist der Moment, in dem es ernst wird, und die Seite soll das spüren
+ * anderen Werkzeug. Der Hintergrund kippt beim Schritt „Prüfen" ins Dunkle.
+ * Das ist der Moment, in dem es ernst wird, und die Seite soll das spüren
  * lassen.
  *
  * Auf kleinen Schirmen wird daraus eine gestapelte Abfolge. Ein Sticky-Layout
  * auf 375 px zusammenzuquetschen ergibt eine Bühne, die kaum grösser ist als
- * die Schrift daneben — die Choreografie muss dort eine andere sein, nicht
- * dieselbe in klein.
+ * die Schrift daneben.
  *
- * Wichtig fürs Verständnis der Höhe: der äussere Abschnitt ist
- * `(SCHRITTE + 1) × 100vh` hoch. Das „+ 1" ist kein Puffer, sondern Rechnung:
- * die klebende Bühne ist selbst einen Bildschirm hoch, also beträgt die
- * nutzbare Scrollstrecke `Höhe − 100vh`. Erst mit dem zusätzlichen Bildschirm
- * bekommt jeder der vier Schritte genau eine Bildschirmhöhe — sonst teilen sie
- * sich drei und laufen spürbar zu schnell durch (in der ersten Messung wurde
- * „Prüfen" dadurch komplett übersprungen).
+ * SCHRITTE STATT GLOBALEM FORTSCHRITT
+ * -----------------------------------
+ * Die erste Fassung rechnete einen normalisierten Fortschritt über die ganze
+ * Spur und leitete daraus den Schritt ab. Das hatte zwei Nachteile: die Strecke
+ * musste sehr lang sein, damit sich die Rechnung sauber aufteilt, und ein
+ * Rechenfehler in der Aufteilung liess einen Schritt lautlos verschwinden.
+ *
+ * Jetzt hat jeder Schritt einen eigenen Marker in der Spur. Aktiv ist der
+ * Marker, der gerade den oberen Bildschirmrand kreuzt. Das ist unabhängig von
+ * der Gesamtlänge, es kann keinen Schritt überspringen, und die Strecke lässt
+ * sich frei kürzen: `SCHRITT_VH` ist der einzige Stellwert.
+ *
+ * WARUM KÜRZER
+ * ------------
+ * Vorher bekam jeder Schritt eine volle Bildschirmhöhe, zusammen 400 vh
+ * Scrollstrecke. Das fühlte sich an, als hänge die Seite. 62 vh je Schritt
+ * reichen, damit man den Wechsel bewusst wahrnimmt, ohne festzustecken.
  */
+
+/** Scrollstrecke je Schritt in Prozent der Bildschirmhöhe. Einziger Stellwert. */
+const SCHRITT_VH = 62
 
 const TEXTE = [
   {
-    kicker: 'Finden',
     headline: 'Nicht irgendein Auto. Das passende.',
-    text: 'Du sagst, was dir wichtig ist — Budget, Nutzung, Prioritäten. Vira vergleicht '
+    text: 'Du sagst, was dir wichtig ist: Budget, Nutzung, Prioritäten. Vira vergleicht '
       + 'Baureihen, Generationen und Motorvarianten und begründet jeden Vorschlag, statt '
       + 'dir eine Trefferliste hinzuwerfen.',
     cta: { label: 'AutoFinder öffnen', to: AUTOFINDER_ROUTE },
   },
   {
-    kicker: 'Verstehen',
     headline: 'Der Kaufpreis ist nicht die ganze Wahrheit.',
-    text: 'Was ein Auto wirklich kostet, entscheidet sich nach dem Kauf: Kraftstoff, '
-      + 'Versicherung, Steuer, Wartung, Reifen — und der Wertverlust, den kaum jemand '
+    text: 'Was ein Auto wirklich kostet, entscheidet sich nach dem Kauf. Kraftstoff, '
+      + 'Versicherung, Steuer, Wartung, Reifen, dazu der Wertverlust, den kaum jemand '
       + 'einrechnet. Vira rechnet es aus, nachvollziehbar bis auf den Kilometer.',
     cta: { label: 'Autokosten berechnen', to: AUTOKOSTEN_ROUTE },
   },
   {
-    kicker: 'Prüfen',
     headline: 'Bevor du kaufst: prüf genauer hin.',
-    text: 'Der KaufCheck nimmt das konkrete Fahrzeug auseinander — Motor, bekannte '
+    text: 'Der KaufCheck nimmt das konkrete Fahrzeug auseinander. Motor, bekannte '
       + 'Schwachstellen der Baureihe, Wartungsbedarf und die Frage, wie belastbar die '
       + 'Datenlage überhaupt ist. Für 5,99 € einmalig.',
     cta: { label: 'KaufCheck starten', to: KAUFCHECK_ROUTE },
   },
   {
-    kicker: 'Entscheiden',
     headline: 'Mehr Informationen. Weniger Bauchgefühl.',
     text: 'Passung, laufende Kosten, bekannte Risiken und Datenqualität stehen zum ersten '
-      + 'Mal an einer Stelle. Die Entscheidung bleibt deine — aber du triffst sie nicht '
+      + 'Mal an einer Stelle. Die Entscheidung bleibt deine, aber du triffst sie nicht '
       + 'mehr im Dunkeln.',
     cta: null,
   },
@@ -101,24 +110,85 @@ function Buehne({ i, aktiv, reduziert }: { i: number; aktiv: boolean; reduziert:
   return <PanelEntscheiden aktiv={aktiv} reduziert={reduziert} />
 }
 
-// ── Desktop: klebende Bühne ─────────────────────────────────────────────────
+// ── Desktop: klebende Bühne mit Schritt-Markern ─────────────────────────────
 
 function StoryDesktop() {
   const reduziert = useReducedMotion()
-  const [ref, fortschritt] = useScrollFortschritt<HTMLDivElement>()
+  const spur = useRef<HTMLDivElement>(null)
+  const [aktiv, setAktiv] = useState(0)
+  const [inSpur, setInSpur] = useState(false)
   const anzahl = STORY_SCHRITTE.length
-
-  // Der aktive Schritt ergibt sich direkt aus dem Scrollfortschritt.
-  const aktiv = Math.min(anzahl - 1, Math.floor(fortschritt * anzahl + 0.0001))
   const dunkel = aktiv >= 2
 
+  // Aktiv ist der Marker, der gerade den oberen Bildschirmrand kreuzt. Der
+  // Beobachtungsstreifen ist dafür nur ein paar Prozent hoch.
+  useEffect(() => {
+    const el = spur.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+
+    const marker = Array.from(el.querySelectorAll<HTMLElement>('[data-schritt-marker]'))
+    const treffend = new Set<number>()
+
+    const beobachter = new IntersectionObserver(
+      (eintraege) => {
+        for (const e of eintraege) {
+          const i = Number((e.target as HTMLElement).dataset.schrittMarker)
+          if (e.isIntersecting) treffend.add(i)
+          else treffend.delete(i)
+        }
+        if (treffend.size > 0) setAktiv(Math.max(...treffend))
+      },
+      // Streifen ganz oben im Bild: von 0 bis 4 % der Fensterhöhe.
+      { rootMargin: '0px 0px -96% 0px', threshold: 0 },
+    )
+    marker.forEach((m) => beobachter.observe(m))
+
+    // Ob die Spur überhaupt im Bild ist (für den Einstiegshinweis).
+    const spurBeobachter = new IntersectionObserver(
+      ([e]) => setInSpur(e.isIntersecting),
+      { threshold: 0 },
+    )
+    spurBeobachter.observe(el)
+
+    return () => { beobachter.disconnect(); spurBeobachter.disconnect() }
+  }, [])
+
+  /** Springt zu einem Schritt. Gleiche Rechnung wie die Marker-Positionen. */
+  const springeZu = useCallback((i: number) => {
+    const el = spur.current
+    if (!el) return
+    const oben = el.getBoundingClientRect().top + window.scrollY
+    const schrittPx = window.innerHeight * (SCHRITT_VH / 100)
+    window.scrollTo({
+      top: Math.round(oben + i * schrittPx + 4),
+      behavior: reduziert ? 'auto' : 'smooth',
+    })
+  }, [reduziert])
+
   return (
-    <div ref={ref} style={{ height: `${(anzahl + 1) * 100}vh` }} data-story-track>
+    <div
+      ref={spur}
+      className="relative"
+      style={{ height: `${anzahl * SCHRITT_VH + 100}vh` }}
+      data-story-track
+    >
+      {/* Ein Marker je Schritt. Unsichtbar, aber echte Positionen in der Spur. */}
+      {STORY_SCHRITTE.map((s, i) => (
+        <div
+          key={s.id}
+          aria-hidden="true"
+          data-schritt-marker={i}
+          className="pointer-events-none absolute left-0 w-px"
+          style={{ top: `${i * SCHRITT_VH}vh`, height: `${SCHRITT_VH}vh` }}
+        />
+      ))}
+
       <div
         className="sticky top-0 flex h-screen items-center overflow-hidden transition-colors duration-700 ease-out"
         style={{ backgroundColor: dunkel ? '#111014' : '#faf8f5' }}
         data-story-stage
         data-aktiver-schritt={aktiv}
+        {...(dunkel ? { 'data-dark-section': '' } : {})}
       >
         {/* Lichtfläche hinter der Bühne */}
         <div
@@ -132,39 +202,47 @@ function StoryDesktop() {
         />
 
         <div className="relative mx-auto grid w-full max-w-6xl grid-cols-[auto_1fr_1.05fr] items-center gap-10 px-6">
-          {/* Schrittanzeige */}
+          {/* Schrittanzeige, anklickbar */}
           <ol className="flex flex-col gap-1" aria-label="Ablauf">
             {STORY_SCHRITTE.map((s, i) => {
               const ist = i === aktiv
               const war = i < aktiv
               return (
-                <li key={s.id} className="flex items-center gap-3" aria-current={ist ? 'step' : undefined}>
-                  <span className="relative flex h-16 w-[3px] items-center justify-center">
-                    <span
-                      className="absolute inset-0 rounded-full transition-colors duration-500"
-                      style={{ backgroundColor: dunkel ? 'rgba(255,255,255,0.12)' : '#e6ded2' }}
-                    />
-                    <span
-                      className="absolute inset-x-0 top-0 rounded-full bg-orange-500 transition-all duration-500 ease-out"
-                      style={{ height: ist || war ? '100%' : '0%' }}
-                    />
-                  </span>
-                  <span
-                    className="text-sm font-bold tracking-tight transition-all duration-500"
-                    style={{
-                      color: ist ? (dunkel ? '#ffffff' : '#111827')
-                        : (dunkel ? 'rgba(255,255,255,0.32)' : '#9ca3af'),
-                      transform: ist ? 'translateX(2px)' : 'none',
-                    }}
+                <li key={s.id} aria-current={ist ? 'step' : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => springeZu(i)}
+                    data-schritt-knopf={i}
+                    aria-label={`Zum Schritt ${s.label}`}
+                    className={`flex w-full items-center gap-3 rounded-lg pr-3 text-left ${FOKUS_RING}`}
                   >
-                    {s.label}
-                  </span>
+                    <span className="relative flex h-16 w-[3px] shrink-0 items-center justify-center">
+                      <span
+                        className="absolute inset-0 rounded-full transition-colors duration-500"
+                        style={{ backgroundColor: dunkel ? 'rgba(255,255,255,0.12)' : '#e6ded2' }}
+                      />
+                      <span
+                        className="absolute inset-x-0 top-0 rounded-full bg-orange-500 transition-all duration-500 ease-out"
+                        style={{ height: ist || war ? '100%' : '0%' }}
+                      />
+                    </span>
+                    <span
+                      className="text-sm font-bold tracking-tight transition-all duration-500"
+                      style={{
+                        color: ist ? (dunkel ? '#ffffff' : '#111827')
+                          : (dunkel ? 'rgba(255,255,255,0.32)' : '#9ca3af'),
+                        transform: ist ? 'translateX(2px)' : 'none',
+                      }}
+                    >
+                      {s.label}
+                    </span>
+                  </button>
                 </li>
               )
             })}
           </ol>
 
-          {/* Text — wechselt mit dem Schritt */}
+          {/* Text, wechselt mit dem Schritt */}
           <div className="relative min-h-[19rem]">
             {TEXTE.map((_, i) => (
               <div
@@ -182,7 +260,7 @@ function StoryDesktop() {
             ))}
           </div>
 
-          {/* Produktbühne — wechselt mit dem Schritt */}
+          {/* Produktbühne, wechselt mit dem Schritt */}
           <div className="relative min-h-[27rem]">
             {STORY_SCHRITTE.map((s, i) => (
               <div
@@ -201,6 +279,28 @@ function StoryDesktop() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Dezenter Hinweis, dass hier gescrollt wird. Verschwindet, sobald der
+            erste Schritt vorbei ist, damit er nicht dauerhaft stört. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center transition-opacity duration-500"
+          style={{ opacity: inSpur && aktiv === 0 ? 1 : 0 }}
+        >
+          <span className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${dunkel ? 'text-white/40' : 'text-gray-400'}`}>
+            Weiterscrollen
+            <ChevronDown size={13} className={reduziert ? '' : 'animate-bounce'} />
+          </span>
+        </div>
+
+        {/* Feine Fortschrittslinie am unteren Rand der Bühne */}
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5"
+          style={{ backgroundColor: dunkel ? 'rgba(255,255,255,0.08)' : '#eee7dd' }}>
+          <div
+            className="h-full bg-orange-500 transition-all duration-500 ease-out"
+            style={{ width: `${((aktiv + 1) / anzahl) * 100}%` }}
+          />
         </div>
       </div>
     </div>
@@ -221,6 +321,7 @@ function StoryBlock({ i }: { i: number }) {
       data-story-block={STORY_SCHRITTE[i].id}
       className="px-4 py-14 sm:px-6 sm:py-16"
       style={{ backgroundColor: dunkel ? '#111014' : '#faf8f5' }}
+      {...(dunkel ? { 'data-dark-section': '' } : {})}
     >
       <div className={`mx-auto max-w-2xl ${r.className}`} style={r.style}>
         <StoryText i={i} dunkel={dunkel} />
