@@ -118,8 +118,8 @@ export default function LegalView({ page }: { page: LegalPageKey }) {
             <ArrowLeft size={15} /> Zurück
           </button>
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="Vira" className="w-5 h-5 rounded-md" />
-            <span className="text-sm font-semibold text-gray-900 tracking-tight">Vira</span>
+            <img src="/logo.svg" alt="ENFAL" className="w-5 h-5 rounded-md" />
+            <span className="text-sm font-semibold text-gray-900 tracking-tight">ENFAL</span>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ export default function LegalView({ page }: { page: LegalPageKey }) {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
               <Icon size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Rechtliches</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Rechtliches</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.02em] mb-1">{cfg.title}</h1>
           <p className="text-sm text-gray-500">{cfg.subtitle}</p>

@@ -2,7 +2,7 @@ import { Car } from 'lucide-react'
 import type { AutoFinderKandidat } from './logic'
 
 /**
- * VIRA Vehicle Identity Panel — die finale visuelle Darstellung eines
+ * ENFAL Vehicle Identity Panel — die finale visuelle Darstellung eines
  * Fahrzeugs in AutoFinder.
  *
  * PRODUKTENTSCHEIDUNG: AutoFinder zeigt keine modellgenauen Fahrzeugbilder
@@ -87,7 +87,7 @@ export default function VehicleIdentityPanel({ k, rank }: Props) {
       <div className="relative h-full flex flex-col justify-between gap-3 p-4 sm:p-5 min-h-[190px]">
         <div className="flex items-start justify-between gap-2">
           <span className="text-[9px] font-bold tracking-[0.22em] uppercase text-gray-400">
-            Vira · AutoFinder
+            ENFAL · AutoFinder
           </span>
           <span className="text-[10px] font-bold tracking-widest uppercase text-white bg-gray-900/90 rounded-full px-2 py-0.5 shadow-sm">
             #{rank}

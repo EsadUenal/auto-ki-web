@@ -60,11 +60,11 @@ test('Route: /autokosten ist in der App-Shell registriert', () => {
   assert.match(appTsx, /path="\/autokosten" element=\{<AutokostenView \/>\}/)
   assert.match(appTsx, /import AutokostenView from '\.\/components\/autokosten\/AutokostenView'/)
 })
-test('Shell: View nutzt die kanonische VIRA-Content-Sprache', () => {
+test('Shell: View nutzt die kanonische ENFAL-Content-Sprache', () => {
   assert.match(viewSrc, /h-full overflow-y-auto scrollbar-thin/)
   assert.match(viewSrc, /ez-aurora/)
   assert.match(viewSrc, /ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10/)
-  assert.match(viewSrc, /Vira · Autokosten/)
+  assert.match(viewSrc, /ENFAL · Autokosten/)
   assert.match(viewSrc, /Kosten berechnen/)
 })
 test('Sidebar: Autokosten-Navigationseintrag bei den Werkzeugen', () => {

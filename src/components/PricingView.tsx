@@ -21,7 +21,7 @@ const FREE_FEATURES = [
   { icon: <Search size={16} />, text: '5 AutoFinder-Suchen pro Monat' },
   { icon: <MessageSquare size={16} />, text: '20 KI-Chat-Nachrichten pro Monat' },
   { icon: <Calculator size={16} />, text: 'Autokosten unbegrenzt' },
-  { icon: <User size={16} />, text: 'VIRA Account und gespeicherte Verläufe' },
+  { icon: <User size={16} />, text: 'ENFAL Account und gespeicherte Verläufe' },
 ]
 
 const PLUS_FEATURES = [
@@ -151,14 +151,14 @@ export default function PricingView() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
               <ShieldCheck size={13} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Preise</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Preise</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.04em] leading-[1.02]">
             Einzeln kaufen oder <span className="text-gray-400">monatlich mehr bekommen.</span>
           </h1>
           <p className="text-gray-500 text-base mt-4 leading-relaxed">
             Starte kostenlos. Bezahle einzelne Checks nur bei Bedarf — oder hol dir mit
-            VIRA Plus jeden Monat ein festes Kontingent.
+            ENFAL Plus jeden Monat ein festes Kontingent.
           </p>
         </header>
 
@@ -178,7 +178,7 @@ export default function PricingView() {
                 <Car size={22} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">VIRA Free</h2>
+                <h2 className="text-xl font-bold text-gray-900">ENFAL Free</h2>
                 <p className="mt-1"><span className="text-3xl font-bold text-gray-900">0 €</span></p>
               </div>
             </div>
@@ -226,7 +226,7 @@ export default function PricingView() {
               <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-5">
                 <Sparkles size={22} />
               </div>
-              <h2 className="text-xl font-bold tracking-[-0.02em] text-gray-900">VIRA Plus</h2>
+              <h2 className="text-xl font-bold tracking-[-0.02em] text-gray-900">ENFAL Plus</h2>
               <p className="text-sm text-gray-500 mt-1 mb-5">Für alle, die regelmäßig Autos prüfen</p>
               <div>
                 <span className="text-4xl font-bold tracking-[-0.04em] text-gray-900">16,99 €</span>
@@ -260,7 +260,7 @@ export default function PricingView() {
                 className="w-full sm:w-auto rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
                 style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 10px 24px -8px rgba(249,115,22,0.5)' }}
               >
-                VIRA Plus starten
+                ENFAL Plus starten
               </button>
 
               {plusCheckout && <PlusCheckout onAbbrechen={() => setPlusCheckout(false)} />}

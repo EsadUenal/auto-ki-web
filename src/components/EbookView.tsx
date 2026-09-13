@@ -58,7 +58,7 @@ function EbookCover({
         <text x="20" y="232" fill="#93c5fd" fontSize="9" fontFamily="'Segoe UI',Arial,sans-serif" opacity="0.9">Gebrauchtwagen-Guide</text>
         <text x="20" y="257" fill="#60a5fa" fontSize="7.5" fontFamily="'Segoe UI',Arial,sans-serif" opacity="0.6">Gebrauchtwagenkäufer</text>
         <rect x="20" y="266" width="160" height="0.5" fill="#3b82f6" opacity="0.12" />
-        <text x="20" y="284" fill="white" fontSize="7" fontFamily="'Segoe UI',Arial,sans-serif" opacity="0.2" letterSpacing="2.5">VIRA</text>
+        <text x="20" y="284" fill="white" fontSize="7" fontFamily="'Segoe UI',Arial,sans-serif" opacity="0.2" letterSpacing="2.5">ENFAL</text>
       </svg>
     )
   }
@@ -116,7 +116,7 @@ function EbookCover({
           fontWeight="700" textAnchor="middle" opacity="0.85">Erscheint 2026</text>
         <rect x="20" y="272" width="160" height="0.5" fill="#22c55e" opacity="0.12" />
         <text x="20" y="288" fill="white" fontSize="7" fontFamily="'Segoe UI',Arial,sans-serif"
-          opacity="0.2" letterSpacing="2.5">VIRA</text>
+          opacity="0.2" letterSpacing="2.5">ENFAL</text>
       </svg>
     )
   }
@@ -160,7 +160,7 @@ function EbookCover({
           fontWeight="700" textAnchor="middle" opacity="0.85">Erscheint 2026</text>
         <rect x="20" y="272" width="160" height="0.5" fill="#f59e0b" opacity="0.12" />
         <text x="20" y="288" fill="white" fontSize="7" fontFamily="'Segoe UI',Arial,sans-serif"
-          opacity="0.2" letterSpacing="2.5">VIRA</text>
+          opacity="0.2" letterSpacing="2.5">ENFAL</text>
       </svg>
     )
   }
@@ -301,7 +301,7 @@ export default function EbookView() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
               <BookOpen size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · E-Books</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · E-Books</span>
           </div>
           <h1 className="text-3xl sm:text-[2.6rem] font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
             Wissen, das

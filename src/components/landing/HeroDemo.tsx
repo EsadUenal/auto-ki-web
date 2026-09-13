@@ -74,7 +74,7 @@ export default function HeroDemo() {
         <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#e6ded2]" />
         <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#e6ded2]" />
         <span className="ml-2 text-[11px] font-semibold tracking-wide text-gray-400">
-          Vira · AutoFinder
+          ENFAL · AutoFinder
         </span>
         <span className="ml-auto flex items-center gap-1.5 text-[11px] font-semibold text-gray-400">
           {phase < PHASE_TREFFER

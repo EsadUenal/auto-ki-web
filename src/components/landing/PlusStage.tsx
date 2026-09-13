@@ -6,7 +6,7 @@ import { PRICING_ROUTE } from './links'
 import { FOKUS_RING } from './styles'
 
 /**
- * Vira Plus als eigenständige, dunkle Fläche.
+ * ENFAL Plus als eigenständige, dunkle Fläche.
  *
  * Der Tarif war in der ersten Fassung eine Liste neben einer Liste und wirkte
  * dadurch wie eine Fussnote der Einzelkäufe. Plus ist aber das einzige
@@ -96,7 +96,7 @@ export default function PlusStage() {
               Für regelmäßige Nutzung
             </p>
             <h2 id="plus-titel" className="mt-3 text-4xl sm:text-5xl font-bold tracking-[-0.04em] text-white">
-              Vira Plus
+              ENFAL Plus
             </h2>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/55">
               Wer mehrere Fahrzeuge vergleicht, bevor er sich entscheidet, prüft nicht
@@ -119,7 +119,7 @@ export default function PlusStage() {
               to={PRICING_ROUTE}
               className={`mt-8 inline-flex items-center justify-center rounded-xl bg-orange-500 px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_16px_36px_-14px_rgba(249,115,22,0.8)] transition-colors hover:bg-orange-400 ${FOKUS_RING}`}
             >
-              Vira Plus starten
+              ENFAL Plus starten
             </Link>
           </div>
 

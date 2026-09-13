@@ -112,7 +112,7 @@ export default function ResultCard({ k, rank }: Props) {
 
           {k.source_type === 'web_discovered' && (
             <p className="mt-2 text-[11px] text-gray-500">
-              Aus Web-Recherche · technische Angaben belegt, aber nicht VIRA-geprüft
+              Aus Web-Recherche · technische Angaben belegt, aber nicht ENFAL-geprüft
             </p>
           )}
 
@@ -209,8 +209,8 @@ export default function ResultCard({ k, rank }: Props) {
             <h4 className="text-[11px] font-bold tracking-[0.15em] uppercase text-gray-500">Datenqualität</h4>
             <p className="mt-1.5 text-gray-600 leading-relaxed">
               {k.source_type === 'web_discovered'
-                ? 'Aus einer Web-Recherche zusammengetragen — die genannten technischen Angaben sind in den Quellen belegt, aber nicht von VIRA geprüft.'
-                : `VIRA-gepflegter Datensatz${k.datenqualitaet >= 1 ? ', vollständig' : ''}.` +
+                ? 'Aus einer Web-Recherche zusammengetragen — die genannten technischen Angaben sind in den Quellen belegt, aber nicht von ENFAL geprüft.'
+                : `ENFAL-gepflegter Datensatz${k.datenqualitaet >= 1 ? ', vollständig' : ''}.` +
                   (k.enrichment_status === 'fallback'
                     ? ' Die ausführliche KI-Analyse konnte diesmal nicht vollständig geladen werden.'
                     : '')}
@@ -222,7 +222,7 @@ export default function ResultCard({ k, rank }: Props) {
               <Search size={13} className="text-gray-500" /> So findest du dieses Auto
             </h4>
             <p className="mt-1.5 text-gray-500 text-xs">
-              Werte zum direkten Eintippen bei mobile.de oder AutoScout24. VIRA ruft keine
+              Werte zum direkten Eintippen bei mobile.de oder AutoScout24. ENFAL ruft keine
               Portaldaten ab und nennt keinen Marktpreis.
             </p>
             <div className="mt-2.5 rounded-xl border border-[#efe9df] bg-white overflow-hidden">

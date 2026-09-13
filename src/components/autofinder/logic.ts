@@ -265,7 +265,7 @@ export const MAX_CARDS = 5
 // Die Bildfelder der API (image_url/image_type/image_confidence/ai_generated)
 // bleiben im Response-Typ oben stehen, damit der Contract nicht bricht — das
 // Consumer-UI liest sie schlicht nicht mehr. Die Karte zeigt stattdessen das
-// VIRA Vehicle Identity Panel (VehicleIdentityPanel.tsx), und die finale
+// ENFAL Vehicle Identity Panel (VehicleIdentityPanel.tsx), und die finale
 // Trefferliste haengt ausschliesslich an Candidate Integrity, Fit, Budget und
 // Enrichment — nie mehr an der Verfuegbarkeit eines Bildes.
 
@@ -333,7 +333,7 @@ export function coverageState(resp: AutoFinderResponse): CoverageState {
       kind: 'none',
       headline: 'Noch kein passender Treffer',
       detail:
-        'Für diese Kombination hat die VIRA-Vorauswahl aktuell kein passendes Fahrzeug gefunden. ' +
+        'Für diese Kombination hat die ENFAL-Vorauswahl aktuell kein passendes Fahrzeug gefunden. ' +
         'Versuche es mit weniger Filtern oder einer größeren Budget-/Baujahr-Spanne.',
     }
   }
@@ -494,7 +494,7 @@ export function humanError(err: unknown): string {
   // Entkopplung ist mehr wert als der Typ-Check.
   if (err instanceof Error && err.name === 'MonatslimitFehler') return msg
   if (/failed to fetch|networkerror|load failed|verbindung/i.test(msg))
-    return 'Der VIRA-Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.'
+    return 'Der ENFAL-Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.'
   if (/\b(429|rate)\b/i.test(msg))
     return 'Gerade sind viele Anfragen unterwegs. Bitte warte kurz und versuche es erneut.'
   if (/\b5\d\d\b/.test(msg))

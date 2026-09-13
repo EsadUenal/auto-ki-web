@@ -76,7 +76,7 @@ export function fahrzeugTitel(
 // ── Datenbasis-Zeile (§3, §9) — dezent, keine Rohwerte ───────────────────────
 
 const DATENBASIS_TEXT: Record<string, string> = {
-  db: 'Datenbasis: VIRA-Datenbank',
+  db: 'Datenbasis: ENFAL-Datenbank',
   db_plus_web: 'Datenbasis: Datenbank + Webrecherche',
   web: 'Datenbasis: aktuelle Webrecherche',
   partial: 'Datenbasis eingeschränkt',
@@ -399,7 +399,7 @@ function PrintChecklist({
     <div className="kc-print-portal">
       <div className="kc-print-page">
         <header className="kc-print-header">
-          <p className="kc-print-brand">VIRA · KaufCheck</p>
+          <p className="kc-print-brand">ENFAL · KaufCheck</p>
           <h1>{liste.export_title}</h1>
           {fahrzeugFelder.length > 0 && (
             <dl className="kc-print-vehicle">

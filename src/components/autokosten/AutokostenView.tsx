@@ -142,7 +142,7 @@ export default function AutokostenView() {
   const kraftstoffOpt = KRAFTSTOFF_OPTIONS.find((o) => o.value === form.kraftstoff)!
   const preisFeld = energiePreisFeld(form.kraftstoff)
 
-  // Rein darstellungsbezogene Ableitung für "So rechnet VIRA" — dieselben
+  // Rein darstellungsbezogene Ableitung für "So rechnet ENFAL" — dieselben
   // Eingaben, die berechne() ohnehin verwendet; keine neue Fachlogik.
   const kmJahrZahl = parseZahl(form.kmProJahr)
   const preisZahl = parseZahl(form[preisFeld] as string)
@@ -165,7 +165,7 @@ export default function AutokostenView() {
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
                 <Calculator size={12} />
               </span>
-              <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Autokosten</span>
+              <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Autokosten</span>
             </div>
             <button
               type="button"
@@ -179,7 +179,7 @@ export default function AutokostenView() {
             Was kostet dein Auto <span className="text-gray-400">wirklich im Monat?</span>
           </h1>
           <p className="mt-2 text-sm text-gray-500 max-w-md leading-relaxed">
-            Fahrzeug- und Nutzungsdaten eingeben — VIRA rechnet deine realistischen
+            Fahrzeug- und Nutzungsdaten eingeben — ENFAL rechnet deine realistischen
             monatlichen und jährlichen Kosten aus. Deterministisch, ohne Live-Marktdaten.
           </p>
         </div>
@@ -273,7 +273,7 @@ export default function AutokostenView() {
                   onChange={(v) => set('wertverlustJahr', v)} placeholder="2.000" error={fehlerFuer('wertverlustJahr')} />
               </div>
               <p className="text-[11px] text-gray-400">
-                Die Finanzierungsrate wird nur als vorhandener Betrag übernommen — VIRA rechnet
+                Die Finanzierungsrate wird nur als vorhandener Betrag übernommen — ENFAL rechnet
                 bewusst keine Zinsen. Wertverlust bitte als Betrag pro Jahr in Euro.
               </p>
             </section>
@@ -341,9 +341,9 @@ export default function AutokostenView() {
                   </div>
                 </div>
 
-                {/* So rechnet VIRA — kurzer, nachvollziehbarer Rechenweg für die Energiekosten */}
+                {/* So rechnet ENFAL — kurzer, nachvollziehbarer Rechenweg für die Energiekosten */}
                 <div className="border-t border-[#efe9df] bg-[#faf8f5] p-5 sm:p-6">
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400 mb-3">So rechnet VIRA</p>
+                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400 mb-3">So rechnet ENFAL</p>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
                     <div>
                       <p className="text-[10px] uppercase tracking-wide text-gray-400">Fahrleistung</p>

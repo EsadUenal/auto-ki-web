@@ -46,9 +46,9 @@ export default function LandingHeader() {
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link to="/" className={`flex items-center gap-2.5 shrink-0 rounded-lg ${FOKUS_RING}`} aria-label="Vira, Startseite">
+          <Link to="/" className={`flex items-center gap-2.5 shrink-0 rounded-lg ${FOKUS_RING}`} aria-label="ENFAL, Startseite">
             <img src="/logo.svg" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg" />
-            <span className={`text-lg font-bold tracking-tight transition-colors duration-500 ${dunkel ? 'text-white' : 'text-gray-900'}`}>Vira</span>
+            <span className={`text-lg font-bold tracking-tight transition-colors duration-500 ${dunkel ? 'text-white' : 'text-gray-900'}`}>ENFAL</span>
           </Link>
 
           <nav aria-label="Hauptnavigation" className="hidden md:flex items-center gap-1">

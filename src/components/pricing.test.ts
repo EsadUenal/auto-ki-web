@@ -6,7 +6,7 @@ import test from 'node:test'
  * Struktureller Vertrag der finalen Consumer-Preisseite (Pricing V1 FINAL).
  *
  * Die Vorgängerfassung prüfte 9,99 / 7,99 und „kein Monatsabo". Beides ist mit
- * dieser Runde bewusst überholt: die Preise wurden gesenkt und VIRA Plus ist
+ * dieser Runde bewusst überholt: die Preise wurden gesenkt und ENFAL Plus ist
  * als einziges neues Abo hinzugekommen. Die Assertions sind deshalb nicht
  * gelockert, sondern auf den neuen Vertrag umgeschrieben.
  */
@@ -19,7 +19,7 @@ const gate     = readFileSync(new URL('./PurchaseGate.tsx', import.meta.url), 'u
 
 test('A: Free zeigt 5 AutoFinder-Suchen pro Monat', () => {
   assert.match(pricing, /5 AutoFinder-Suchen pro Monat/)
-  assert.match(pricing, /VIRA Free/)
+  assert.match(pricing, /ENFAL Free/)
   assert.match(pricing, />0 €</)
 })
 
@@ -36,10 +36,10 @@ test('D: VerkaufsCheck kostet 8,99 € einmalig', () => {
   assert.match(pricing, /title="VerkaufsCheck"[\s\S]{0,120}price="8,99 €"/)
 })
 
-test('E: VIRA Plus kostet 16,99 € pro Monat', () => {
+test('E: ENFAL Plus kostet 16,99 € pro Monat', () => {
   assert.match(pricing, /16,99 €/)
   assert.match(pricing, /pro Monat/)
-  assert.match(pricing, /VIRA Plus/)
+  assert.match(pricing, /ENFAL Plus/)
 })
 
 test('F/G/H/I: Plus nennt alle enthaltenen Kontingente', () => {
@@ -85,7 +85,7 @@ test('CTAs: Checks über den bestehenden Flow, Plus über den Checkout', () => {
   assert.match(pricing, /navigate\('\/login'\)/)
   assert.match(pricing, /cta="KaufCheck starten"/)
   assert.match(pricing, /cta="VerkaufsCheck starten"/)
-  assert.match(pricing, /VIRA Plus starten/)
+  assert.match(pricing, /ENFAL Plus starten/)
   // Anonym: erst Login mit ReturnTo, dann zurück zur Preisseite.
   assert.match(pricing, /sessionStorage\.setItem\(RETURN_TO_KEY, '\/pricing'\)/)
   assert.match(pricing, /<PlusCheckout/)

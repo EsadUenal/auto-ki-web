@@ -271,7 +271,7 @@ test('BUG1: KaufCheckView räumt das returnTo weg, wenn es das Prefill übernimm
   assert.match(kc, /clearKaufCheckPrefill\(\)\s*\n\s*takeReturnTo\(\)/)
 })
 
-test('M: View nutzt die kanonische VIRA-Content-Sprache (wie Kauf-Check/Entdecken)', () => {
+test('M: View nutzt die kanonische ENFAL-Content-Sprache (wie Kauf-Check/Entdecken)', () => {
   // gleicher zentrierter Container wie die anderen Werkzeugseiten
   assert.match(viewTsx, /max-w-3xl mx-auto/)
   assert.match(viewTsx, /sm:/)
@@ -280,7 +280,7 @@ test('M: View nutzt die kanonische VIRA-Content-Sprache (wie Kauf-Check/Entdecke
   assert.match(viewTsx, /h-full overflow-y-auto scrollbar-thin/)
   assert.match(viewTsx, /ez-rise/)
   assert.match(viewTsx, /ez-aurora/)
-  assert.match(viewTsx, /Vira · AutoFinder/)
+  assert.match(viewTsx, /ENFAL · AutoFinder/)
   // KEIN eigener Landingpage-Header mehr (Logo/Anmelden lebt in der Shell)
   assert.doesNotMatch(viewTsx, /<header/)
   assert.doesNotMatch(viewTsx, /\/logo\.svg/)
@@ -505,7 +505,7 @@ test('O: coverageState bildet no_internal_match und Low-Coverage ab', () => {
 // VEHICLE IDENTITY RUNDE — AutoFinder ohne Fahrzeugbilder (Matrix A-P)
 //
 // Produktentscheidung: keine modellgenauen Fahrzeugbilder mehr. Statt eines
-// Bildes trägt jede Karte links das gestaltete VIRA Vehicle Identity Panel.
+// Bildes trägt jede Karte links das gestaltete ENFAL Vehicle Identity Panel.
 // Diese Tests sichern beides zu: dass das Panel die Fahrzeugidentität wirklich
 // zeigt — und dass nirgends mehr ein Bild gerendert oder nachgeladen wird.
 // ══════════════════════════════════════════════════════════════════════════
@@ -644,7 +644,7 @@ test('Demo: der Fehlertyp traegt anmeldenHilft und den Subtext', () => {
 test('Demo: die Ansicht zeigt "Kostenlos anmelden" statt der Plus-CTA', () => {
   assert.match(viewTsx, /anmeldenHilft \? \(/)
   assert.match(viewTsx, /Kostenlos anmelden/)
-  assert.match(viewTsx, /VIRA Plus ansehen/)
+  assert.match(viewTsx, /ENFAL Plus ansehen/)
 })
 
 test('Demo: die Anmelde-CTA zeigt auf eine EXISTIERENDE Route', () => {

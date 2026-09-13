@@ -384,7 +384,7 @@ function MessageBubble({
   return (
     <div className="flex gap-3">
       <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 mt-0.5 bg-orange-500 flex items-center justify-center">
-        <img src="/logo.svg" alt="Vira" className="w-full h-full object-cover" />
+        <img src="/logo.svg" alt="ENFAL" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1 min-w-0">
         {message.streaming && message.statusText && !message.content ? (
@@ -575,9 +575,9 @@ function WelcomeScreen({ onSuggestion }: { onSuggestion: (text: string) => void 
   return (
     <div className="flex flex-col items-center justify-center h-full px-4 py-16 text-center">
       <div className="w-14 h-14 rounded-2xl overflow-hidden mb-5 shadow-lg">
-        <img src="/logo.svg" alt="Vira" className="w-full h-full" />
+        <img src="/logo.svg" alt="ENFAL" className="w-full h-full" />
       </div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Vira</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-2">ENFAL</h1>
       <p className="text-gray-500 text-sm max-w-sm mb-8">
         Intelligente Beratung rund ums Auto: Kauf, Verkauf, technische Fragen.
         Transparente Quellen, ehrliche Einschätzungen.

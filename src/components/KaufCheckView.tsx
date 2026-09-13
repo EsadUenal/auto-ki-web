@@ -184,7 +184,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/10 border border-blue-400/25 text-blue-600">
               <ShoppingCart size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Kauf-Check</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Kauf-Check</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
             Kauf mit Sicherheit.

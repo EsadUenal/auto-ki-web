@@ -245,7 +245,7 @@ export default function AutoFinderView() {
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
                 <Car size={12} />
               </span>
-              <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · AutoFinder</span>
+              <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · AutoFinder</span>
             </div>
 
             {historie.length > 0 && (
@@ -273,7 +273,7 @@ export default function AutoFinderView() {
             Welches Auto <span className="text-gray-400">passt zu dir?</span>
           </h1>
           <p className="mt-2 text-sm text-gray-500 max-w-md leading-relaxed">
-            Budget, Fahrweise und Prioritäten — VIRA schlägt dir die am besten passenden
+            Budget, Fahrweise und Prioritäten — ENFAL schlägt dir die am besten passenden
             Modelle aus seiner gepflegten Datenbank vor. Kostenlos, ohne Konto.
           </p>
         </div>
@@ -327,7 +327,7 @@ export default function AutoFinderView() {
                 </Field>
               </div>
               <p className="text-xs text-gray-400">
-                Das Budget steuert die Reihenfolge und die Preisorientierung. VIRA nennt bewusst
+                Das Budget steuert die Reihenfolge und die Preisorientierung. ENFAL nennt bewusst
                 keinen Live-Marktpreis.
               </p>
             </section>
@@ -479,7 +479,7 @@ export default function AutoFinderView() {
                   ) : (
                     <button type="button" onClick={() => navigate('/pricing')}
                       className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800 underline">
-                      VIRA Plus ansehen
+                      ENFAL Plus ansehen
                     </button>
                   )}
                 </div>

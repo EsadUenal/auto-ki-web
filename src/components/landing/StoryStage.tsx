@@ -74,7 +74,7 @@ function dunkelheitBei(fortschritt: number): number {
 const TEXTE = [
   {
     headline: 'Nicht irgendein Auto. Das passende.',
-    text: 'Du sagst, was dir wichtig ist: Budget, Nutzung, Prioritäten. Vira vergleicht '
+    text: 'Du sagst, was dir wichtig ist: Budget, Nutzung, Prioritäten. ENFAL vergleicht '
       + 'Baureihen, Generationen und Motorvarianten und begründet jeden Vorschlag, statt '
       + 'dir eine Trefferliste hinzuwerfen.',
     cta: { label: 'AutoFinder öffnen', to: AUTOFINDER_ROUTE },
@@ -83,7 +83,7 @@ const TEXTE = [
     headline: 'Der Kaufpreis ist nicht die ganze Wahrheit.',
     text: 'Was ein Auto wirklich kostet, entscheidet sich nach dem Kauf. Kraftstoff, '
       + 'Versicherung, Steuer, Wartung, Reifen, dazu der Wertverlust, den kaum jemand '
-      + 'einrechnet. Vira rechnet es aus, nachvollziehbar bis auf den Kilometer.',
+      + 'einrechnet. ENFAL rechnet es aus, nachvollziehbar bis auf den Kilometer.',
     cta: { label: 'Autokosten berechnen', to: AUTOKOSTEN_ROUTE },
   },
   {
@@ -410,7 +410,7 @@ function StoryMobil() {
 
 export default function StoryStage() {
   return (
-    <section id="ablauf" aria-label="So funktioniert Vira">
+    <section id="ablauf" aria-label="So funktioniert ENFAL">
       <div className="hidden lg:block"><StoryDesktop /></div>
       <div className="lg:hidden"><StoryMobil /></div>
     </section>

@@ -75,7 +75,7 @@ export default function HelpView() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
               <Info size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Hilfe</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Hilfe</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.02em] mb-1">Hilfe</h1>
           <p className="text-sm text-gray-500">FAQ, Kontakt und Informationen zur App</p>
@@ -107,7 +107,7 @@ export default function HelpView() {
         </Section>
 
         {/* ── Über die App ── */}
-        <Section title="Über Vira" icon={Info}>
+        <Section title="Über ENFAL" icon={Info}>
           <div className="px-6 py-5 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Version</span>
@@ -115,7 +115,7 @@ export default function HelpView() {
             </div>
             <div className="border-t border-[#f0ebe4] pt-3 mt-3">
               <p className="text-sm text-gray-600 leading-relaxed">
-                Vira ist ein KI-gestützter Assistent für Autokäufer und -verkäufer.
+                ENFAL ist ein KI-gestützter Assistent für Autokäufer und -verkäufer.
                 Die App analysiert Fahrzeuginserate, prüft bekannte Schwachstellen und
                 hilft dir, den richtigen Preis zu finden: schnell, neutral und datenbasiert.
               </p>
@@ -127,7 +127,7 @@ export default function HelpView() {
         <Section title="Rechtliches" icon={FileText}>
           <div className="px-6 py-5">
             <p className="text-xs text-gray-400 mb-4">
-              Rechtliche Informationen zu Vira.
+              Rechtliche Informationen zu ENFAL.
             </p>
             <div className="space-y-1">
               {RECHTS_LINKS.map(({ to, label }) => (

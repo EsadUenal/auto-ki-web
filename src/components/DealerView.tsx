@@ -48,7 +48,7 @@ export default function DealerView() {
 
   // Nicht-Dealer sollten hier gar nicht landen (Guard in App.tsx) — doppelt absichern.
   if (user && !user.dealer_access) {
-    return <div className="p-8 text-sm text-gray-500">Dieser Bereich ist nur für VIRA-Dealer-Konten.</div>
+    return <div className="p-8 text-sm text-gray-500">Dieser Bereich ist nur für ENFAL-Dealer-Konten.</div>
   }
 
   return (
@@ -60,7 +60,7 @@ export default function DealerView() {
             <Store size={14} />
           </span>
           <div>
-            <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-400">VIRA Dealer</p>
+            <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-400">ENFAL Dealer</p>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Dein Fahrzeugbestand</h1>
           </div>
         </div>
@@ -149,7 +149,7 @@ function VehicleList({ vehicles, onOpen }: { vehicles: DealerVehicle[]; onOpen: 
               <th className="px-4 py-2.5 font-medium text-right">Einkauf</th>
               <th className="px-4 py-2.5 font-medium text-right">Ziel</th>
               <th className="px-4 py-2.5 font-medium text-right">Mögl. Marge</th>
-              <th className="px-4 py-2.5 font-medium">VIRA / Risiko</th>
+              <th className="px-4 py-2.5 font-medium">ENFAL / Risiko</th>
               <th className="px-4 py-2.5"></th>
             </tr>
           </thead>

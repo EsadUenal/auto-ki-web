@@ -188,7 +188,7 @@ export function Zustimmungen({
 }
 
 /**
- * Abschluss von VIRA Plus. Sendet nur den Produktschluessel; Preis und
+ * Abschluss von ENFAL Plus. Sendet nur den Produktschluessel; Preis und
  * Intervall bestimmt der Server.
  */
 export function PlusCheckout({ onAbbrechen }: { onAbbrechen?: () => void }) {
@@ -211,7 +211,7 @@ export function PlusCheckout({ onAbbrechen }: { onAbbrechen?: () => void }) {
 
   return (
     <div className="rounded-2xl border border-orange-200 bg-orange-50/50 p-5 mt-4">
-      <p className="font-semibold text-gray-900 mb-1">VIRA Plus abschließen</p>
+      <p className="font-semibold text-gray-900 mb-1">ENFAL Plus abschließen</p>
       <p className="text-sm text-gray-600 mb-4">
         16,99 € pro Monat, monatlich kündbar. Die Verlängerung erfolgt automatisch,
         bis du kündigst.

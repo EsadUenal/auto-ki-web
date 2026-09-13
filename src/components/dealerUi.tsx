@@ -76,7 +76,7 @@ export function TriageSignals({ triage }: { triage: DealerTriage }) {
   const r = risikoMeta(triage.risiko)
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-      <span className={e.cls}><span className="text-gray-400">VIRA </span>{e.label}</span>
+      <span className={e.cls}><span className="text-gray-400">ENFAL </span>{e.label}</span>
       <span className={p.cls}><span className="text-gray-400">Preis </span>{p.label}</span>
       <span className={r.cls}><span className="text-gray-400">Risiko </span>{r.label}</span>
     </div>

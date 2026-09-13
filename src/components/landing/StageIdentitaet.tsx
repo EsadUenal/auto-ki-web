@@ -52,7 +52,7 @@ export default function StageIdentitaet({ k, rank, dunkel = false }: Props) {
     >
       <div className="flex items-start justify-between gap-2">
         <span className={`text-[9px] font-bold uppercase tracking-[0.22em] ${dunkel ? 'text-white/35' : 'text-gray-400'}`}>
-          Vira · AutoFinder
+          ENFAL · AutoFinder
         </span>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
           dunkel ? 'bg-white/10 text-white/70' : 'bg-gray-900/90 text-white'

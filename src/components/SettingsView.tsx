@@ -128,7 +128,7 @@ export default function SettingsView() {
   if (!user) return null
   const abo = ABO_INFO[user.abo_typ]
   const hatLegacyAbo = user.abo_typ !== 'none'
-  // VIRA Plus laeuft ueber eigene Felder (siehe app/plus.py) und nicht ueber
+  // ENFAL Plus laeuft ueber eigene Felder (siehe app/plus.py) und nicht ueber
   // abo_typ — fuer Verwaltung und Kuendigung zaehlt es trotzdem als Abo.
   const hatAbo = hatLegacyAbo || !!user.plus_aktiv
 
@@ -152,7 +152,7 @@ export default function SettingsView() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
               <Star size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Einstellungen</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Einstellungen</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.02em] mb-1">Einstellungen</h1>
           <p className="text-sm text-gray-500">Konto und Zugang verwalten</p>
@@ -289,7 +289,7 @@ export default function SettingsView() {
                   <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
                     user.plus_aktiv ? 'bg-orange-100 text-orange-700' : abo.cls}`}>
                     {user.plus_aktiv ? <Sparkles size={12} /> : abo.icon}
-                    {user.plus_aktiv ? 'VIRA Plus' : abo.label}
+                    {user.plus_aktiv ? 'ENFAL Plus' : abo.label}
                   </span>
                   {hatLegacyAbo && user.abo_typ !== 'max' && (
                     <span className="text-xs text-gray-500">{user.checks_verbleibend} Checks verbleibend</span>
@@ -379,7 +379,7 @@ export default function SettingsView() {
               {user.plus_aktiv && (
                 <div className="mb-4 space-y-1.5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-orange-600 mb-1">
-                    In VIRA Plus enthalten (diesen Monat)
+                    In ENFAL Plus enthalten (diesen Monat)
                   </p>
                   <Verbrauch label="KaufChecks" rest={user.plus_kaufchecks_verbleibend ?? 0} gesamt={5} />
                   <Verbrauch label="VerkaufsChecks" rest={user.plus_verkaufschecks_verbleibend ?? 0} gesamt={1} />

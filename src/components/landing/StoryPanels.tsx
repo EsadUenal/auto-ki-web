@@ -40,7 +40,7 @@ export function PanelFinden({ aktiv, reduziert }: PanelProps) {
     <div className="overflow-hidden rounded-3xl border border-[#e6e1da] bg-gradient-to-r from-[#fdfbf8] via-white to-white shadow-[0_30px_60px_-34px_rgba(40,25,10,0.4)]">
       <div className="flex items-center gap-2 border-b border-[#efe9df] bg-[#faf8f5] px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-gray-400">
-          Vira · AutoFinder · 5 Treffer
+          ENFAL · AutoFinder · 5 Treffer
         </span>
       </div>
 
@@ -126,7 +126,7 @@ export function PanelVerstehen({ aktiv, reduziert }: PanelProps) {
     <div className="overflow-hidden rounded-3xl border border-[#e6e1da] bg-white shadow-[0_30px_60px_-34px_rgba(40,25,10,0.4)]">
       <div className="flex items-center gap-2 border-b border-[#efe9df] bg-[#faf8f5] px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-gray-400">
-          Vira · Autokosten · {k.marke} {k.modell} {k.motor}
+          ENFAL · Autokosten · {k.marke} {k.modell} {k.motor}
         </span>
       </div>
 
@@ -222,7 +222,7 @@ export function PanelPruefen({ aktiv, reduziert }: PanelProps) {
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#16151a] shadow-[0_40px_80px_-40px_rgba(0,0,0,0.9)]">
       <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2.5">
         <span className="text-[11px] font-semibold tracking-wide text-white/40">
-          Vira · KaufCheck · {k.marke} {k.modell} {k.motor}
+          ENFAL · KaufCheck · {k.marke} {k.modell} {k.motor}
         </span>
         <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold text-orange-300">
           5,99 €
@@ -302,7 +302,7 @@ export function PanelEntscheiden({ aktiv, reduziert }: PanelProps) {
       </ul>
 
       <p className="border-t border-white/10 px-5 py-3.5 text-[11px] leading-relaxed text-white/40">
-        Vira trifft die Entscheidung nicht für dich. Aber du triffst sie mit dem, was
+        ENFAL trifft die Entscheidung nicht für dich. Aber du triffst sie mit dem, was
         vorher niemand zusammengetragen hatte.
       </p>
     </div>

@@ -50,7 +50,7 @@ export default function LandingFooter() {
           <div>
             <div className="flex items-center gap-2.5">
               <img src="/logo.svg" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg" />
-              <span className="text-lg font-bold tracking-tight text-gray-900">Vira</span>
+              <span className="text-lg font-bold tracking-tight text-gray-900">ENFAL</span>
             </div>
             <p className="mt-3.5 max-w-xs text-sm leading-relaxed text-gray-500">
               Fahrzeuge finden, vergleichen und prüfen. Von der ersten Suche bis zur
@@ -81,10 +81,10 @@ export default function LandingFooter() {
 
         <div className="mt-11 flex flex-col items-start justify-between gap-3 border-t border-[#ece7e0] pt-6 sm:flex-row sm:items-center">
           <p className="text-xs text-gray-400">
-            © {new Date().getFullYear()} Vira · Alle Preise inkl. MwSt.
+            © {new Date().getFullYear()} ENFAL · Alle Preise inkl. MwSt.
           </p>
           <p className="text-xs text-gray-400">
-            Vira ersetzt keine technische Fahrzeugprüfung vor Ort.
+            ENFAL ersetzt keine technische Fahrzeugprüfung vor Ort.
           </p>
         </div>
       </div>

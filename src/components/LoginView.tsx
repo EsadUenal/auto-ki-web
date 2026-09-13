@@ -84,10 +84,10 @@ export default function LoginView() {
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-2xl overflow-hidden mb-3 shadow-lg"
                style={{ boxShadow: '0 0 32px rgba(249,115,22,0.35)' }}>
-            <img src="/logo.svg" alt="Vira" className="w-full h-full" />
+            <img src="/logo.svg" alt="ENFAL" className="w-full h-full" />
           </div>
           <h1 className="text-xl font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
-            Vira
+            ENFAL
           </h1>
           <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Intelligente Beratung rund ums Auto

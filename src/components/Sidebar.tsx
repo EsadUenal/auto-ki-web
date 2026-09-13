@@ -184,8 +184,8 @@ export default function Sidebar({
 
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
-        <img src="/logo.svg" alt="Vira" className="w-7 h-7 rounded-lg shrink-0" />
-        <span className="font-semibold text-sm tracking-tight flex-1">Vira</span>
+        <img src="/logo.svg" alt="ENFAL" className="w-7 h-7 rounded-lg shrink-0" />
+        <span className="font-semibold text-sm tracking-tight flex-1">ENFAL</span>
         {/* Schließen-Button — nur auf Mobile/Tablet sichtbar */}
         <button
           onClick={onMobileClose}
@@ -350,12 +350,12 @@ export default function Sidebar({
         {menuOpen && user && (
           <div className="absolute bottom-full left-2 right-2 mb-2 rounded-xl border border-sidebar-border bg-sidebar-bg shadow-2xl overflow-hidden z-50">
 
-            {/* Kopf: Vira-Brand + E-Mail + Abo */}
+            {/* Kopf: ENFAL-Brand + E-Mail + Abo */}
             <div className="px-4 py-3 border-b border-sidebar-border">
               <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-sidebar-border/50">
-                <img src="/logo.svg" alt="Vira" className="w-5 h-5 rounded-md shrink-0" />
-                <span className="text-xs font-semibold text-sidebar-text tracking-tight">Vira</span>
-                <span className="text-[10px] text-sidebar-muted ml-0.5">getvira.de</span>
+                <img src="/logo.svg" alt="ENFAL" className="w-5 h-5 rounded-md shrink-0" />
+                <span className="text-xs font-semibold text-sidebar-text tracking-tight">ENFAL</span>
+                <span className="text-[10px] text-sidebar-muted ml-0.5">getenfal.de</span>
               </div>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0 text-white text-sm font-bold select-none">
@@ -365,14 +365,14 @@ export default function Sidebar({
                   {user.email}
                 </span>
               </div>
-              {/* Abo-Status. VIRA Plus laeuft ueber eigene Felder (nicht ueber
+              {/* Abo-Status. ENFAL Plus laeuft ueber eigene Felder (nicht ueber
                   abo_typ) und wird deshalb zuerst geprueft — sonst saehe ein
                   zahlender Plus-Kunde hier "Kostenloser Zugang". */}
               {user.plus_aktiv ? (
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300">
                     <Sparkles size={11} />
-                    VIRA Plus
+                    ENFAL Plus
                   </span>
                   <span className="text-xs text-sidebar-muted">
                     {(user.plus_kaufchecks_verbleibend ?? 0)} KaufCheck{(user.plus_kaufchecks_verbleibend ?? 0) !== 1 ? 's' : ''} übrig
@@ -464,7 +464,7 @@ export default function Sidebar({
                 {user.plus_aktiv ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-px rounded-full bg-orange-500/15 text-orange-300">
                     <Sparkles size={9} />
-                    VIRA Plus
+                    ENFAL Plus
                   </span>
                 ) : user.abo_typ !== 'none' ? (
                   <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-px rounded-full ${ABO_CONFIG[user.abo_typ].cls}`}>

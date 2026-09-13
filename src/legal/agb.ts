@@ -1,21 +1,21 @@
 // Allgemeine Geschäftsbedingungen — vom Betreiber gelieferter Rechtstext.
 // Wortgetreu übernommen; nur als Markdown strukturiert (Aufzählungen als Listen).
 // KEIN von der KI erfundener Inhalt.
-export const AGB_MARKDOWN = `für die Nutzung der Plattform VIRA
+export const AGB_MARKDOWN = `für die Nutzung der Plattform ENFAL
 
 **Stand:** 08.07.2026
 
 ## §1 Geltungsbereich
 
-Diese Allgemeinen Geschäftsbedingungen (AGB) regeln die Nutzung der Plattform VIRA sowie sämtliche Verträge zwischen dem Betreiber und den Nutzern.
+Diese Allgemeinen Geschäftsbedingungen (AGB) regeln die Nutzung der Plattform ENFAL sowie sämtliche Verträge zwischen dem Betreiber und den Nutzern.
 
 Abweichende Bedingungen des Nutzers werden nicht anerkannt, sofern ihrer Geltung nicht ausdrücklich schriftlich zugestimmt wurde.
 
-## §2 Leistungen von VIRA
+## §2 Leistungen von ENFAL
 
-VIRA ist eine KI-gestützte Plattform rund um Fahrzeuge.
+ENFAL ist eine KI-gestützte Plattform rund um Fahrzeuge.
 
-Je nach gewählter Funktion stellt VIRA unter anderem folgende Leistungen bereit:
+Je nach gewählter Funktion stellt ENFAL unter anderem folgende Leistungen bereit:
 
 - KI-Chat
 - Kaufcheck
@@ -55,7 +55,7 @@ Der Nutzer erhält nach erfolgreicher Zahlung unmittelbar Zugriff auf die jeweil
 
 ## §6 Abonnements
 
-VIRA bietet verschiedene kostenpflichtige Abonnements an.
+ENFAL bietet verschiedene kostenpflichtige Abonnements an.
 
 Die jeweils enthaltenen Leistungen ergeben sich aus der aktuellen Leistungsbeschreibung auf der Plattform.
 
@@ -87,7 +87,7 @@ Der Betreiber ist berechtigt, entsprechende Konten zu sperren.
 
 ## §9 KI-gestützte Analysen
 
-Die von VIRA bereitgestellten Ergebnisse werden mithilfe künstlicher Intelligenz erzeugt.
+Die von ENFAL bereitgestellten Ergebnisse werden mithilfe künstlicher Intelligenz erzeugt.
 
 Die Ausgaben dienen ausschließlich der Information und Unterstützung bei Entscheidungen.
 

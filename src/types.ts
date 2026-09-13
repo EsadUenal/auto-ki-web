@@ -138,7 +138,7 @@ export interface WebVehicleIdentity {
   quellen?: EvidenceQuelle[]
 }
 
-// P1-4 — ergänzender Fahrzeugkontext aus der VIRA-Fahrzeugdatenbank. KEINE
+// P1-4 — ergänzender Fahrzeugkontext aus der ENFAL-Fahrzeugdatenbank. KEINE
 // Evidence, KEINE Bewertung des Fahrzeugzustands — beschreibt die Baureihe
 // allgemein (Segment, Erkennungsmerkmale, Herstellerintervalle). Alle Felder
 // optional, nur echte Werte werden vom Backend gesetzt.
@@ -155,7 +155,7 @@ export interface Fahrzeugkontext {
 
 // P2-5 — EIN Wartungspunkt, dessen hinterlegtes Intervall in der Nähe der
 // tatsächlichen Laufleistung liegt. AUSDRÜCKLICH KEINE Fälligkeitsaussage —
-// VIRA weiß nicht, wann der letzte Service war. `hinweis` ist der bereits vom
+// ENFAL weiß nicht, wann der letzte Service war. `hinweis` ist der bereits vom
 // Backend fertig formulierte, P2-5-konforme Text (nie "fällig"/"überfällig").
 export interface Wartungshinweis {
   bauteil: string
@@ -256,7 +256,7 @@ export interface KeyFinding {
   prioritaet: number
 }
 
-// ---- Phase 5: VIRA Dealer ----
+// ---- Phase 5: ENFAL Dealer ----
 export type DealerStatus = 'beobachtung' | 'einkauf_geplant' | 'im_bestand' | 'verkauft'
 
 export interface DealerFinance {

@@ -129,8 +129,8 @@ export default function DealerVehicleView({
           </select>
         </Section>
 
-        {/* VIRA (Kaufcheck) */}
-        <Section title="VIRA-Kaufcheck">
+        {/* ENFAL (Kaufcheck) */}
+        <Section title="ENFAL-Kaufcheck">
           {v.vira.vorhanden ? (
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap gap-x-6 gap-y-1">

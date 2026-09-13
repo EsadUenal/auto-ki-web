@@ -131,14 +131,14 @@ export function NextSteps({ findings }: { findings: KeyFinding[] | undefined }) 
 // ── Detailbericht — standardmäßig eingeklappt, Inhalt UNVERÄNDERT ────────────
 
 // ── Fortschrittsstatus während der (vertiefenden) Marktrecherche (§14) ───────
-// Der Check läuft als EIN Request; während VIRA die Recherche bis zur Qualitäts-
+// Der Check läuft als EIN Request; während ENFAL die Recherche bis zur Qualitäts-
 // schwelle vertieft, zeigen wir rotierende, ehrliche Status-Texte statt eines
 // stummen Spinners. Kein voreiliges "fertig".
 
 const DEEPENING_MESSAGES = [
-  'VIRA durchsucht den Gebrauchtwagenmarkt …',
+  'ENFAL durchsucht den Gebrauchtwagenmarkt …',
   'Vergleichbare Angebote werden gesammelt …',
-  'VIRA erweitert die Marktrecherche …',
+  'ENFAL erweitert die Marktrecherche …',
   'Weitere Vergleichsangebote werden geprüft …',
   'Preisdaten werden validiert …',
   'Marktwert und Preisbewertung werden berechnet …',
@@ -181,7 +181,7 @@ export function ResearchFailedCard({
               Noch kein belastbares Ergebnis
             </p>
             <h3 className="text-lg font-bold text-amber-900 leading-tight">
-              VIRA konnte keinen zuverlässigen Marktwert ermitteln
+              ENFAL konnte keinen zuverlässigen Marktwert ermitteln
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-amber-900/90">
               {nachricht ||

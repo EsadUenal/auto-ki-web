@@ -156,7 +156,7 @@ test('H: VerkaufsCheck kostet 8,99 € einmalig', () => {
   assert.match(view, /einmalig pro Check/)
 })
 
-test('I: Vira Plus kostet 16,99 € pro Monat', () => {
+test('I: ENFAL Plus kostet 16,99 € pro Monat', () => {
   assert.match(alles, /16,99 €/)
   assert.match(alles, /pro Monat/)
 })

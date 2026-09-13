@@ -171,7 +171,7 @@ function ResultCard({
     >
       {isEmpfehlung && (
         <span className="absolute -top-3 left-4 inline-flex items-center gap-1 bg-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg shadow-orange-500/25">
-          <Sparkles size={10} /> Viras Empfehlung
+          <Sparkles size={10} /> Empfehlung von ENFAL
         </span>
       )}
       {isGuenstigstes && !isEmpfehlung && (
@@ -382,7 +382,7 @@ export default function ErsatzteileView() {
                     <Sparkles size={12} />
                   </span>
                   <span className="text-[11px] font-bold tracking-[0.25em] uppercase text-gray-500">
-                    Vira · Ersatzteil-Intelligenz
+                    ENFAL · Ersatzteil-Intelligenz
                   </span>
                 </div>
                 {KontingentPille}
@@ -471,7 +471,7 @@ export default function ErsatzteileView() {
                   <div className="ez-rise flex flex-col items-center text-center py-8 mb-2">
                     <div className="flex items-center gap-2.5 mb-4 text-gray-800">
                       <Sparkles size={16} className="ez-pulse text-orange-500" />
-                      <span className="text-sm font-semibold tracking-wide">Vira analysiert das beste Angebot</span>
+                      <span className="text-sm font-semibold tracking-wide">ENFAL analysiert das beste Angebot</span>
                     </div>
                     <QuellenZeile scanning />
                   </div>
@@ -502,7 +502,7 @@ export default function ErsatzteileView() {
                         <Sparkles size={16} className="text-white" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-orange-700 mb-1 tracking-wide uppercase">Viras Einschätzung</p>
+                        <p className="text-xs font-bold text-orange-700 mb-1 tracking-wide uppercase">Einschätzung von ENFAL</p>
                         <p className="text-sm text-gray-700 leading-relaxed">{result.empfehlung}</p>
                       </div>
                     </div>

@@ -128,7 +128,7 @@ test('Account zeigt beide Kontingente verstaendlich, ohne Ledger-Tabelle', () =>
   assert.match(settings, /kaufchecks_verbleibend/)
   assert.match(settings, /verkaufschecks_verbleibend/)
   // Monatliche Plus-Kontingente stehen getrennt vom dauerhaft Gekauften.
-  assert.match(settings, /In VIRA Plus enthalten \(diesen Monat\)/)
+  assert.match(settings, /In ENFAL Plus enthalten \(diesen Monat\)/)
   assert.match(settings, /plus_kaufchecks_verbleibend/)
   assert.match(settings, /verfällt nicht/)
   assert.doesNotMatch(ohneKommentare(settings), /stripe_session|payment_intent|event_id|ledger/i)

@@ -1,4 +1,4 @@
-// Datenschutzerklärung — vom Betreiber gelieferter Rechtstext (e-recht24 + VIRA-Ergänzung).
+// Datenschutzerklärung — vom Betreiber gelieferter Rechtstext (e-recht24 + ENFAL-Ergänzung).
 // Wortgetreu übernommen; nur PDF-Artefakte (Seitenzahlen, Silbentrennung am Zeilenende)
 // bereinigt und als Markdown strukturiert. KEIN von der KI erfundener Inhalt.
 export const DATENSCHUTZ_MARKDOWN = `## 1. Datenschutz auf einen Blick

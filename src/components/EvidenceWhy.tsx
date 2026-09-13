@@ -36,7 +36,7 @@ export function stripEvidenceIds(text: string): string {
 }
 
 const QUELLE_LABEL: Record<string, string> = {
-  datenbank: 'VIRA-Datenbank',
+  datenbank: 'ENFAL-Datenbank',
   rueckruf_kba: 'KBA-Rückrufdaten',
   motorvarianten: 'Motor-Daten',
   web: 'Webrecherche',
@@ -108,7 +108,7 @@ function Quelle({ q }: { q: EvidenceQuelle }) {
   if (q.typ === 'rueckruf_kba') {
     return <span>KBA-Rückrufdaten{q.ref ? ` · Referenz ${q.ref}` : ''}</span>
   }
-  return <span>{QUELLE_LABEL[q.typ] ?? 'VIRA-Datenbank'}</span>
+  return <span>{QUELLE_LABEL[q.typ] ?? 'ENFAL-Datenbank'}</span>
 }
 
 // Marktvergleich 2.0 — ehrliche Darstellung: verwertete Vergleichszahl, Median,
@@ -195,7 +195,7 @@ function EvidenceCard({ insight }: { insight: Insight }) {
                       <Quelle q={q} />
                     </span>
                   ))
-                : 'VIRA-Datenbank'}
+                : 'ENFAL-Datenbank'}
             </p>
             {sev && (
               <p><span className="text-gray-400">Schweregrad: </span>{sev}</p>

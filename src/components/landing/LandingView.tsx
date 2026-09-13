@@ -18,7 +18,7 @@ import {
 import { FOKUS_RING } from './styles'
 
 /**
- * VIRA Landingpage.
+ * ENFAL Landingpage.
  *
  * Die Seite ist als ABLAUF gebaut, nicht als Kartenstapel: Hero → Finden →
  * Verstehen → Prüfen → Entscheiden → Verkaufen → Plus → Preise → FAQ →
@@ -32,7 +32,7 @@ import { FOKUS_RING } from './styles'
  * eine Marketingseite, die mehr verspricht als die Software hält, beschädigt
  * genau das Vertrauen, das dieses Produkt verkauft.
  *
- * Selbstbewusst ist nicht dasselbe wie laut: die Texte sagen, was Vira kann,
+ * Selbstbewusst ist nicht dasselbe wie laut: die Texte sagen, was ENFAL kann,
  * ohne sich dafür zu entschuldigen und ohne zu übertreiben.
  *
  * Alle Zahlen (Preise, Kontingente) entsprechen dem eingefrorenen Pricing V1
@@ -42,9 +42,9 @@ import { FOKUS_RING } from './styles'
  * bestehen aus echten Oberflächen mit lokalen Showcase-Daten (showcase.ts).
  */
 
-const SEITENTITEL = 'Vira: Autos finden, prüfen und besser entscheiden'
+const SEITENTITEL = 'ENFAL: Autos finden, prüfen und besser entscheiden'
 const SEITENBESCHREIBUNG =
-  'Vira hilft beim Finden, Vergleichen und Prüfen von Fahrzeugen: AutoFinder, '
+  'ENFAL hilft beim Finden, Vergleichen und Prüfen von Fahrzeugen: AutoFinder, '
   + 'Autokosten-Rechner und KI-Chat kostenlos starten, KaufCheck ab 5,99 €.'
 
 /** Setzt Titel und Meta-Description, solange die Landingpage sichtbar ist. */
@@ -143,7 +143,7 @@ function SekundaerCTA({ to, children }: { to: string; children: React.ReactNode 
 
 const FAQ = [
   {
-    frage: 'Ist Vira kostenlos?',
+    frage: 'Ist ENFAL kostenlos?',
     antwort: 'Der Einstieg ist kostenlos. Ohne Konto kannst du eine AutoFinder-Demo-Suche pro Tag '
       + 'machen. Mit einem kostenlosen Konto bekommst du 5 AutoFinder-Suchen und 20 KI-Chat-Nachrichten '
       + 'pro Monat, der Autokosten-Rechner ist unbegrenzt nutzbar. Kauf- und VerkaufsCheck sind '
@@ -157,7 +157,7 @@ const FAQ = [
   },
   {
     frage: 'Muss ich ein Abo abschließen?',
-    antwort: 'Nein. Kauf- und VerkaufsCheck kannst du einzeln kaufen, ohne Abo. Vira Plus lohnt sich '
+    antwort: 'Nein. Kauf- und VerkaufsCheck kannst du einzeln kaufen, ohne Abo. ENFAL Plus lohnt sich '
       + 'erst, wenn du regelmäßig mehrere Fahrzeuge prüfst.',
   },
   {
@@ -169,11 +169,11 @@ const FAQ = [
   {
     frage: 'Verfallen einzeln gekaufte Checks?',
     antwort: 'Nein. Einzeln gekaufte Kauf- und VerkaufsChecks bleiben dauerhaft in deinem Konto, auch '
-      + 'wenn du später Vira Plus abschließt, kündigst oder Plus ausläuft. Nur die monatlichen '
+      + 'wenn du später ENFAL Plus abschließt, kündigst oder Plus ausläuft. Nur die monatlichen '
       + 'Plus-Kontingente verfallen zum Monatsende.',
   },
   {
-    frage: 'Kann ich Vira Plus monatlich kündigen?',
+    frage: 'Kann ich ENFAL Plus monatlich kündigen?',
     antwort: 'Ja, es gibt keine Mindestlaufzeit. Nach der Kündigung läuft Plus bis zum Ende des bereits '
       + 'bezahlten Monats weiter, danach wird nichts mehr abgebucht.',
   },
@@ -314,7 +314,7 @@ export default function LandingView() {
                 </h1>
 
                 <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-gray-600">
-                  Vira hilft dir beim Finden, Vergleichen und Prüfen von Fahrzeugen. Von der
+                  ENFAL hilft dir beim Finden, Vergleichen und Prüfen von Fahrzeugen. Von der
                   ersten Suche bis zur Kaufentscheidung.
                 </p>
 
@@ -354,7 +354,7 @@ export default function LandingView() {
               {
                 icon: <Search size={20} aria-hidden="true" />, farbe: 'text-orange-600 bg-orange-50',
                 titel: 'AutoFinder', to: AUTOFINDER_ROUTE, cta: 'AutoFinder öffnen',
-                text: 'Beschreibe Budget, Nutzung und was dir wichtig ist. Vira schlägt passende Baureihen vor und begründet jeden Vorschlag.',
+                text: 'Beschreibe Budget, Nutzung und was dir wichtig ist. ENFAL schlägt passende Baureihen vor und begründet jeden Vorschlag.',
                 punkte: ['1 Demo-Suche pro Tag ohne Konto', '5 Suchen pro Monat mit kostenlosem Konto'],
               },
               {
@@ -367,7 +367,7 @@ export default function LandingView() {
                 icon: <MessageSquare size={20} aria-hidden="true" />, farbe: 'text-blue-600 bg-blue-50',
                 titel: 'KI-Chat', to: CHAT_ROUTE, cta: 'Chat öffnen',
                 text: 'Fragen zu Modellen, Motoren, Wartung oder einem konkreten Inserat, in normaler Sprache und mit Bezug auf deine Fahrzeugdaten.',
-                punkte: ['20 Nachrichten pro Monat im kostenlosen Konto', '100 Nachrichten pro Monat mit Vira Plus'],
+                punkte: ['20 Nachrichten pro Monat im kostenlosen Konto', '100 Nachrichten pro Monat mit ENFAL Plus'],
               },
             ].map((w, i) => (
               <Reveal key={w.titel} verzoegerung={i * 110}>
@@ -422,14 +422,14 @@ export default function LandingView() {
           </div>
         </Abschnitt>
 
-        {/* ── Vira Plus ────────────────────────────────────────────────── */}
+        {/* ── ENFAL Plus ────────────────────────────────────────────────── */}
         <PlusStage />
 
-        {/* ── Warum Vira: drei Prinzipien ──────────────────────────────── */}
+        {/* ── Warum ENFAL: drei Prinzipien ──────────────────────────────── */}
         <Abschnitt>
           <Reveal>
             <Ueberschrift
-              eyebrow="Warum Vira"
+              eyebrow="Warum ENFAL"
               titel="Drei Dinge, die den Unterschied machen"
             />
           </Reveal>
@@ -440,7 +440,7 @@ export default function LandingView() {
                 nr: '01', icon: <Database size={20} aria-hidden="true" />,
                 titel: 'Struktur statt Datenchaos',
                 text: 'Baureihen, Generationen und Motorvarianten liegen als gepflegte Datenbasis vor, '
-                  + 'nicht als Suchergebnis. Deshalb weiß Vira, dass ein 118i etwas anderes ist als ein '
+                  + 'nicht als Suchergebnis. Deshalb weiß ENFAL, dass ein 118i etwas anderes ist als ein '
                   + '120i, und behandelt ihn auch so.',
                 beleg: `${k.marke} ${k.modell} ${k.generation} · ${k.motor} · ${k.leistung_ps} PS`,
               },
@@ -498,13 +498,13 @@ export default function LandingView() {
 
             <div className="mt-12 grid gap-4 lg:grid-cols-[1fr_1fr_1fr_1.25fr] lg:items-end">
               {[
-                { titel: 'Vira Free', preis: '0 €', zusatz: 'dauerhaft kostenlos',
+                { titel: 'ENFAL Free', preis: '0 €', zusatz: 'dauerhaft kostenlos',
                   punkte: ['5 AutoFinder-Suchen / Monat', '20 KI-Chat-Nachrichten / Monat', 'Autokosten unbegrenzt'] },
                 { titel: 'KaufCheck', preis: '5,99 €', zusatz: 'einmalig',
                   punkte: ['1 KaufCheck', 'Guthaben verfällt nicht'] },
                 { titel: 'VerkaufsCheck', preis: '8,99 €', zusatz: 'einmalig',
                   punkte: ['1 VerkaufsCheck', 'Guthaben verfällt nicht'] },
-                { titel: 'Vira Plus', preis: '16,99 €', zusatz: 'pro Monat', hervor: true,
+                { titel: 'ENFAL Plus', preis: '16,99 €', zusatz: 'pro Monat', hervor: true,
                   punkte: ['5 KaufChecks / Monat', '1 VerkaufsCheck / Monat', '50 AutoFinder-Suchen / Monat', '100 KI-Chat-Nachrichten / Monat'] },
               ].map((p, i) => (
                 <Reveal key={p.titel} verzoegerung={i * 80}>

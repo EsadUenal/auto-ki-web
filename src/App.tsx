@@ -351,8 +351,8 @@ function AppContent() {
           >
             <Menu size={20} />
           </button>
-          <img src="/logo.svg" alt="Vira" className="w-6 h-6 rounded-md" />
-          <span className="font-semibold text-sm text-gray-900 tracking-tight">Vira</span>
+          <img src="/logo.svg" alt="ENFAL" className="w-6 h-6 rounded-md" />
+          <span className="font-semibold text-sm text-gray-900 tracking-tight">ENFAL</span>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
         <Routes>
@@ -469,7 +469,7 @@ export default function App() {
               <Route path="/datenschutz" element={<LegalView page="datenschutz" />} />
               <Route path="/agb" element={<LegalView page="agb" />} />
               <Route path="/widerruf" element={<LegalView page="widerruf" />} />
-              {/* Die VIRA-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
+              {/* Die ENFAL-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
                   sitzt pro Route (<Guard>), damit die öffentliche /autofinder-
                   Seite dieselbe Shell nutzen kann. */}
               <Route path="/*" element={<AppContent />} />

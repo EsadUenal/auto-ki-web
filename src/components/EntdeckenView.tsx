@@ -248,7 +248,7 @@ export default function EntdeckenView({ onCarSelect }: EntdeckenViewProps) {
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-500/10 border border-orange-400/25 text-orange-500">
             <Compass size={12} />
           </span>
-          <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Vira · Showroom</span>
+          <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Showroom</span>
         </div>
         <h1
           className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3"

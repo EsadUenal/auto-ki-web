@@ -6,7 +6,7 @@ import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
  * wichtigsten Kern-Erkenntnisse (backend-deterministisch). Position: NACH dem
  * wichtigsten Ergebnisbereich, VOR dem langen Detailbericht.
  *
- * Regeln: keine Angstmache (vier abgestufte Stufen), bestehendes VIRA-Design,
+ * Regeln: keine Angstmache (vier abgestufte Stufen), bestehendes ENFAL-Design,
  * "Warum?" über die bestehende EvidenceWhy-Komponente (keine zweite Quellen-UI).
  * Alte Checks ohne key_findings -> Bereich wird gar nicht gerendert.
  */

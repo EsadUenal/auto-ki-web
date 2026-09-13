@@ -42,7 +42,7 @@ export interface AuthUser {
   /** Dauerhaft gekaufte Berechtigungen je Check-Art — verfallen nie. */
   kaufchecks_verbleibend?: number
   verkaufschecks_verbleibend?: number
-  /** VIRA Plus: monatliche Kontingente, verfallen zum Periodenende. */
+  /** ENFAL Plus: monatliche Kontingente, verfallen zum Periodenende. */
   plus_aktiv?: boolean
   plus_kaufchecks_verbleibend?: number
   plus_verkaufschecks_verbleibend?: number
@@ -88,7 +88,7 @@ export type MeldungsArt = 'fehler' | 'hinweis'
  * Die Unterscheidung kommt vom Server; das Frontend erfindet sie nicht.
  */
 export class MonatslimitFehler extends Error {
-  /** true, wenn ein Wechsel zu VIRA Plus die Grenze tatsaechlich anheben wuerde. */
+  /** true, wenn ein Wechsel zu ENFAL Plus die Grenze tatsaechlich anheben wuerde. */
   readonly plusHilft: boolean
   /** true, wenn eine kostenlose Anmeldung der richtige naechste Schritt ist. */
   readonly anmeldenHilft: boolean
@@ -145,7 +145,7 @@ function consumerServiceError(aktion: string, status?: number): string {
 }
 
 const BACKEND_NICHT_ERREICHBAR =
-  'Der VIRA-Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.'
+  'Der ENFAL-Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.'
 
 export async function authRegister(email: string, password: string, agbAkzeptiert: boolean): Promise<AuthUser> {
   const res = await authFetch('/register', {
@@ -698,7 +698,7 @@ export async function apiCreateCheckoutSession(
 }
 
 /**
- * Startet das VIRA-Plus-Abo (Stripe mode=subscription).
+ * Startet das ENFAL-Plus-Abo (Stripe mode=subscription).
  *
  * Wie beim Einzelkauf wird nur der Produktschluessel gesendet — Preis und
  * Abrechnungsintervall bestimmt ausschliesslich der Server.
@@ -826,7 +826,7 @@ export async function apiDownloadEbook(ebook_id: string, titel: string): Promise
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `Vira_${titel.replace(/\s+/g, '_')}.pdf`
+  a.download = `ENFAL_${titel.replace(/\s+/g, '_')}.pdf`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

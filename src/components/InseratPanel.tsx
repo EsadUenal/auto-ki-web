@@ -172,7 +172,7 @@ function OptimizedView({ opt }: { opt: InseratOptimierung }) {
             <ChevronDown size={12} /> {opt.entfernte_behauptungen.length} nicht belegte Aussage(n) automatisch entfernt
           </summary>
           <p className="mt-1.5 text-gray-400 leading-relaxed">
-            VIRA fügt keine positiven Aussagen hinzu, die du nicht angegeben hast (z. B. Unfallfreiheit,
+            ENFAL fügt keine positiven Aussagen hinzu, die du nicht angegeben hast (z. B. Unfallfreiheit,
             TÜV, Scheckheft, Ausstattung).
           </p>
         </details>
@@ -229,7 +229,7 @@ export default function InseratPanel({
           <p className="text-sm font-semibold text-gray-900">Inserat verbessern</p>
         </div>
         <p className="text-xs text-gray-500 mb-3">
-          VIRA formuliert aus deinen Angaben einen professionellen Titel und eine Beschreibung —
+          ENFAL formuliert aus deinen Angaben einen professionellen Titel und eine Beschreibung —
           ganz ohne erfundene Fakten.
         </p>
 
