@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, Calculator, Check, ChevronDown, Database, Layers, MessageSquare,
@@ -42,32 +42,8 @@ import { FOKUS_RING } from './styles'
  * bestehen aus echten Oberflächen mit lokalen Showcase-Daten (showcase.ts).
  */
 
-const SEITENTITEL = 'ENFAL: Autos finden, prüfen und besser entscheiden'
-const SEITENBESCHREIBUNG =
-  'ENFAL hilft beim Finden, Vergleichen und Prüfen von Fahrzeugen: AutoFinder, '
-  + 'Autokosten-Rechner und KI-Chat kostenlos starten, KaufCheck ab 5,99 €.'
-
-/** Setzt Titel und Meta-Description, solange die Landingpage sichtbar ist. */
-function useSeitenMeta() {
-  useEffect(() => {
-    const vorherTitel = document.title
-    document.title = SEITENTITEL
-
-    let tag = document.querySelector('meta[name="description"]')
-    const vorherBeschreibung = tag?.getAttribute('content') ?? null
-    if (!tag) {
-      tag = document.createElement('meta')
-      tag.setAttribute('name', 'description')
-      document.head.appendChild(tag)
-    }
-    tag.setAttribute('content', SEITENBESCHREIBUNG)
-
-    return () => {
-      document.title = vorherTitel
-      if (vorherBeschreibung !== null) tag!.setAttribute('content', vorherBeschreibung)
-    }
-  }, [])
-}
+// Titel, Beschreibung, Canonical und Structured Data der Startseite kommen
+// zentral aus src/seo/seo.ts (Prerender + RouteSeo).
 
 // ── Bausteine ───────────────────────────────────────────────────────────────
 
@@ -192,7 +168,9 @@ function FaqEintrag({ frage, antwort }: { frage: string; antwort: string }) {
             : <ChevronDown size={18} aria-hidden="true" className="shrink-0 text-gray-400" />}
         </button>
       </h3>
-      {offen && <p className="-mt-1 pb-5 pr-8 text-sm leading-relaxed text-gray-600">{antwort}</p>}
+      {/* Antwort immer im DOM (auch im Prerender-HTML für Crawler), nur per
+          `hidden` ein-/ausgeblendet — sichtbar identisch zum bisherigen Verhalten. */}
+      <p hidden={!offen} className="-mt-1 pb-5 pr-8 text-sm leading-relaxed text-gray-600">{antwort}</p>
     </div>
   )
 }
@@ -261,7 +239,6 @@ export default function LandingView() {
   // dann an ihm statt am Fenster, also gar nicht mehr. Die dekorativen
   // Lichtflaechen werden stattdessen von ihren eigenen Sektionen beschnitten,
   // die bereits `overflow-hidden` tragen.
-  useSeitenMeta()
   const reduziert = useReducedMotion()
   const k = SHOWCASE_FAHRZEUG
 

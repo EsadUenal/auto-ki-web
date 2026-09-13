@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import Sidebar from './components/Sidebar'
@@ -21,6 +21,8 @@ import AutokostenView from './components/autokosten/AutokostenView'
 import { setReturnTo } from './components/autofinder/logic'
 import Footer from './components/Footer'
 import SplashScreen from './components/SplashScreen'
+import RouteSeo from './seo/RouteSeo'
+import { PrerenderContext } from './seo/prerender'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import {
   apiAddMessage,
@@ -71,7 +73,10 @@ function Guard({ authed, loading, children }: { authed: boolean; loading: boolea
 // Muss innerhalb des AuthProvider stehen (nutzt useAuth).
 function Startseite() {
   const { user, isLoading } = useAuth()
-  if (isLoading) return null            // kurzer Leerzustand statt Flackern
+  // Beim Build-Prerender gibt es keinen Auth-Check: die Startseite wird als die
+  // Marketingseite gerendert, die ein Besucher ohne Konto sieht.
+  const prerender = useContext(PrerenderContext)
+  if (isLoading && !prerender) return null   // kurzer Leerzustand statt Flackern
   if (user) return <Navigate to="/chat" replace />
   return <LandingView />
 }
@@ -453,30 +458,39 @@ export default function App() {
 
       {appMounted && (
         <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              {/* Startseite: Marketing fuer Besucher ohne Konto, bewusst OHNE
-                  App-Shell (keine Sidebar) — eine Werkzeugnavigation sagt
-                  jemandem ohne Konto nichts. Eingeloggte Nutzer landen
-                  weiterhin im Chat, genau wie bisher: fuer sie ist "/" der
-                  Einstieg in die App, nicht eine Verkaufsseite. */}
-              <Route path="/" element={<Startseite />} />
-              <Route path="/login" element={<LoginView />} />
-              {/* Rechtsseiten öffentlich (ohne Login) erreichbar — Impressum &
-                  Datenschutz müssen für jeden zugänglich sein. Eigenständig,
-                  ohne App-Shell (reiner Rechtstext). */}
-              <Route path="/impressum" element={<LegalView page="impressum" />} />
-              <Route path="/datenschutz" element={<LegalView page="datenschutz" />} />
-              <Route path="/agb" element={<LegalView page="agb" />} />
-              <Route path="/widerruf" element={<LegalView page="widerruf" />} />
-              {/* Die ENFAL-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
-                  sitzt pro Route (<Guard>), damit die öffentliche /autofinder-
-                  Seite dieselbe Shell nutzen kann. */}
-              <Route path="/*" element={<AppContent />} />
-            </Routes>
-          </AuthProvider>
+          <AppRoutes />
         </BrowserRouter>
       )}
     </>
+  )
+}
+
+/** Routenbaum ohne Router — genutzt vom Client (BrowserRouter) und vom
+ *  Build-Prerender (StaticRouter, src/entry-prerender.tsx). */
+export function AppRoutes() {
+  return (
+    <AuthProvider>
+      <RouteSeo />
+      <Routes>
+        {/* Startseite: Marketing fuer Besucher ohne Konto, bewusst OHNE
+            App-Shell (keine Sidebar) — eine Werkzeugnavigation sagt
+            jemandem ohne Konto nichts. Eingeloggte Nutzer landen
+            weiterhin im Chat, genau wie bisher: fuer sie ist "/" der
+            Einstieg in die App, nicht eine Verkaufsseite. */}
+        <Route path="/" element={<Startseite />} />
+        <Route path="/login" element={<LoginView />} />
+        {/* Rechtsseiten öffentlich (ohne Login) erreichbar — Impressum &
+            Datenschutz müssen für jeden zugänglich sein. Eigenständig,
+            ohne App-Shell (reiner Rechtstext). */}
+        <Route path="/impressum" element={<LegalView page="impressum" />} />
+        <Route path="/datenschutz" element={<LegalView page="datenschutz" />} />
+        <Route path="/agb" element={<LegalView page="agb" />} />
+        <Route path="/widerruf" element={<LegalView page="widerruf" />} />
+        {/* Die ENFAL-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
+            sitzt pro Route (<Guard>), damit die öffentliche /autofinder-
+            Seite dieselbe Shell nutzen kann. */}
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
+    </AuthProvider>
   )
 }

@@ -1,0 +1,31 @@
+# ENFAL — robots.txt fuer die oeffentliche Website https://getenfal.de
+# Details und Quellen: SEO.md
+#
+# robots.txt steuert nur das CRAWLING. Private Bereiche sind durch Login
+# geschuetzt und tragen zusaetzlich noindex im ausgelieferten HTML; robots.txt
+# ist dafuer bewusst KEIN Ersatz.
+
+# Google-Suche (inkl. AI Overviews / AI Mode)
+User-agent: Googlebot
+Allow: /
+
+# Google-Extended: steuert laut Google Gemini-Training und Grounding (Gemini
+# Apps, Grounding with Google Search auf Vertex AI). Beeinflusst die Google-
+# Suche NICHT. Bewusst erlaubt: ENFAL soll fuer Gemini-Grounding auffindbar sein.
+User-agent: Google-Extended
+Allow: /
+
+# ChatGPT Search: OAI-SearchBot muss crawlen duerfen, damit oeffentliche Seiten
+# in ChatGPT gefunden und zitiert werden koennen.
+User-agent: OAI-SearchBot
+Allow: /
+
+# GPTBot dient laut OpenAI dem Training von Foundation-Modellen und wird fuer
+# ChatGPT Search nicht benoetigt (Einstellungen sind unabhaengig voneinander).
+User-agent: GPTBot
+Disallow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: https://getenfal.de/sitemap.xml

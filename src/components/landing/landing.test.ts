@@ -571,10 +571,13 @@ test('SEO: die tragenden Texte stehen als echter Fliesstext in der Seite', () =>
   assert.match(view, /Dein nächstes Auto beginnt mit einer besseren Entscheidung\./)
 })
 
-test('SEO: eigener Titel und Meta-Description werden gesetzt und zurückgesetzt', () => {
-  assert.match(view, /document\.title = SEITENTITEL/)
-  assert.match(view, /meta\[name="description"\]/)
-  assert.match(view, /document\.title = vorherTitel/)
+test('SEO: eigener Titel und Meta-Description kommen zentral aus seo.ts', () => {
+  const seo = readFileSync(join(here, '..', '..', 'seo', 'seo.ts'), 'utf8')
+  assert.match(seo, /path: '\/',\s*title: 'ENFAL: Autos finden, prüfen und besser entscheiden'/)
+  assert.match(seo, /START_BESCHREIBUNG/)
+  // Genau EINE Stelle setzt den Titel: RouteSeo im Routenbaum, nicht die Seite selbst.
+  assert.match(appTsx, /<RouteSeo \/>/)
+  assert.doesNotMatch(view, /document\.title/)
 })
 
 // ── Keine Kosten ────────────────────────────────────────────────────────────
