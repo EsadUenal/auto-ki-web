@@ -222,3 +222,29 @@ test('W: das Frontend setzt die lauf_id nicht selbst zusammen', () => {
   assert.doesNotMatch(c, /lauf_id:\s*(?!laufId)['"`a-zA-Z0-9_.]+/)
   assert.doesNotMatch(ohneKommentare(kauf) + ohneKommentare(verkauf), /localStorage[\s\S]{0,40}lauf_id/)
 })
+
+// ── Security Block 3 (P2-6): Rueckfragen haengen am gespeicherten Check ──────
+// Der Client schickt keinen Analysetext mehr, sondern nur die checkId. Das
+// Backend prueft Eigentum und Herkunft und baut den Kontext selbst.
+
+test('X: streamAnalyseFrage sendet nur die checkId, keinen Analysetext', () => {
+  const c = ohneKommentare(client)
+  assert.match(c, /export async function streamAnalyseFrage\(\s*checkId: number,/)
+  assert.match(c, /body: JSON\.stringify\(\{ check_id: checkId, frage, verlauf \}\)/)
+  assert.doesNotMatch(c, /analyse_kontext/)
+  assert.doesNotMatch(c, /check_typ/)
+})
+
+test('X: ohne checkId wird gar nicht erst gesendet', () => {
+  const chat = ohneKommentare(
+    readFileSync(new URL('./AnalyseFrageChat.tsx', import.meta.url), 'utf8'),
+  )
+  assert.match(chat, /if \(!frage \|\| streaming \|\| checkId == null\) return/)
+  assert.match(chat, /disabled=\{streaming \|\| checkId == null\}/)
+  assert.doesNotMatch(chat, /analyseKontext/)
+})
+
+test('X: die Check-Ansichten bauen keinen Analysetext mehr zusammen', () => {
+  assert.doesNotMatch(ohneKommentare(kauf), /buildAnalyseKontext/)
+  assert.doesNotMatch(ohneKommentare(verkauf), /buildAnalyseKontext/)
+})

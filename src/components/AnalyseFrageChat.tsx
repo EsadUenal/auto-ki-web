@@ -25,13 +25,14 @@ interface QA {
  * sobald die ID da ist.
  */
 export default function AnalyseFrageChat({
-  analyseKontext,
   checkId,
-  checkTyp = 'kauf',
 }: {
-  analyseKontext: string
+  /**
+   * ID des gespeicherten Checks. Das Backend lädt den Analysetext selbst daraus
+   * (Security Block 3, P2-6) — ohne ID ist keine Rückfrage möglich. Sie trifft
+   * kurz nach dem Speichern des frischen Checks ein.
+   */
   checkId?: number
-  checkTyp?: 'kauf' | 'verkauf' | 'ersatzteil'
 }) {
   const [qas, setQas] = useState<QA[]>([])
   const [input, setInput] = useState('')
@@ -106,7 +107,10 @@ export default function AnalyseFrageChat({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const frage = input.trim()
-    if (!frage || streaming) return
+    // Ohne checkId gibt es keine Rueckfrage: das Backend laedt den Analysetext
+    // aus dem gespeicherten Check (Security Block 3, P2-6). Bei einem frisch
+    // erstellten Check trifft die ID Sekundenbruchteile spaeter ein.
+    if (!frage || streaming || checkId == null) return
 
     setError(null)
     setInput('')
@@ -126,10 +130,9 @@ export default function AnalyseFrageChat({
 
     let answer = ''
     await streamAnalyseFrage(
-      analyseKontext,
+      checkId,
       frage,
       verlauf,
-      checkTyp,
       {
         onToken: (t) => {
           answer += t
@@ -208,13 +211,13 @@ export default function AnalyseFrageChat({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={streaming}
-              placeholder="Frage zur Analyse…"
+              disabled={streaming || checkId == null}
+              placeholder={checkId == null ? 'Analyse wird gespeichert…' : 'Frage zur Analyse…'}
               className="flex-1 text-sm bg-white border border-[#e6e1da] rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200/70 transition-colors placeholder-gray-400 disabled:opacity-60"
             />
             <button
               type="submit"
-              disabled={streaming || !input.trim()}
+              disabled={streaming || !input.trim() || checkId == null}
               aria-label="Frage senden"
               className="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl text-white transition-all disabled:opacity-40 disabled:saturate-50"
               style={{ background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)', boxShadow: '0 8px 18px -8px rgba(37,99,235,0.5)' }}

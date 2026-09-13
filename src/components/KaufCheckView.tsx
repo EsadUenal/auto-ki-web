@@ -11,7 +11,7 @@ import KeyFindings from './KeyFindings'
 import { marktanalyseOf, CollapsibleReport, ResearchFailedCard } from './ResultSummary'
 import {
   fahrzeugTitel, DatenbasisZeile, MarktpreisModul, LaufleistungKarte, FahrzeugprofilKarte,
-  PruefplanBereich, KaufLoadingStatus, PREIS_LABEL, formatUnbekannterPreiswert,
+  PruefplanBereich, KaufLoadingStatus,
 } from './KaufCheckDetails'
 import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo } from './autofinder/logic'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
@@ -580,80 +580,10 @@ function KaufCheckReport({
       {/* 9) Analyse-Chat. */}
       <AnalyseFrageChat
         key={chatKey}
-        analyseKontext={buildAnalyseKontext(result)}
         checkId={checkId}
-        checkTyp="kauf"
       />
     </div>
   )
-}
-
-// Baut den Analysetext, den die kontextgebundenen Rückfragen als Grundlage bekommen.
-// §15: erweitert um Kaufaktionen, Laufleistungskontext, Fahrzeugkontext und
-// technical_coverage, damit der Chat auch Fragen wie "Warum soll ich das bei der
-// Probefahrt prüfen?" oder "Was soll ich wegen des Zahnriemens fragen?" aus dem
-// tatsächlich angezeigten Kontext beantworten kann — keine Backend-Änderung, rein
-// zusätzlicher Text im ohnehin an den Chat übergebenen Kontext-String.
-function buildAnalyseKontext(result: KaufCheckResult): string {
-  const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
-  const empfLabel = (EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt).label
-  const preisKey = result.preis_bewertung?.toLowerCase()
-  const preisLabel = preisKey ? (PREIS_LABEL[preisKey] ?? formatUnbekannterPreiswert(preisKey)) : null
-  const marktpreis =
-    result.marktpreis_min || result.marktpreis_max
-      ? `${result.marktpreis_min?.toLocaleString('de-DE') ?? '?'} – ${result.marktpreis_max?.toLocaleString('de-DE') ?? '?'} €`
-      : null
-
-  const lk = result.laufleistungskontext
-  const laufleistungZeilen: string[] = []
-  if (lk) {
-    const teile: string[] = []
-    if (lk.kilometerstand != null) teile.push(`${lk.kilometerstand.toLocaleString('de-DE')} km`)
-    if (lk.fahrzeugalter_jahre != null) teile.push(`ca. ${lk.fahrzeugalter_jahre} Jahre alt`)
-    if (lk.km_pro_jahr != null) teile.push(`ca. ${lk.km_pro_jahr.toLocaleString('de-DE')} km/Jahr im Schnitt`)
-    if (teile.length) laufleistungZeilen.push(`Laufleistung: ${teile.join(', ')}.`)
-    for (const w of lk.wartungshinweise ?? []) {
-      laufleistungZeilen.push(`Wartungspunkt ${w.bauteil}: ${w.hinweis} (hinterlegtes Intervall: ${w.intervall_text}).`)
-    }
-  }
-
-  const fk = result.fahrzeugkontext
-  const fahrzeugkontextZeile = fk
-    ? [
-        fk.generation ? `Generation ${fk.generation}` : '',
-        fk.segment ? `Segment ${fk.segment}` : '',
-        fk.erkennung_generation ? `Erkennungsmerkmale: ${fk.erkennung_generation}` : '',
-      ].filter(Boolean).join(' · ')
-    : ''
-
-  const kaufaktionenZeilen: string[] = []
-  for (const liste of [result.kaufaktionen?.besichtigung, result.kaufaktionen?.probefahrt,
-                       result.kaufaktionen?.verkaeuferfragen, result.kaufaktionen?.dokumente]) {
-    if (!liste) continue
-    for (const a of liste.fahrzeugspezifisch ?? []) {
-      kaufaktionenZeilen.push(`[${liste.export_title}] ${a.titel}: ${a.aktion}`)
-    }
-  }
-
-  const coverageZeile = result.technical_coverage
-    ? `Datenbasis der technischen Angaben: ${result.technical_coverage}.`
-    : ''
-
-  return [
-    `Finale Kaufempfehlung: ${empfLabel}`,
-    preisLabel ? `Preisbewertung: ${preisLabel}` : '',
-    marktpreis ? `Marktpreis-Einschätzung: ${marktpreis}` : '',
-    coverageZeile,
-    fahrzeugkontextZeile ? `Fahrzeugprofil: ${fahrzeugkontextZeile}` : '',
-    ...laufleistungZeilen,
-    kaufaktionenZeilen.length ? '--- Fahrzeugspezifische Prüfpunkte (Besichtigung/Probefahrt/Verkäuferfragen/Dokumente) ---' : '',
-    ...kaufaktionenZeilen,
-    '',
-    '--- Detailbericht ---',
-    result.bericht,
-  ]
-    .filter(Boolean)
-    .join('\n')
 }
 
 const inputCls =

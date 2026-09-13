@@ -566,15 +566,17 @@ export interface AnalyseFrageCallbacks {
 }
 
 /**
- * Streamt die Antwort auf eine kontextgebundene Rückfrage zu einer Check-Analyse.
- * Der Analysetext wird als `analyseKontext` mitgeschickt; `verlauf` enthält die
- * bisherigen Frage/Antwort-Paare (Multi-Turn). Verbraucht kein Check-Kontingent.
+ * Streamt die Antwort auf eine Rückfrage zu einem gespeicherten Check.
+ *
+ * Security Block 3 (P2-6): Der Client schickt KEINEN Analysetext mehr, sondern
+ * nur die `checkId`. Das Backend prüft Eigentum und Herkunft des Checks und
+ * baut den Kontext selbst aus dem gespeicherten Ergebnis. `verlauf` enthält
+ * weiterhin die bisherigen Frage/Antwort-Paare (Multi-Turn).
  */
 export async function streamAnalyseFrage(
-  analyseKontext: string,
+  checkId: number,
   frage: string,
   verlauf: VerlaufItem[],
-  checkTyp: 'kauf' | 'verkauf' | 'ersatzteil',
   callbacks: AnalyseFrageCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -587,12 +589,7 @@ export async function streamAnalyseFrage(
       // haengt. Rueckfragen zaehlen serverseitig in einen EIGENEN Topf und
       // verbrauchen das kostenlose Chat-Kontingent nicht.
       credentials: 'include',
-      body: JSON.stringify({
-        analyse_kontext: analyseKontext,
-        frage,
-        verlauf,
-        check_typ: checkTyp,
-      }),
+      body: JSON.stringify({ check_id: checkId, frage, verlauf }),
       signal,
     })
   } catch (e) {

@@ -520,37 +520,10 @@ function VerkaufsReport({
 
       <AnalyseFrageChat
         key={chatKey}
-        analyseKontext={buildAnalyseKontext(result)}
         checkId={checkId}
-        checkTyp="verkauf"
       />
     </div>
   )
-}
-
-// Baut den Analysetext, den die kontextgebundenen Rückfragen als Grundlage bekommen:
-// Preisspanne (Schnellverkauf/Empfohlen/Maximum) + Marktreferenz + Detailbericht.
-function buildAnalyseKontext(result: VerkaufsCheckResult): string {
-  const eur = (n?: number) => (n != null ? `${n.toLocaleString('de-DE')} €` : null)
-  const preise = [
-    result.empfohlener_preis != null ? `Empfohlener Preis: ${eur(result.empfohlener_preis)}` : '',
-    result.schnellverkaufs_preis != null ? `Schnellverkauf: ${eur(result.schnellverkaufs_preis)}` : '',
-    result.maximal_preis != null ? `Maximum: ${eur(result.maximal_preis)}` : '',
-  ].filter(Boolean).join(' | ')
-  const marktpreis =
-    result.marktpreis_min || result.marktpreis_max
-      ? `Marktpreis-Spanne (Referenz): ${result.marktpreis_min?.toLocaleString('de-DE') ?? '?'} – ${result.marktpreis_max?.toLocaleString('de-DE') ?? '?'} €`
-      : null
-
-  return [
-    preise,
-    marktpreis,
-    '',
-    '--- Detailbericht & Tipps ---',
-    result.bericht,
-  ]
-    .filter(Boolean)
-    .join('\n')
 }
 
 function PriceCard({
