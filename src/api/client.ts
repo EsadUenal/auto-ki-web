@@ -241,10 +241,14 @@ export async function apiSaveCheck(
   titel: string,
   eingabe: object,
   ergebnis: object,
+  laufId?: string,
 ): Promise<ApiCheckDetail> {
+  // lauf_id: Nachweis aus der Antwort des Check-Laufs. Das Backend prueft ihn
+  // serverseitig; ohne ihn wird der Check zwar gespeichert, gilt aber nicht als
+  // echter, bezahlter Lauf (dann keine Inserats-Optimierung).
   const res = await checkFetch('', {
     method: 'POST',
-    body: JSON.stringify({ typ, titel, eingabe, ergebnis }),
+    body: JSON.stringify({ typ, titel, eingabe, ergebnis, lauf_id: laufId }),
   })
   if (!res.ok) throw new Error('Check speichern fehlgeschlagen')
   return res.json()

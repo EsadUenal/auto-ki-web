@@ -198,3 +198,27 @@ test('P/Q: AutoFinder und Autokosten bleiben ohne Bezahlschranke', () => {
   }
   assert.doesNotMatch(kosten, /api-client|apiPaymentStatus/)
 })
+
+// ── Security Block 2 (P1-4): Herkunftsnachweis des Check-Laufs ───────────────
+// Das Frontend erfindet keine Berechtigung — es reicht nur die vom Backend
+// ausgestellte lauf_id zurueck. Ohne sie gilt ein gespeicherter Check
+// serverseitig nicht als echt (dann keine Inserats-Optimierung).
+
+test('W: apiSaveCheck reicht die lauf_id des Laufs an das Backend zurueck', () => {
+  const c = ohneKommentare(client)
+  assert.match(c, /export async function apiSaveCheck\([\s\S]*?laufId\?: string,\s*\)/)
+  assert.match(c, /body: JSON\.stringify\(\{ typ, titel, eingabe, ergebnis, lauf_id: laufId \}\)/)
+})
+
+test('W: beide Check-Ansichten geben den Nachweis aus der Antwort weiter', () => {
+  assert.match(ohneKommentare(kauf), /apiSaveCheck\('kauf', titel, form, res, res\.lauf_id\)/)
+  assert.match(ohneKommentare(verkauf), /apiSaveCheck\('verkauf', titel, form, res, res\.lauf_id\)/)
+})
+
+test('W: das Frontend setzt die lauf_id nicht selbst zusammen', () => {
+  const c = ohneKommentare(client)
+  // Nur Weiterreichen (res.lauf_id / laufId). Kein Erfinden, kein Ableiten aus
+  // anderen Feldern, keine Speicherung als eigener Zustand.
+  assert.doesNotMatch(c, /lauf_id:\s*(?!laufId)['"`a-zA-Z0-9_.]+/)
+  assert.doesNotMatch(ohneKommentare(kauf) + ohneKommentare(verkauf), /localStorage[\s\S]{0,40}lauf_id/)
+})

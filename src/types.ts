@@ -418,6 +418,9 @@ export interface KaufCheckResult {
   // Reliability-Sprint (optional; alte Checks besitzen diese Felder nicht)
   price_assessment?: PriceAssessment | null
   research_status?: ResearchStatus
+  /** Vom Backend ausgestellter Nachweis des Laufs — beim Speichern zurueckreichen.
+   *  Nur damit gilt ein gespeicherter Check serverseitig als echt (Security Block 2). */
+  lauf_id?: string
   // KaufCheck-Backend-Freeze (P0-1/P1-3/P1-4/P2-5) — alle additiv, alte
   // gespeicherte Checks besitzen diese Felder nicht (defensiv optional).
   identitaet_konfidenz?: IdentitaetKonfidenz
@@ -507,6 +510,9 @@ export interface VerkaufsCheckResult {
   // Reliability-Sprint (optional; alte Checks besitzen diese Felder nicht)
   price_assessment?: PriceAssessment | null
   research_status?: ResearchStatus
+  /** Vom Backend ausgestellter Nachweis des Laufs — beim Speichern zurueckreichen.
+   *  Nur damit gilt ein gespeicherter Check serverseitig als echt (Security Block 2). */
+  lauf_id?: string
   // Phase 4 (optional; alte Checks besitzen diese Felder nicht)
   listing_analyse?: ListingAnalyse | null
   inserat_optimierung?: InseratOptimierung | null

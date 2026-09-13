@@ -148,7 +148,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
       if (res.research_status === 'research_failed') return
       // Im Backend speichern; die zurückgegebene ID koppelt die Analyse-Rückfragen.
       const titel = [form.marke, form.modell, form.baujahr].filter(Boolean).join(' ')
-      apiSaveCheck('kauf', titel, form, res)
+      apiSaveCheck('kauf', titel, form, res, res.lauf_id)
         .then((saved) => {
           setFreshCheckId(saved.id)
           onCheckSaved?.()
