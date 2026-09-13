@@ -11,7 +11,7 @@ const RECHTS_LINKS = [
 
 const FAQ_ITEMS = [
   {
-    frage: 'Wie funktioniert ein Kauf-Check?',
+    frage: 'Wie funktioniert ein KaufCheck?',
     antwort:
       'Du gibst die Fahrzeugdaten ein (Marke, Modell, Baujahr, Kilometerstand, Preis), entweder manuell oder als Freitext aus einem Inserat. Die KI analysiert den Zustand, prüft bekannte Schwachstellen der Baureihe, vergleicht den Preis mit dem Markt und gibt dir eine klare Empfehlung: kaufen, verhandeln oder Finger weg.',
   },

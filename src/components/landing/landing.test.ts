@@ -532,7 +532,8 @@ test('Reduced Motion: wird erkannt und überall berücksichtigt', () => {
 
 test('Reduced Motion: der Ruhezustand zeigt den ENDzustand, nicht einen leeren', () => {
   // Zähler stehen sofort auf dem Zielwert …
-  assert.match(motion, /useState\(reduziert \? ziel : 0\)/)
+  // Reduzierte Bewegung UND Build-Prerender (kein window) zeigen den Endwert.
+  assert.match(motion, /useState\(reduziert \|\| typeof window === 'undefined' \? ziel : 0\)/)
   assert.match(motion, /if \(reduziert\) \{ setWert\(ziel\); return \}/)
   // … Sequenzen sind sofort vollständig …
   assert.match(motion, /useState\(reduziert \? anzahl : 0\)/)
@@ -695,4 +696,10 @@ test('F: Preisbereiche behalten ihren Bis-Strich', () => {
 test('Copy: der Abschlusssatz ist der menschlich formulierte', () => {
   assert.match(view, /Starte kostenlos\. Ohne Zahlungsdaten und ohne Abo\./)
   assert.doesNotMatch(ohneKommentare(view), /Starte kostenlos \u2014/)
+})
+
+test('Produktaussage: nur der tatsächlich vorhandene Übergang AutoFinder → KaufCheck', () => {
+  // Einen Übergang AutoFinder → Autokosten gibt es nicht; die Seite darf ihn nicht versprechen.
+  assert.match(view, /wandert ohne Abtippen in den KaufCheck\./)
+  assert.doesNotMatch(view, /in die Kostenrechnung und in den KaufCheck|AutoFinder → Autokosten → KaufCheck/)
 })

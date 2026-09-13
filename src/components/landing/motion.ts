@@ -80,7 +80,10 @@ export function useInView<T extends Element>(
  * ist aber Information und muss da sein.
  */
 export function useZaehler(ziel: number, aktiv: boolean, reduziert: boolean, dauerMs = 900): number {
-  const [wert, setWert] = useState(reduziert ? ziel : 0)
+  // Beim Build-Prerender (kein window) steht der Endwert im HTML — sonst lesen
+  // Crawler ohne JavaScript z. B. "0 KaufChecks" bei ENFAL Plus. Im Browser
+  // startet der Zähler weiterhin bei 0 und läuft hoch.
+  const [wert, setWert] = useState(reduziert || typeof window === 'undefined' ? ziel : 0)
   const rafId = useRef<number>()
 
   useEffect(() => {

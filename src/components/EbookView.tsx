@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { X, ShoppingBag, BookOpen, Mail, CheckCircle, AlertCircle, Download } from 'lucide-react'
+import { X, ShoppingBag, BookOpen, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import {
   apiListEbooks, apiEbookCheckout, apiListEbookBestellungen, apiDownloadEbook,
   apiVerifyPayment,
@@ -199,6 +199,7 @@ function fmt(n: number) {
 export default function EbookView() {
   const [ebooks, setEbooks] = useState<ApiEbook[]>([])
   const [loading, setLoading] = useState(true)
+  const [ladeFehler, setLadeFehler] = useState(false)
   const [selected, setSelected] = useState<ApiEbook | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -215,7 +216,7 @@ export default function EbookView() {
   useEffect(() => {
     apiListEbooks()
       .then(setEbooks)
-      .catch(() => {})
+      .catch(() => setLadeFehler(true))
       .finally(() => setLoading(false))
 
     const params = new URLSearchParams(window.location.search)
@@ -323,7 +324,7 @@ export default function EbookView() {
             }
             <span>
               {banner === 'success'
-                ? 'Zahlung erfolgreich! Dein E-Book wird dir per E-Mail zugeschickt.'
+                ? 'Zahlung erfolgreich! Dein E-Book steht unter „Meine E-Books“ als PDF-Download bereit.'
                 : 'Zahlung abgebrochen. Du kannst es jederzeit erneut versuchen.'
               }
             </span>
@@ -376,6 +377,11 @@ export default function EbookView() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : ladeFehler ? (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm bg-amber-50 text-amber-800 border border-amber-200">
+              <AlertCircle size={16} className="shrink-0 text-amber-500" />
+              <span>Die E-Books konnten gerade nicht geladen werden. Bitte versuche es später erneut.</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -510,9 +516,6 @@ export default function EbookView() {
                           }
                           PDF laden
                         </button>
-                        <span className="flex items-center gap-1 text-[10px] text-green-600">
-                          <Mail size={10} /> per E-Mail zugeschickt
-                        </span>
                       </>
                     )}
                   </div>
@@ -572,7 +575,7 @@ export default function EbookView() {
               <div className="flex items-start gap-2 mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
                 <Download size={14} className="text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Digitales Produkt: nach dem Kauf erhältst du den Download-Link per E-Mail.
+                  Digitales Produkt: Nach dem Kauf steht das PDF unter „Meine E-Books“ zum Download bereit.
                 </p>
               </div>
 
@@ -587,7 +590,7 @@ export default function EbookView() {
                 {selected.hat_rabatt && (
                   <p className="text-xs text-orange-600 font-medium mb-2">Dein Abo-Rabattpreis (10 % Rabatt)</p>
                 )}
-                <p className="text-xs text-gray-400 mb-4">inkl. MwSt. · sofort nach Kauf per E-Mail</p>
+                <p className="text-xs text-gray-400 mb-4">inkl. MwSt. · sofort nach Kauf als PDF-Download</p>
 
                 {/* Pflicht-Zustimmungen vor digitalem Kauf */}
                 <div className="space-y-2.5 mb-4">

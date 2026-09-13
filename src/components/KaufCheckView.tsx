@@ -184,7 +184,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/10 border border-blue-400/25 text-blue-600">
               <ShoppingCart size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Kauf-Check</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · KaufCheck</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
             Kauf mit Sicherheit.
@@ -347,7 +347,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
               style={{ background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)', boxShadow: '0 10px 24px -8px rgba(37,99,235,0.5), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
               {loading
                 ? <><Loader2 size={16} className="animate-spin" /> Analysiere Inserat…</>
-                : <><ShoppingCart size={16} /> Kauf-Check starten</>}
+                : <><ShoppingCart size={16} /> KaufCheck starten</>}
             </button>
           )}
         </form>

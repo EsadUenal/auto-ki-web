@@ -432,8 +432,8 @@ export default function LandingView() {
                 nr: '03', icon: <Layers size={20} aria-hidden="true" />,
                 titel: 'Vom Finden bis zum Prüfen',
                 text: 'Suchen, rechnen, prüfen und nachfragen greifen ineinander. Das gefundene Fahrzeug '
-                  + 'wandert ohne Abtippen in die Kostenrechnung und in den KaufCheck.',
-                beleg: 'AutoFinder → Autokosten → KaufCheck',
+                  + 'wandert ohne Abtippen in den KaufCheck.',
+                beleg: 'AutoFinder → KaufCheck',
               },
             ].map((p, i) => (
               <Reveal key={p.nr} verzoegerung={i * 90}>

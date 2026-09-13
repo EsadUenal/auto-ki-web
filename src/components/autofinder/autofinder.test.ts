@@ -417,12 +417,12 @@ test('Sidebar A: AutoFinder-Historie-Bereich bleibt vorhanden', () => {
 })
 test('Sidebar B: eigener Kauf-Check-Historie-Bereich (aus der bestehenden checks-Liste)', () => {
   const s = sidebarSrc()
-  assert.match(s, /renderCheckSection\('Kauf-Check', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf'\)/)
+  assert.match(s, /renderCheckSection\('KaufCheck', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf'\)/)
   assert.match(s, /const kaufChecks = checks\.filter\(\(c\) => c\.typ === 'kauf'\)\.slice\(0, HISTORY_SIDEBAR_MAX\)/)
 })
 test('Sidebar C: eigener Verkaufs-Check-Historie-Bereich', () => {
   const s = sidebarSrc()
-  assert.match(s, /renderCheckSection\('Verkaufs-Check', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf'\)/)
+  assert.match(s, /renderCheckSection\('VerkaufsCheck', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf'\)/)
   assert.match(s, /const verkaufChecks = checks\.filter\(\(c\) => c\.typ === 'verkauf'\)\.slice\(0, HISTORY_SIDEBAR_MAX\)/)
 })
 test('Sidebar D: max. 5 Einträge je Bereich (HISTORY_SIDEBAR_MAX)', () => {

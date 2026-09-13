@@ -60,11 +60,26 @@ export interface AuthUser {
 }
 
 async function authFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`${BASE_URL}/api/v1/auth${path}`, {
-    ...init,
-    credentials: 'include',   // httpOnly-Cookie mitsenden
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  })
+  try {
+    return await fetch(`${BASE_URL}/api/v1/auth${path}`, {
+      ...init,
+      credentials: 'include',   // httpOnly-Cookie mitsenden
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    })
+  } catch {
+    // Netzwerkfehler (Server aus, offline): verständlicher Text statt des rohen
+    // Browser-Fehlers "Failed to fetch" im Login-/Registrierungsformular.
+    throw new Error(BACKEND_NICHT_ERREICHBAR)
+  }
+}
+
+/** Antwort von Login/Registrierung: nie rohe Parser- oder Proxy-Fehler anzeigen. */
+async function authAntwort(res: Response, aktion: string): Promise<AuthUser> {
+  const data: unknown = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error(data ? extractMessage(data) : consumerServiceError(aktion, res.status))
+  }
+  return data as AuthUser
 }
 
 function extractMessage(data: unknown): string {
@@ -152,16 +167,12 @@ export async function authRegister(email: string, password: string, agbAkzeptier
     method: 'POST',
     body: JSON.stringify({ email, password, agb_akzeptiert: agbAkzeptiert }),
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(extractMessage(data))
-  return data as AuthUser
+  return authAntwort(res, 'Die Registrierung')
 }
 
 export async function authLogin(email: string, password: string): Promise<AuthUser> {
   const res = await authFetch('/login', { method: 'POST', body: JSON.stringify({ email, password }) })
-  const data = await res.json()
-  if (!res.ok) throw new Error(extractMessage(data))
-  return data as AuthUser
+  return authAntwort(res, 'Die Anmeldung')
 }
 
 export async function authMe(): Promise<AuthUser | null> {
@@ -1052,7 +1063,7 @@ export async function runKaufCheck(
 
   if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
-    throw new Error(consumerServiceError('Der Kauf-Check', response.status))
+    throw new Error(consumerServiceError('Der KaufCheck', response.status))
   }
 
   return response.json() as Promise<KaufCheckResult>
@@ -1120,7 +1131,7 @@ export async function runVerkaufsCheck(
 
   if (response.status === 402) throw new PaymentRequiredError()
   if (!response.ok) {
-    throw new Error(consumerServiceError('Der Verkaufs-Check', response.status))
+    throw new Error(consumerServiceError('Der VerkaufsCheck', response.status))
   }
 
   return response.json() as Promise<VerkaufsCheckResult>

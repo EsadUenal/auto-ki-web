@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import ChatView from './components/ChatView'
@@ -67,6 +67,24 @@ function Guard({ authed, loading, children }: { authed: boolean; loading: boolea
   if (authed) return <>{children}</>
   setReturnTo(location.pathname + location.search)
   return <Navigate to="/login" replace />
+}
+
+// ── 404 ───────────────────────────────────────────────────────────────────────
+function NichtGefunden() {
+  return (
+    <div className="h-full overflow-y-auto flex items-center justify-center px-6 py-16">
+      <div className="max-w-md text-center">
+        <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">Fehler 404</p>
+        <h1 className="mt-3 text-2xl font-bold text-gray-900 tracking-[-0.02em]">Diese Seite gibt es nicht.</h1>
+        <p className="mt-3 text-sm text-gray-500 leading-relaxed">
+          Vielleicht ist der Link veraltet oder falsch geschrieben.
+        </p>
+        <Link to="/" className="mt-6 inline-flex items-center justify-center rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors">
+          Zur Startseite
+        </Link>
+      </div>
+    </div>
+  )
 }
 
 // ── Startseite ────────────────────────────────────────────────────────────────
@@ -431,6 +449,9 @@ function AppContent() {
           <Route path="/pricing" element={<PricingView />} />
           <Route path="/settings" element={<Guard authed={!!user} loading={isLoading}><SettingsView /></Guard>} />
           <Route path="/help" element={<Guard authed={!!user} loading={isLoading}><HelpView /></Guard>} />
+          {/* Unbekannte Pfade: verständlicher Hinweis statt leerer Fläche.
+              SEO: die App-Shell trägt dafür bereits noindex (src/seo/seo.ts). */}
+          <Route path="*" element={<NichtGefunden />} />
         </Routes>
         </div>
         <Footer />

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
-  LogOut, Pencil, Trash2, Check, X, CreditCard,
+  LogIn, LogOut, Pencil, Trash2, Check, X, CreditCard,
   Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Store, Car, Calculator,
   Sparkles,
 } from 'lucide-react'
@@ -44,7 +44,7 @@ export default function Sidebar({
   mobileOpen = false, onMobileClose,
 }: SidebarProps) {
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
+  const { user, isLoading, logout } = useAuth()
 
   const [editingConvId, setEditingConvId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -184,8 +184,12 @@ export default function Sidebar({
 
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
-        <img src="/logo.svg" alt="ENFAL" className="w-7 h-7 rounded-lg shrink-0" />
-        <span className="font-semibold text-sm tracking-tight flex-1">ENFAL</span>
+        {/* Logo führt zur Startseite — für Besucher, die direkt auf einer
+            öffentlichen Werkzeugseite landen, der einzige Weg zur Übersicht. */}
+        <Link to="/" onClick={onMobileClose} className="flex items-center gap-2.5 flex-1 min-w-0 rounded-lg">
+          <img src="/logo.svg" alt="" className="w-7 h-7 rounded-lg shrink-0" />
+          <span className="font-semibold text-sm tracking-tight">ENFAL</span>
+        </Link>
         {/* Schließen-Button — nur auf Mobile/Tablet sichtbar */}
         <button
           onClick={onMobileClose}
@@ -212,8 +216,8 @@ export default function Sidebar({
         <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider">Werkzeuge</p>
         {[
           { to: '/chat',          Icon: MessageSquare, label: 'KI-Chat' },
-          { to: '/kaufcheck',     Icon: ShoppingCart,  label: 'Kauf-Check' },
-          { to: '/verkaufscheck', Icon: TrendingUp,    label: 'Verkaufs-Check' },
+          { to: '/kaufcheck',     Icon: ShoppingCart,  label: 'KaufCheck' },
+          { to: '/verkaufscheck', Icon: TrendingUp,    label: 'VerkaufsCheck' },
           { to: '/autofinder',    Icon: Car,           label: 'AutoFinder' },
           { to: '/autokosten',    Icon: Calculator,    label: 'Autokosten' },
           // Dealer-Bereich nur bei effektiver Berechtigung (MAX-Tarif ODER manueller
@@ -338,8 +342,8 @@ export default function Sidebar({
             </div>
           )}
 
-          {renderCheckSection('Kauf-Check', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf')}
-          {renderCheckSection('Verkaufs-Check', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf')}
+          {renderCheckSection('KaufCheck', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf')}
+          {renderCheckSection('VerkaufsCheck', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf')}
         </div>
       )}
 
@@ -438,6 +442,18 @@ export default function Sidebar({
               </button>
             </div>
           </div>
+        )}
+
+        {/* Abgemeldete Besucher (öffentliche Werkzeugseiten): Einstieg ins Konto. */}
+        {!user && !isLoading && (
+          <NavLink
+            to="/login"
+            onClick={onMobileClose}
+            className="flex items-center gap-2.5 mx-3 my-3 px-3 py-2 rounded-lg text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"
+          >
+            <LogIn size={16} />
+            Anmelden
+          </NavLink>
         )}
 
         {/* ── Trigger-Button ───────────────────────────────────────────── */}

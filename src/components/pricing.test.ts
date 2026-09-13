@@ -118,3 +118,47 @@ test('Pricing ist öffentlich; Legacy-Abos bleiben in Settings verwaltbar', () =
   assert.match(settings, /const hatAbo = hatLegacyAbo \|\| !!user\.plus_aktiv/)
   assert.match(settings, /hatLegacyAbo = user\.abo_typ !== 'none'/)
 })
+
+// ── Öffentliche Seiten + E-Books: Release-Prüfung ─────────────────────────────
+
+const ebooks = readFileSync(new URL('./EbookView.tsx', import.meta.url), 'utf8')
+const appTsx = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8')
+
+test('Produktnamen einheitlich: KaufCheck / VerkaufsCheck (keine Bindestrich-Varianten)', () => {
+  assert.match(sidebar, /label: 'KaufCheck'/)
+  assert.match(sidebar, /label: 'VerkaufsCheck'/)
+  for (const q of [sidebar, kaufView(), verkaufView()]) {
+    assert.doesNotMatch(q.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''), /['>]\s*(ENFAL · )?Kauf-Check|Verkaufs-Check['<]/)
+  }
+})
+
+test('Sidebar: Logo führt zur Startseite, Abgemeldete sehen "Anmelden"', () => {
+  assert.match(sidebar, /<Link to="\/" onClick=\{onMobileClose\}/)
+  assert.match(sidebar, /\{!user && !isLoading && \(\s*<NavLink\s+to="\/login"/)
+})
+
+test('E-Books: keine E-Mail-Lieferung versprochen (es gibt keinen E-Mail-Versand)', () => {
+  assert.doesNotMatch(ebooks, /per E-Mail|E-Mail zugeschickt|Download-Link per/)
+  assert.match(ebooks, /„Meine E-Books“/)
+})
+
+test('E-Books: Ladefehler des Katalogs wird verständlich angezeigt', () => {
+  assert.match(ebooks, /\.catch\(\(\) => setLadeFehler\(true\)\)/)
+  assert.match(ebooks, /E-Books konnten gerade nicht geladen werden/)
+})
+
+test('Unbekannte Pfade zeigen eine 404-Seite statt einer leeren Fläche', () => {
+  assert.match(appTsx, /<Route path="\*" element=\{<NichtGefunden \/>\} \/>/)
+  assert.match(appTsx, /Diese Seite gibt es nicht\./)
+})
+
+function kaufView() { return readFileSync(new URL('./KaufCheckView.tsx', import.meta.url), 'utf8') }
+function verkaufView() { return readFileSync(new URL('./VerkaufsCheckView.tsx', import.meta.url), 'utf8') }
+
+test('Login/Registrierung: Netzwerk- und Proxyfehler erscheinen nie als Rohtext', () => {
+  const client = readFileSync(new URL('../api/client.ts', import.meta.url), 'utf8')
+  assert.match(client, /catch \{\s*\/\/[^\n]*\n[^\n]*\n\s*throw new Error\(BACKEND_NICHT_ERREICHBAR\)/)
+  assert.match(client, /return authAntwort\(res, 'Die Anmeldung'\)/)
+  assert.match(client, /return authAntwort\(res, 'Die Registrierung'\)/)
+  assert.match(client, /await res\.json\(\)\.catch\(\(\) => null\)/)
+})

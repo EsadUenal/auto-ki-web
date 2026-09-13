@@ -162,7 +162,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-green-500/10 border border-green-400/25 text-green-600">
               <TrendingUp size={12} />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · Verkaufs-Check</span>
+            <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-gray-500">ENFAL · VerkaufsCheck</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-[-0.03em] leading-[1.0]">
             Was dein Auto

@@ -25,7 +25,7 @@ const robots = lies('public', 'robots.txt')
 const nginx = lies('nginx.conf')
 
 // Alle Routen aus App.tsx — jede muss klassifiziert sein (öffentlich ODER privat).
-const APP_PFADE = [...appTsx.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '/*')
+const APP_PFADE = [...appTsx.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== '/*' && p !== '*')
 const PRIVAT = [
   '/login', '/chat', '/kaufcheck', '/verkaufscheck', '/dealer', '/dealer/:id', '/entdecken',
   '/ebooks', '/ersatzteile', '/settings', '/help',
