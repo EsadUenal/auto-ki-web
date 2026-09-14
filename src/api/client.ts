@@ -186,6 +186,23 @@ export async function authMe(): Promise<AuthUser | null> {
   }
 }
 
+/** Löst den Bestätigungslink aus der Mail ein (ohne Login — der Token ist das Geheimnis). */
+export async function apiVerifyEmail(token: string): Promise<void> {
+  const res = await authFetch('/verify-email', { method: 'POST', body: JSON.stringify({ token }) })
+  if (!res.ok) {
+    const data: unknown = await res.json().catch(() => null)
+    throw new Error(data ? extractMessage(data) : consumerServiceError('Die Bestätigung', res.status))
+  }
+}
+
+/** Fordert einen neuen Bestätigungslink an (nur angemeldet). true = bereits bestätigt. */
+export async function apiResendVerification(): Promise<boolean> {
+  const res = await authFetch('/resend-verification', { method: 'POST' })
+  const data: unknown = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data ? extractMessage(data) : consumerServiceError('Der Versand', res.status))
+  return Boolean((data as { email_verified?: boolean } | null)?.email_verified)
+}
+
 export async function authLogout(): Promise<void> {
   await authFetch('/logout', { method: 'POST' }).catch(() => {})
 }

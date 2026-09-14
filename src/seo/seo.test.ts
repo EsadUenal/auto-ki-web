@@ -31,6 +31,8 @@ const PRIVAT = [
   '/ebooks', '/ersatzteile', '/settings', '/help',
   // Rechtstexte: bis zum Legal-Block unfertig -> noindex, nicht in der Sitemap.
   '/impressum', '/datenschutz', '/agb', '/widerruf',
+  // Landeseite des Bestätigungslinks: persönlicher Einmal-Link, nie indexieren.
+  '/email-bestaetigen',
 ]
 const OEFFENTLICH = PUBLIC_ROUTES.map((r) => r.path)
 const VERBOTEN = /localhost|127\.0\.0\.1|getvira|autoki\.de|\bvira\b|app\.getenfal\.de|api\.getenfal\.de/i
@@ -188,6 +190,28 @@ test('nginx: vorgerenderte Seiten direkt, alles andere auf die noindex-App-Shell
   assert.match(nginx, /try_files \$uri \$uri\/index\.html \/spa\.html;/)
   assert.doesNotMatch(nginx, /try_files[^;]*\/index\.html;\s*$/m)
   assert.match(nginx, /expires \$enfal_html_expires;/)
+})
+test('nginx: Security-Header gelten in JEDER location (add_header wird nicht vererbt)', () => {
+  const snippet = lies('nginx-security-headers.conf')
+  for (const h of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy',
+    'Strict-Transport-Security', 'Cross-Origin-Opener-Policy', 'Cross-Origin-Resource-Policy']) {
+    assert.match(snippet, new RegExp(`^add_header ${h} .* always;$`, 'm'), h)
+  }
+  // Ohne Kommentare: jede location mit eigenem add_header muss das Snippet einbinden.
+  const code = nginx.replace(/#.*$/gm, '')
+  const include = 'include /etc/nginx/snippets/enfal-security-headers.conf;'
+  assert.ok(code.split('\n').some((l) => l.trim() === include), 'server-weites include fehlt')
+  for (const block of code.split(/\blocation\b/).slice(1)) {
+    const rumpf = block.slice(0, block.indexOf('}'))
+    if (/add_header/.test(rumpf)) assert.ok(rumpf.includes(include), `location ohne Snippet: ${rumpf.split('{')[0].trim()}`)
+  }
+  assert.doesNotMatch(code, /add_header (X-Content-Type-Options|Strict-Transport-Security)/, 'Header nur im Snippet pflegen')
+  assert.match(lies('Dockerfile'), /COPY nginx-security-headers\.conf \/etc\/nginx\/snippets\/enfal-security-headers\.conf/)
+})
+test('Image: lokales Bild-Backup und Build-Output nie im Docker-Kontext', () => {
+  const ignore = lies('.dockerignore').split(/\r?\n/).map((l) => l.trim())
+  for (const e of ['public/cars/_backup/', 'dist/', 'dist-ssr/', '.env', '.env.*']) assert.ok(ignore.includes(e), e)
+  assert.match(lies('Dockerfile'), /node scripts\/verify-build\.mjs env[\s\S]*npm run build[\s\S]*node scripts\/verify-build\.mjs dist/)
 })
 
 // ── Gebautes HTML (dist/) ───────────────────────────────────────────────────

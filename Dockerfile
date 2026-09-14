@@ -1,8 +1,8 @@
 # Vira Frontend — Produktions-Image (Railway / beliebiger Docker-Host)
 # ---------------------------------------------------------------------------
 # Vite bettet VITE_*-Variablen zur BUILD-Zeit in das JS-Bundle ein (nicht zur
-# Laufzeit). Deshalb müssen VITE_API_BASE_URL/VITE_API_KEY als Docker-Build-Args
-# gesetzt werden — in Railway unter Service → Settings → Build → Build Args.
+# Laufzeit). Deshalb müssen VITE_API_BASE_URL/VITE_API_KEY beim Build anliegen —
+# in Railway als Service-Variablen (Railway reicht sie an die ARGs unten durch).
 # Ändert sich die Backend-URL oder der API-Key, muss dieses Image NEU gebaut
 # werden (ein reiner Redeploy mit geänderter Runtime-Env genügt NICHT).
 #
@@ -27,13 +27,17 @@ ARG VITE_API_KEY
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_API_KEY=${VITE_API_KEY}
 
-RUN npm run build
+# Wächter vor und nach dem Build (scripts/verify-build.mjs): bricht ab, wenn die
+# API-Adresse fehlt/kein https ist, ein Secret als VITE_-Variable anliegt, das
+# Bundle auf localhost zeigt oder das lokale Bild-Backup mitgebaut wurde.
+RUN node scripts/verify-build.mjs env     && npm run build     && node scripts/verify-build.mjs dist
 
 # ── Stage 2: Serve (statisches Bundle via nginx) ─────────────────────────────
 FROM nginx:1.27-alpine
 
 # Non-root-Betrieb — nginx:alpine bringt bereits einen "nginx"-User mit.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-security-headers.conf /etc/nginx/snippets/enfal-security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Railway injiziert $PORT; nginx.conf verwendet ein envsubst-Template dafür.

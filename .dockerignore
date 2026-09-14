@@ -5,6 +5,12 @@
 
 # ── Build-Output (wird im Image frisch erzeugt) ──────────────────────────────
 dist/
+dist-ssr/
+
+# ── Lokales Backup alter Bild-Assets (~100 MB, gitignored) ─────────────────
+# Läge es im Build-Kontext, kopierte Vite es aus public/ nach dist/ und damit
+# ins nginx-Image. Die echten Fahrzeugbilder in public/cars/ bleiben drin.
+public/cars/_backup/
 
 # ── Abhängigkeiten (werden im Image via npm ci neu installiert) ─────────────
 node_modules/

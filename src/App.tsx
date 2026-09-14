@@ -15,6 +15,7 @@ import SettingsView from './components/SettingsView'
 import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
+import EmailBestaetigenView from './components/EmailBestaetigenView'
 import LandingView from './components/landing/LandingView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
 import AutokostenView from './components/autokosten/AutokostenView'
@@ -507,6 +508,9 @@ export function AppRoutes() {
         <Route path="/datenschutz" element={<LegalView page="datenschutz" />} />
         <Route path="/agb" element={<LegalView page="agb" />} />
         <Route path="/widerruf" element={<LegalView page="widerruf" />} />
+        {/* Landeseite des Bestätigungslinks aus der Registrierungsmail —
+            ohne Login erreichbar (Link kann in anderem Browser landen). */}
+        <Route path="/email-bestaetigen" element={<EmailBestaetigenView />} />
         {/* Die ENFAL-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
             sitzt pro Route (<Guard>), damit die öffentliche /autofinder-
             Seite dieselbe Shell nutzen kann. */}
