@@ -1,0 +1,56 @@
+# ENFAL — einfache Produktionsüberwachung (Uptime + Grundschutz).
+#
+# Läuft alle 15 Minuten auf GitHub (öffentliches Repo: kostenlos). Schlägt ein
+# Schritt fehl, schickt GitHub dem Konto, das diese Datei zuletzt geändert hat,
+# eine Benachrichtigung über den fehlgeschlagenen Lauf.
+#
+# Geprüft wird nur Öffentliches — keine Secrets, kein Login:
+#   - Backend /health: 200 + {"status":"ok","db":"ok"} (503 = Datenbank weg)
+#   - API-Doku geschlossen (404): fällt das Backend in den Entwicklungsmodus
+#     (AUTO_KI_ENV=development), wäre /docs offen — genau das meldet dieser Schritt.
+#   - Frontend /healthz + Startseite mit ENFAL-Inhalt und Security-Header.
+#
+# Hinweis GitHub: geplante Workflows in öffentlichen Repos werden nach 60 Tagen
+# ohne Repo-Aktivität automatisch pausiert (Actions-Tab → wieder aktivieren).
+name: ENFAL Uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+env:
+  API: https://auto-ki-backend-production.up.railway.app
+  WEB: https://auto-ki-web-production.up.railway.app
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Backend /health
+        run: |
+          body=$(curl -fsS --max-time 20 --retry 3 --retry-delay 15 --retry-all-errors "$API/health")
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"'
+          echo "$body" | grep -q '"db":"ok"'
+
+      - name: Backend im Produktionsmodus (API-Doku geschlossen)
+        run: |
+          for p in /docs /redoc /openapi.json; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$API$p")
+            echo "$p -> $code"
+            test "$code" = "404"
+          done
+
+      - name: Frontend erreichbar
+        run: |
+          curl -fsS --max-time 20 --retry 3 --retry-delay 15 --retry-all-errors "$WEB/healthz"
+          curl -fsS --max-time 20 "$WEB/" | grep -q "ENFAL"
+          curl -fsSI --max-time 20 "$WEB/" | grep -qi '^x-content-type-options: nosniff'
