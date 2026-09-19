@@ -12,6 +12,8 @@ import {
   PRIO_OPTIONS,
   buildPayload,
   validateForm,
+  hatKriterium,
+  LEERE_SUCHE_HINWEIS,
   coverageState,
   humanError,
   ladeSuchen,
@@ -220,6 +222,7 @@ export default function AutoFinderView() {
     }
   }
 
+  const kriteriumGesetzt = hatKriterium(form)
   const cov = resp ? coverageState(resp) : null
   const cards = resp?.kandidaten.slice(0, MAX_CARDS) ?? []
   const notice = resp?.enrichment_notice ?? null
@@ -422,15 +425,12 @@ export default function AutoFinderView() {
                         onChange={(e) => set('leistung_max_ps', e.target.value)} placeholder="250" />
                     </Field>
                   </div>
-                  <div className="max-w-xs">
-                    <Field label="Kilometerstand max.">
-                      <input inputMode="numeric" className={inputCls} value={form.kilometer_max}
-                        onChange={(e) => set('kilometer_max', e.target.value)} placeholder="120.000" />
-                    </Field>
-                    <p className="mt-1 text-[11px] text-gray-400">
-                      Kilometer fließen aktuell nicht in die Auswahl ein — nur zur Orientierung.
-                    </p>
-                  </div>
+                  {/* Kein Feld für den maximalen Gesamtkilometerstand mehr:
+                      ENFAL hat dafür keine Datenquelle, und der Filter hat die
+                      Auswahl nie eingeschränkt. Ein Feld, das nur wie ein
+                      Filter aussieht, ist irreführend — auch mit Erklärung
+                      darunter. "Kilometer pro Jahr" oben bleibt: der Wert geht
+                      tatsächlich in die Bewertung ein. */}
                   <div>
                     <span className="block text-xs font-medium text-gray-500 mb-1.5">Antrieb</span>
                     <div className="flex flex-wrap gap-2">
@@ -489,12 +489,18 @@ export default function AutoFinderView() {
                 </div>
               )
             )}
-            <button type="submit" disabled={loading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 py-3.5 text-white font-semibold text-[15px] shadow-[0_14px_28px_-12px_rgba(249,115,22,0.55)] hover:bg-orange-600 hover:shadow-[0_16px_32px_-10px_rgba(249,115,22,0.6)] disabled:opacity-60 disabled:shadow-none transition-all">
+            {/* Eine Suche ohne ein einziges Kriterium würde ein Kontingent und
+                einen Gemini-Aufruf kosten, ohne etwas einzugrenzen. Der Button
+                bleibt deshalb inaktiv; das Backend weist sie zusätzlich mit 422
+                ab (letzte Schutzschicht, nicht die einzige). */}
+            <button type="submit" disabled={loading || !kriteriumGesetzt}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 py-3.5 text-white font-semibold text-[15px] shadow-[0_14px_28px_-12px_rgba(249,115,22,0.55)] hover:bg-orange-600 hover:shadow-[0_16px_32px_-10px_rgba(249,115,22,0.6)] disabled:opacity-60 disabled:shadow-none disabled:cursor-not-allowed transition-all">
               {loading ? <><Loader2 size={16} className="animate-spin" /> Suche läuft …</> : <><Car size={16} /> Autos für mich finden</>}
             </button>
             <p className="mt-2 text-[11px] text-gray-400">
-              Eine gründliche Suche dauert je nach Auslastung ca. 15–30 Sekunden.
+              {kriteriumGesetzt
+                ? 'Eine gründliche Suche dauert je nach Auslastung ca. 15–30 Sekunden.'
+                : LEERE_SUCHE_HINWEIS}
             </p>
           </div>
         </form>

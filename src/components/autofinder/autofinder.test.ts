@@ -17,6 +17,8 @@ import { dirname, join } from 'node:path'
 import {
   buildPayload,
   validateForm,
+  hatKriterium,
+  LEERE_SUCHE_HINWEIS,
   EMPTY_FORM,
   marketplaceFilters,
   coverageState,
@@ -45,9 +47,14 @@ function form(over: Partial<AutoFinderForm> = {}): AutoFinderForm {
 const KAND: AutoFinderKandidat = {
   candidate_id: 'bmw-3er-g20-320d',
   baureihe_id: 'bmw-3er-g20', variante_id: 'bmw-3er-g20-320d',
-  marke: 'BMW', modell: '3er', generation: 'G20', motor: '320d',
+  marke: 'BMW', modell: '3er', generation: 'G20', motor: '320d', motor_hergeleitet: false,
   baujahr_von: 2019, baujahr_bis: 2024, leistung_ps: 190, kraftstoff: 'Diesel',
-  getriebe: ['automatik'], antrieb: 'Heck', karosserie: ['limousine'],
+  generation_baujahr_von: 2019, generation_baujahr_bis: 2024,
+  getriebe: ['automatik'], getriebe_verfuegbar: ['automatik', 'manuell'],
+  getriebe_konkret: true,
+  antrieb: 'Heck', karosserie: ['limousine'],
+  karosserie_verfuegbar: ['kombi', 'limousine'], karosserie_konkret: true,
+  karosserie_quelle: 'nutzerwunsch',
   match_score: 9, datenqualitaet: 1, match_gruende: ['Diesel eignet sich für Langstrecke'],
   trade_offs: ['1 verifizierter KBA-Rückruf bekannt'],
   budget_status: 'UNKNOWN', budget_confidence: 'UNKNOWN', base_match_score: 9, budget_adjustment: 0,
@@ -135,6 +142,69 @@ test('C: der API-Client trifft genau den Endpunkt und schickt keinen Cookie', ()
 test('validate: min > max wird clientseitig abgefangen', () => {
   assert.match(validateForm(form({ budget_min: '30000', budget_max: '10000' }))!, /Mindestbudget/)
   assert.equal(validateForm(form({ budget_min: '10000', budget_max: '30000' })), null)
+})
+
+// ── RC1) leere Suche darf nicht abgeschickt werden ─────────────────────────
+// Eine Suche ohne ein einziges auswertbares Kriterium kostet ein
+// AutoFinder-Kontingent und einen Gemini-Aufruf, ohne etwas einzugrenzen.
+// Das Backend weist sie mit 422 ab; hier wird sie gar nicht erst gestartet.
+test('RC1: leeres Formular traegt kein Kriterium', () => {
+  assert.equal(hatKriterium(EMPTY_FORM), false)
+  assert.equal(validateForm(EMPTY_FORM), LEERE_SUCHE_HINWEIS)
+})
+test('RC1: leere Listen zaehlen nicht als Kriterium', () => {
+  assert.equal(hatKriterium(form({ karosserie: [], kraftstoff: [], getriebe: [] })), false)
+})
+test('RC1: ein einziges Kriterium genuegt (nicht unnoetig streng)', () => {
+  assert.equal(hatKriterium(form({ nutzung: 'gemischt' })), true)
+  assert.equal(hatKriterium(form({ sparsam: true })), true)
+  assert.equal(hatKriterium(form({ budget_max: '25000' })), true)
+  assert.equal(validateForm(form({ nutzung: 'gemischt' })), null)
+})
+
+// ── RC1) Kilometerfilter ist restlos entfernt ──────────────────────────────
+// Er hat die Auswahl nie eingeschraenkt (ENFAL hat dafuer keine Datenquelle),
+// sah im Formular aber wie ein wirksamer Filter aus.
+test('RC1: das Formular kennt kein kilometer_max mehr', () => {
+  assert.ok(!('kilometer_max' in EMPTY_FORM))
+})
+test('RC1: der Payload kann kein kilometer_max mehr enthalten', () => {
+  const p = buildPayload(form({ budget_max: '25000' })) as Record<string, unknown>
+  assert.ok(!('kilometer_max' in p))
+})
+test('RC1: das Suchformular bietet kein Kilometerfeld mehr an', () => {
+  assert.doesNotMatch(viewTsx, /kilometer_max/)
+  assert.doesNotMatch(viewTsx, /Kilometerstand max\./)
+})
+
+// ── RC1) Karte zeigt die KONKRETE Variante, nicht das Baureihen-Aggregat ───
+test('RC1: Suchhilfe uebernimmt genau die empfohlene Karosserie', () => {
+  const f = marketplaceFilters(KAND)
+  const typ = f.find((x) => x.label === 'Fahrzeugtyp')
+  assert.equal(typ?.value, 'Limousine')
+  const getr = f.find((x) => x.label === 'Getriebe')
+  assert.equal(getr?.value, 'Automatik')
+})
+test('RC1: Suchhilfe nennt die fuer die Suche relevanten Baujahre', () => {
+  const f = marketplaceFilters({ ...KAND, baujahr_von: 2020, baujahr_bis: 2022 })
+  assert.equal(f.find((x) => x.label === 'Erstzulassung')?.value, '2020–2022')
+})
+test('RC1: der KaufCheck-Prefill traegt eine einzelne Karosserie', () => {
+  assert.equal(buildKaufCheckPrefill(KAND).karosserie, 'limousine')
+  assert.equal(buildKaufCheckPrefill(KAND).getriebe, 'Automatik')
+})
+test('RC1: die Karte behauptet keine fachliche Vollstaendigkeit mehr', () => {
+  assert.doesNotMatch(cardTsx, /Datensatz, vollständig/)
+  assert.match(cardTsx, /Kernfelder/)
+})
+test('RC1: die Karte macht die Herkunft der Karosserie-Zuordnung sichtbar', () => {
+  assert.match(cardTsx, /karosserie_quelle/)
+  assert.match(cardTsx, /nicht je Motor/)
+})
+test('RC1: die linke Fahrzeugflaeche traegt die volle Kartenhoehe', () => {
+  // items-start liess sie an ihrer Inhaltshoehe enden -> weisser Block darunter.
+  assert.doesNotMatch(cardTsx, /sm:items-start/)
+  assert.match(cardTsx, /sm:items-stretch/)
 })
 
 // ── D) Loading-State + Fortschrittsschritte (§Punkt 7) ─────────────────────

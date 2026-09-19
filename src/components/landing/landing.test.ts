@@ -604,8 +604,16 @@ test('Landingpage läuft auf "/" ausserhalb der App-Shell (keine Sidebar)', () =
   assert.doesNotMatch(codeHeader, /Sidebar/)
 })
 
-test('eingeloggte Nutzer landen weiterhin im Chat (Verhalten unverändert)', () => {
-  assert.match(appTsx, /if \(user\) return <Navigate to="\/chat" replace \/>/)
+// Seit dem RC1-Routing-Fix gilt das nur noch auf der APP-Domain: getenfal.de
+// bleibt die oeffentliche Website, auch mit bestehender Session — nur
+// app.getenfal.de ist die Anwendung. Beide laufen aus demselben Build.
+test('eingeloggte Nutzer landen auf der App-Domain im Chat', () => {
+  assert.match(appTsx, /if \(user && istAppDomain\(\)\) return <Navigate to="\/chat" replace \/>/)
+})
+
+test('auf der oeffentlichen Domain bleibt "/" die Landingpage', () => {
+  assert.match(appTsx, /function istAppDomain\(\)/)
+  assert.match(appTsx, /\^app\\\./)
 })
 
 test('Performance: keine externen Fonts, Skripte, Videos oder Motion-Bibliothek', () => {

@@ -62,12 +62,18 @@ export const PRIO_OPTIONS = [
 
 export type PrioKey = (typeof PRIO_OPTIONS)[number]['key']
 
+// KILOMETERFILTER ENTFERNT: ENFAL hat keine Datenquelle für einen
+// fahrzeugbezogenen Kilometer-Filter (keine Kilometer je Baureihe, bewusst
+// keine Portalangebote). Das Feld stand im Formular, schränkte die Auswahl
+// aber nicht ein — ein Filter, der nur so aussieht, ist irreführend, auch
+// mit Erklärung darunter. Backend ignoriert einen mitgeschickten Wert
+// vollständig (app/models.py AutoFinderRequest.kilometer_max, deprecated).
+
 export interface AutoFinderForm {
   budget_min: string
   budget_max: string
   baujahr_von: string
   baujahr_bis: string
-  kilometer_max: string
   marken_bevorzugt: string
   marken_ausschliessen: string
   karosserie: string[]
@@ -87,7 +93,7 @@ export interface AutoFinderForm {
 }
 
 export const EMPTY_FORM: AutoFinderForm = {
-  budget_min: '', budget_max: '', baujahr_von: '', baujahr_bis: '', kilometer_max: '',
+  budget_min: '', budget_max: '', baujahr_von: '', baujahr_bis: '',
   marken_bevorzugt: '', marken_ausschliessen: '',
   karosserie: [], kraftstoff: [], getriebe: [], antrieb: [],
   leistung_min_ps: '', leistung_max_ps: '', nutzung: '', km_pro_jahr: '',
@@ -100,7 +106,6 @@ export interface AutoFinderPayload {
   budget_max?: number
   baujahr_von?: number
   baujahr_bis?: number
-  kilometer_max?: number
   marken_bevorzugt?: string[]
   marken_ausschliessen?: string[]
   karosserie?: string[]
@@ -146,8 +151,6 @@ export function buildPayload(form: AutoFinderForm): AutoFinderPayload {
   const bjb = toInt(form.baujahr_bis)
   if (bjv !== undefined) p.baujahr_von = bjv
   if (bjb !== undefined) p.baujahr_bis = bjb
-  const kmMax = toInt(form.kilometer_max)
-  if (kmMax !== undefined) p.kilometer_max = kmMax
 
   const mb = toList(form.marken_bevorzugt)
   const ma = toList(form.marken_ausschliessen)
@@ -173,10 +176,29 @@ export function buildPayload(form: AutoFinderForm): AutoFinderPayload {
   return p
 }
 
+/** Trägt das Formular mindestens EIN Kriterium, das ENFAL auch auswertet?
+ *
+ *  Eine komplett leere Suche ist keine Suche: sie würde ein AutoFinder-
+ *  Kontingent und einen Gemini-Aufruf kosten, ohne dass irgendetwas
+ *  einzugrenzen wäre. Das Backend weist sie deshalb mit 422 ab (letzte
+ *  Schutzschicht); diese Prüfung hier erspart dem Nutzer den Umweg.
+ *
+ *  Bewusst großzügig: EIN Kriterium genügt, niemand muss das Formular
+ *  ausfüllen. `kilometer_max` existiert nicht mehr und kann damit auch nicht
+ *  als vermeintliches Kriterium durchrutschen. */
+export function hatKriterium(form: AutoFinderForm): boolean {
+  return Object.keys(buildPayload(form)).length > 0
+}
+
+export const LEERE_SUCHE_HINWEIS =
+  'Wähle mindestens ein Kriterium aus — zum Beispiel Budget, Karosserie, ' +
+  'Kraftstoff, Getriebe oder wofür du das Auto nutzt.'
+
 /** Clientseitige Vorprüfung — spiegelt die Backend-model_validator-Regeln,
  *  damit der Nutzer eine freundliche Meldung VOR dem Request bekommt. */
 export function validateForm(form: AutoFinderForm): string | null {
   const p = buildPayload(form)
+  if (!hatKriterium(form)) return LEERE_SUCHE_HINWEIS
   if (p.budget_min !== undefined && p.budget_max !== undefined && p.budget_min > p.budget_max)
     return 'Das Mindestbudget darf nicht über dem Maximalbudget liegen.'
   if (p.leistung_min_ps !== undefined && p.leistung_max_ps !== undefined && p.leistung_min_ps > p.leistung_max_ps)
@@ -195,14 +217,32 @@ export interface AutoFinderKandidat {
   marke: string
   modell: string
   generation: string | null
+  /** Motor-/Ausführungsbezeichnung. `motor_hergeleitet` = die gepflegte
+   *  Bezeichnung sagte nichts aus (sie wiederholte nur die Leistung) und der
+   *  Text wurde aus Hubraum und Kraftstoff abgeleitet — kein Handelsname. */
   motor: string
+  motor_hergeleitet: boolean
+  /** Der für die ANFRAGE relevante Ausschnitt der Bauzeit — nicht die Bauzeit
+   *  der ganzen Generation (die steht in `generation_baujahr_*`). */
   baujahr_von: number | null
   baujahr_bis: number | null
+  generation_baujahr_von: number | null
+  generation_baujahr_bis: number | null
   leistung_ps: number | null
   kraftstoff: string
+  /** KONKRETE empfohlene Ausprägung: genau ein Eintrag, sobald `*_konkret`.
+   *  `*_verfuegbar` ist nur Kontext (was die Baureihe bzw. die Motorisierung
+   *  sonst noch anbietet) und gehört NICHT in die Empfehlung. */
   getriebe: string[]
+  getriebe_verfuegbar: string[]
+  getriebe_konkret: boolean
   antrieb: string | null
   karosserie: string[]
+  karosserie_verfuegbar: string[]
+  karosserie_konkret: boolean
+  /** bezeichnung | baureihe_eindeutig = belegt; nutzerwunsch = die Baureihe
+   *  bietet sie an, für genau diese Motorisierung aber nicht belegt. */
+  karosserie_quelle: string
   match_score: number
   datenqualitaet: number
   match_gruende: string[]
@@ -288,7 +328,9 @@ export function marketplaceFilters(k: AutoFinderKandidat): SuchWert[] {
   if (k.modell) out.push({ label: 'Modell', value: k.modell })
   if (k.generation) out.push({ label: 'Generation / Baureihe', value: k.generation })
 
-  // Baujahr-Spanne nur aus belegten Backend-Feldern.
+  // Baujahr-Spanne: der für die Suche relevante Ausschnitt, nicht die
+  // komplette Generationsbauzeit — sonst tippt der Nutzer beim Portal eine
+  // Spanne ein, die er gar nicht gesucht hat.
   if (k.baujahr_von && k.baujahr_bis) out.push({ label: 'Erstzulassung', value: `${k.baujahr_von}–${k.baujahr_bis}` })
   else if (k.baujahr_von) out.push({ label: 'Erstzulassung ab', value: String(k.baujahr_von) })
 
@@ -324,7 +366,7 @@ export function coverageState(resp: AutoFinderResponse): CoverageState {
       kind: 'none',
       headline: 'Kein wirklich starker Treffer',
       detail:
-        'Zu deinen Angaben gibt es aktuell keine Empfehlung, die richtig gut passt (mindestens 80 % Übereinstimmung). ' +
+        'Zu deinen Angaben gibt es aktuell keine Empfehlung, die richtig gut passt. ' +
         'Versuche es mit weniger oder etwas weiteren Filtern — z. B. Budget, Baujahr oder Karosserie.',
     }
   }

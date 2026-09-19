@@ -26,6 +26,49 @@ function summary(k: AutoFinderKandidat): string | null {
   return k.why_fits[0] ?? k.user_fit_gruende[0] ?? k.match_gruende[0] ?? null
 }
 
+const KAROSSERIE_LABEL: Record<string, string> = {
+  kleinwagen: 'Kleinwagen', kompakt: 'Kompakt', limousine: 'Limousine',
+  kombi: 'Kombi', suv: 'SUV', van: 'Van', coupe: 'Coupé',
+  cabrio: 'Cabrio', pickup: 'Pickup',
+}
+
+const GETRIEBE_LABEL: Record<string, string> = {
+  automatik: 'Automatik', manuell: 'Schaltgetriebe',
+}
+
+function getriebeText(werte: string[]): string {
+  return werte.map((g) => GETRIEBE_LABEL[g] ?? g).join(' / ')
+}
+
+function karosserieText(werte: string[]): string {
+  return werte.map((c) => KAROSSERIE_LABEL[c] ?? c).join(' / ')
+}
+
+/** Wurde die angezeigte Bauzeit durch die Suche eingegrenzt? Dann ist sie der
+ *  für die Anfrage relevante Ausschnitt, nicht die Bauzeit der Generation. */
+function eingegrenzteBaujahre(k: AutoFinderKandidat): boolean {
+  return k.generation_baujahr_von != null
+    && (k.baujahr_von !== k.generation_baujahr_von
+        || k.baujahr_bis !== k.generation_baujahr_bis)
+}
+
+/** Worauf die gezeigte Karosserie beruht — die Datenbank führt sie an der
+ *  BAUREIHE, nicht an der Motorisierung. Bei `nutzerwunsch` ist sie deshalb
+ *  für die Baureihe belegt, für genau diesen Motor aber nicht. Das gehört
+ *  sichtbar gesagt statt stillschweigend als Gewissheit ausgegeben. */
+function karosserieHinweis(k: AutoFinderKandidat): string | null {
+  if (!k.karosserie_konkret) {
+    return `ENFAL kann die Karosserie für diese Motorisierung nicht eindeutig zuordnen. `
+      + `Die Baureihe wird angeboten als: ${karosserieText(k.karosserie_verfuegbar)}.`
+  }
+  if (k.karosserie_quelle === 'nutzerwunsch') {
+    return 'Die Baureihe wird laut ENFAL-Datensatz in dieser Karosserie angeboten. '
+      + 'Ob genau diese Motorisierung darin lieferbar war, führt ENFAL nicht je Motor — '
+      + 'beim Angebot bitte prüfen.'
+  }
+  return null
+}
+
 interface Props {
   k: AutoFinderKandidat
   rank: number
@@ -52,7 +95,13 @@ export default function ResultCard({ k, rank }: Props) {
 
   return (
     <article className="ez-card rounded-2xl border border-[#e6e1da] bg-white overflow-hidden shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
-      <div className="sm:flex sm:items-start">
+      {/* `items-stretch` (der Flex-Default) statt `items-start`: sonst endet die
+          gestaltete linke Fahrzeugfläche an ihrer eigenen Inhaltshöhe, und
+          unter ihr klafft der weiße Kartenhintergrund, sobald die rechte
+          Spalte höher ist (lange Modellnamen, lange Zusammenfassung). Mit
+          stretch trägt die Spalte immer die volle Höhe dieses Kartenkopfs —
+          unabhängig von Inhalt, Zustand und Breakpoint, ohne feste Pixelhöhe. */}
+      <div className="sm:flex sm:items-stretch">
         <VehicleIdentityPanel k={k} rank={rank} />
 
         {/* Kopf */}
@@ -62,7 +111,8 @@ export default function ResultCard({ k, rank }: Props) {
               <h3 className="text-lg font-bold text-gray-900 tracking-tight truncate">{titel}</h3>
               {k.baujahr_von && (
                 <p className="mt-0.5 text-xs font-medium text-gray-400 truncate">
-                  Baujahre {k.baujahr_von}{k.baujahr_bis ? `–${k.baujahr_bis}` : ' →'}
+                  {eingegrenzteBaujahre(k) ? 'Passende Baujahre' : 'Baujahre'}{' '}
+                  {k.baujahr_von}{k.baujahr_bis ? `–${k.baujahr_bis}` : ' →'}
                 </p>
               )}
             </div>
@@ -86,7 +136,7 @@ export default function ResultCard({ k, rank }: Props) {
             {k.getriebe.length > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#f4f0ea] px-2.5 py-1 text-xs font-medium text-gray-600">
                 <Cog size={12} className="text-gray-400" />
-                {k.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : g === 'manuell' ? 'Schaltgetriebe' : g)).join(' / ')}
+                {getriebeText(k.getriebe)}
               </span>
             )}
             {budgetLabel && (
@@ -191,18 +241,41 @@ export default function ResultCard({ k, rank }: Props) {
             <h4 className="text-[11px] font-bold tracking-[0.15em] uppercase text-gray-500">Fahrzeug</h4>
             <dl className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-gray-700">
               {k.generation && <div><dt className="text-gray-400 text-[11px]">Generation</dt><dd className="font-medium">{k.generation}</dd></div>}
-              {k.motor && <div><dt className="text-gray-400 text-[11px]">Motor</dt><dd className="font-medium">{k.motor}</dd></div>}
+              {k.motor && <div><dt className="text-gray-400 text-[11px]">Motor</dt>
+                <dd className="font-medium">{k.motor}</dd></div>}
               {(k.baujahr_von || k.baujahr_bis) && (
-                <div><dt className="text-gray-400 text-[11px]">Baujahre</dt>
+                <div><dt className="text-gray-400 text-[11px]">
+                  {eingegrenzteBaujahre(k) ? 'Passende Baujahre' : 'Baujahre'}</dt>
                   <dd className="font-medium">{k.baujahr_von ?? '?'}{k.baujahr_bis ? `–${k.baujahr_bis}` : ' →'}</dd></div>
+              )}
+              {eingegrenzteBaujahre(k) && (
+                <div><dt className="text-gray-400 text-[11px]">Generation gebaut</dt>
+                  <dd className="font-medium">{k.generation_baujahr_von ?? '?'}{k.generation_baujahr_bis ? `–${k.generation_baujahr_bis}` : ' →'}</dd></div>
               )}
               {k.leistung_ps != null && <div><dt className="text-gray-400 text-[11px]">Leistung</dt><dd className="font-medium">{k.leistung_ps} PS</dd></div>}
               {k.kraftstoff && <div><dt className="text-gray-400 text-[11px]">Kraftstoff</dt><dd className="font-medium">{k.kraftstoff}</dd></div>}
               {k.getriebe.length > 0 && <div><dt className="text-gray-400 text-[11px]">Getriebe</dt>
-                <dd className="font-medium">{k.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : g === 'manuell' ? 'Schaltgetriebe' : g)).join(' / ')}</dd></div>}
+                <dd className="font-medium">{getriebeText(k.getriebe)}</dd></div>}
               {k.antrieb && <div><dt className="text-gray-400 text-[11px]">Antrieb</dt><dd className="font-medium">{k.antrieb}</dd></div>}
-              {k.karosserie.length > 0 && <div><dt className="text-gray-400 text-[11px]">Karosserie</dt><dd className="font-medium">{k.karosserie.join(' / ')}</dd></div>}
+              {k.karosserie.length > 0 && <div><dt className="text-gray-400 text-[11px]">Karosserie</dt>
+                <dd className="font-medium">{karosserieText(k.karosserie)}</dd></div>}
             </dl>
+            {k.getriebe_verfuegbar.length > k.getriebe.length && (
+              <p className="mt-2 text-[11px] text-gray-400">
+                Diese Motorisierung gab es auch mit: {getriebeText(
+                  k.getriebe_verfuegbar.filter((g) => !k.getriebe.includes(g)))}.
+                Empfohlen ist oben die Ausführung, die zu deiner Suche passt.
+              </p>
+            )}
+            {karosserieHinweis(k) && (
+              <p className="mt-2 text-[11px] text-gray-400">{karosserieHinweis(k)}</p>
+            )}
+            {k.motor_hergeleitet && (
+              <p className="mt-2 text-[11px] text-gray-400">
+                Für diese Motorisierung ist keine Handelsbezeichnung hinterlegt — die
+                Angabe oben ist aus Hubraum und Kraftstoffart abgeleitet.
+              </p>
+            )}
           </section>
 
           <section>
@@ -210,7 +283,9 @@ export default function ResultCard({ k, rank }: Props) {
             <p className="mt-1.5 text-gray-600 leading-relaxed">
               {k.source_type === 'web_discovered'
                 ? 'Aus einer Web-Recherche zusammengetragen — die genannten technischen Angaben sind in den Quellen belegt, aber nicht von ENFAL geprüft.'
-                : `ENFAL-gepflegter Datensatz${k.datenqualitaet >= 1 ? ', vollständig' : ''}.` +
+                : `ENFAL-gepflegter Datensatz${k.datenqualitaet >= 1
+                    ? ' — alle Kernfelder zu Motor und Technik sind hinterlegt'
+                    : ` — Kernfelder zu ${Math.round(k.datenqualitaet * 100)} % hinterlegt`}.` +
                   (k.enrichment_status === 'fallback'
                     ? ' Die ausführliche KI-Analyse konnte diesmal nicht vollständig geladen werden.'
                     : '')}
