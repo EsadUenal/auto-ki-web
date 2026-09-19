@@ -9,6 +9,10 @@
 #   - API-Doku geschlossen (404): fällt das Backend in den Entwicklungsmodus
 #     (AUTO_KI_ENV=development), wäre /docs offen — genau das meldet dieser Schritt.
 #   - Frontend /healthz + Startseite mit ENFAL-Inhalt und Security-Header.
+#   - App-Subdomain /healthz + X-Robots-Tag noindex (Marketing-Seite ohne).
+#
+# Seit Schritt 8 (Domain-Umzug, 2026-09-19) laufen die Checks gegen die
+# echten ENFAL-Domains statt der transienten *.up.railway.app-Adressen.
 #
 # Hinweis GitHub: geplante Workflows in öffentlichen Repos werden nach 60 Tagen
 # ohne Repo-Aktivität automatisch pausiert (Actions-Tab → wieder aktivieren).
@@ -26,8 +30,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  API: https://auto-ki-backend-production.up.railway.app
-  WEB: https://auto-ki-web-production.up.railway.app
+  API: https://api.getenfal.de
+  WEB: https://getenfal.de
+  APP: https://app.getenfal.de
 
 jobs:
   check:
@@ -49,8 +54,14 @@ jobs:
             test "$code" = "404"
           done
 
-      - name: Frontend erreichbar
+      - name: Frontend erreichbar (Marketing-Seite, indexierbar)
         run: |
           curl -fsS --max-time 20 --retry 3 --retry-delay 15 --retry-all-errors "$WEB/healthz"
           curl -fsS --max-time 20 "$WEB/" | grep -q "ENFAL"
           curl -fsSI --max-time 20 "$WEB/" | grep -qi '^x-content-type-options: nosniff'
+          ! curl -fsSI --max-time 20 "$WEB/" | grep -qi '^x-robots-tag:'
+
+      - name: App-Subdomain erreichbar (noindex)
+        run: |
+          curl -fsS --max-time 20 --retry 3 --retry-delay 15 --retry-all-errors "$APP/healthz"
+          curl -fsSI --max-time 20 "$APP/" | grep -qi '^x-robots-tag: noindex, nofollow'
