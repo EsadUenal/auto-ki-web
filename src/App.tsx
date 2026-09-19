@@ -88,6 +88,13 @@ function NichtGefunden() {
   )
 }
 
+// getenfal.de und app.getenfal.de laufen aus demselben Build (siehe nginx.conf
+// im selben Repo, dieselbe app.* Erkennung fuer den noindex-Header) — nur zur
+// Laufzeit per Hostname zu unterscheiden.
+function istAppDomain(): boolean {
+  return /^app\./i.test(window.location.hostname)
+}
+
 // ── Startseite ────────────────────────────────────────────────────────────────
 // Muss innerhalb des AuthProvider stehen (nutzt useAuth).
 function Startseite() {
@@ -96,7 +103,11 @@ function Startseite() {
   // Marketingseite gerendert, die ein Besucher ohne Konto sieht.
   const prerender = useContext(PrerenderContext)
   if (isLoading && !prerender) return null   // kurzer Leerzustand statt Flackern
-  if (user) return <Navigate to="/chat" replace />
+  // RC1-Bug: "/" leitete JEDEN eingeloggten Besucher auf /chat um — auch auf
+  // getenfal.de. Architektur verlangt: getenfal.de bleibt die oeffentliche
+  // Website, unabhaengig von einer bestehenden Session (nur app.getenfal.de
+  // ist die Anwendung).
+  if (user && istAppDomain()) return <Navigate to="/chat" replace />
   return <LandingView />
 }
 

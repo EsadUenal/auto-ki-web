@@ -213,7 +213,9 @@ export default function AnalyseFrageChat({
               onChange={(e) => setInput(e.target.value)}
               disabled={streaming || checkId == null}
               placeholder={checkId == null ? 'Analyse wird gespeichert…' : 'Frage zur Analyse…'}
-              className="flex-1 text-sm bg-white border border-[#e6e1da] rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200/70 transition-colors placeholder-gray-400 disabled:opacity-60"
+              // text-base auf Mobile gegen den iOS/Chrome-Auto-Zoom bei Fokus (<16px) —
+              // ab sm: zurueck auf die Desktop-Groesse text-sm.
+              className="flex-1 text-base sm:text-sm bg-white border border-[#e6e1da] rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200/70 transition-colors placeholder-gray-400 disabled:opacity-60"
             />
             <button
               type="submit"

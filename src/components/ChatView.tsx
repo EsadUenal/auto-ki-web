@@ -276,7 +276,11 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
               onKeyDown={handleKeyDown}
               rows={1}
               placeholder="Stelle eine Frage zu deinem Auto…"
-              className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 resize-none outline-none leading-6 py-1 max-h-40"
+              // text-base (16px) auf Mobile, sonst zoomt iOS/Chrome beim Fokussieren
+              // automatisch hinein (Browser-Heuristik ab <16px) — ab sm: zurück auf
+              // die Desktop-Groesse text-sm. Kein user-scalable=no/maximum-scale:
+              // das waere eine Accessibility-Verschlechterung statt einer Reparatur.
+              className="flex-1 bg-transparent text-base sm:text-sm text-gray-900 placeholder-gray-400 resize-none outline-none leading-6 py-1 max-h-40"
             />
             {isStreaming ? (
               <button
@@ -339,7 +343,7 @@ function MessageBubble({
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEditConfirm?.() }
               if (e.key === 'Escape') onEditCancel?.()
             }}
-            className="w-full max-w-[88%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed resize-none outline-none ring-2 ring-orange-400 overflow-hidden"
+            className="w-full max-w-[88%] bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-base sm:text-sm leading-relaxed resize-none outline-none ring-2 ring-orange-400 overflow-hidden"
             rows={1}
           />
           <div className="flex gap-2 mr-0.5">
