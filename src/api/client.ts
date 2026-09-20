@@ -567,6 +567,7 @@ export async function streamChat(
             source: (m.quelle as SourceMeta['source']) ?? 'unbekannt',
             trust_level: (m.vertrauen as SourceMeta['trust_level']) ?? 'unbekannt',
             belege: Array.isArray(m.belege) ? m.belege : [],
+            abgeschnitten: m.abgeschnitten === true,
           }
         }
       }

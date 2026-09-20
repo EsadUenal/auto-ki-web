@@ -197,8 +197,15 @@ function AppContent() {
   }, [activeId])  // nur bei activeId-Wechsel triggern
 
   // ── Nachrichten im Backend persistieren (nach jeder vollständigen Antwort) ──
-  const handleSaveExchange = useCallback(async (userText: string, assistantText: string) => {
-    const convId = activeIdRef.current
+  const handleSaveExchange = useCallback(async (
+    userText: string,
+    assistantText: string,
+    conversationId?: string,
+  ) => {
+    // Die Unterhaltung, in der der Austausch entstanden ist — nicht die gerade
+    // aktive. Wechselt der Nutzer waehrend des Streams, landete die Antwort
+    // sonst im falschen Thread.
+    const convId = conversationId ?? activeIdRef.current
     const conv = conversationsRef.current.find((c) => c.id === convId)
     if (!conv) return
 

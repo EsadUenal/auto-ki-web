@@ -5,6 +5,13 @@ export interface SourceMeta {
   source: SourceType
   trust_level: TrustLevel
   belege?: unknown[]
+  /**
+   * True, wenn das Modell am Output-Limit gestoppt hat. Ohne dieses Signal
+   * endete eine zu lange Antwort lautlos mitten im Satz und sah vollstaendig
+   * aus. Das Backend haengt zusaetzlich einen Hinweis an den Antworttext, damit
+   * die Kuerzung auch nach einem Reload noch erkennbar ist.
+   */
+  abgeschnitten?: boolean
 }
 
 export interface Message {

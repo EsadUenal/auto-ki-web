@@ -1,4 +1,4 @@
-import { ShieldCheck, Globe, Layers, HelpCircle, Sparkles } from 'lucide-react'
+import { ShieldCheck, Globe, Layers, HelpCircle, Sparkles, Scissors } from 'lucide-react'
 import type { SourceMeta } from '../types'
 
 interface SourceBadgeProps {
@@ -13,6 +13,15 @@ export default function SourceBadge({ meta }: SourceBadgeProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-[#ece7e0]">
       <SourceChip source={meta.source} />
+
+      {meta.abgeschnitten && (
+        <span
+          className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5"
+          title="Das Modell hat die maximale Antwortlänge erreicht. Frag gezielt nach dem fehlenden Teil."
+        >
+          <Scissors size={11} /> Antwort gekürzt
+        </span>
+      )}
 
       {links.map((link, i) => (
         <a

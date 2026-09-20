@@ -3,14 +3,20 @@ import { Send, Square, Pencil } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { streamChat } from '../api/client'
-import type { VerlaufItem } from '../api/client'
+import { baueVerlauf } from './chatVerlauf'
 import SourceBadge from './SourceBadge'
 import type { CarContext, Conversation, Message, SourceMeta } from '../types'
 
 interface ChatViewProps {
   conversation: Conversation
   onMessagesUpdate: (messages: Message[]) => void
-  onSaveExchange?: (userText: string, assistantText: string) => void
+  /**
+   * `conversationId` ist die Unterhaltung, in der dieser Austausch ENTSTANDEN
+   * ist — nicht die gerade aktive. Wechselt der Nutzer waehrend des Streams die
+   * Unterhaltung, wuerde ein Speichern gegen die aktive Konversation die Antwort
+   * in den falschen Thread schreiben.
+   */
+  onSaveExchange?: (userText: string, assistantText: string, conversationId: string) => void
   autoMessage?: string | null
   onAutoMessageDone?: () => void
 }
@@ -106,20 +112,7 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
     // spätes onDone/onError nur dann schreibt, wenn sie noch aktiv ist.
     const startConvId = conversation.id
     const car = conversation.carContext
-    const historyItems: VerlaufItem[] = priorMessages
-      .filter((m) => m.content)
-      .map((m) => ({
-        rolle: m.role === 'user' ? ('user' as const) : ('ki' as const),
-        text: m.content,
-      }))
-
-    const verlauf: VerlaufItem[] = car
-      ? [
-          { rolle: 'user' as const, text: `Ich interessiere mich für den ${car.titel}.` },
-          { rolle: 'ki' as const,   text: `Verstanden! Ich beantworte alle deine Fragen direkt bezogen auf den ${car.titel}.` },
-          ...historyItems,
-        ]
-      : historyItems
+    const verlauf = baueVerlauf(priorMessages, car)
 
     const userMsg: Message      = { id: crypto.randomUUID(), role: 'user',      content: text }
     const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: '', streaming: true }
@@ -150,14 +143,18 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
         setLiveText('')
         setStatusText('')
         setIsStreaming(false)
-        // Konversation gewechselt → Ergebnis nicht auf die falsche schreiben.
+        // Die fertige Antwort gehoert IMMER in die Unterhaltung, in der sie
+        // gestartet wurde — auch wenn der Nutzer inzwischen gewechselt hat.
+        // Sie zu verwerfen hiesse, eine bezahlte Antwort wegzuwerfen; sie auf
+        // die jetzt aktive Unterhaltung zu schreiben, waere ein Thread-Leak.
+        if (finalContent) onSaveExchange?.(text, finalContent, startConvId)
+        // Anzeige nur aktualisieren, wenn diese Unterhaltung noch sichtbar ist.
         if (convIdRef.current !== startConvId) return
         onMessagesUpdate(
           baseMessages.map((m) =>
             m.id === assistantMsg.id ? { ...m, content: finalContent, streaming: false, meta } : m
           )
         )
-        if (finalContent) onSaveExchange?.(text, finalContent)
       },
       onError(err: string, art?: 'fehler' | 'hinweis') {
         cancelPendingRaf()
