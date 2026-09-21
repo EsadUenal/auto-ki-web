@@ -55,13 +55,13 @@ const SCHWEREGRAD_LABEL: Record<string, string> = { hoch: 'Hoch', mittel: 'Mitte
 // zu sichere Alt-Aussage weiterzuzeigen.
 const APPLICABILITY_LABEL: Record<string, string> = {
   confirmed_by_vin: 'Für dieses Fahrzeug per FIN bestätigt',
-  variant_match: 'Kann Fahrzeuge dieser Variante betreffen — FIN prüfen',
-  series_only: 'Für Teile der Baureihe gemeldet — FIN prüfen',
-  unclear: 'Betroffenheit unklar — FIN prüfen',
+  variant_match: 'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
+  series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen',
+  unclear: 'Betroffenheit unklar: FIN prüfen',
   // Alt-Werte (vor Reliability-Sprint 3) — nur für gespeicherte Alt-Checks.
-  exakt: 'Kann Fahrzeuge dieser Variante betreffen — FIN prüfen',
-  wahrscheinlich: 'Für Teile der Baureihe gemeldet — FIN prüfen',
-  unklar: 'Betroffenheit unklar — FIN prüfen',
+  exakt: 'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
+  wahrscheinlich: 'Für Teile der Baureihe gemeldet: FIN prüfen',
+  unklar: 'Betroffenheit unklar: FIN prüfen',
 }
 const APPLICABILITY_CLS: Record<string, string> = {
   confirmed_by_vin: 'bg-amber-100 text-amber-800',
@@ -154,7 +154,7 @@ function MarktanalysePanel({ m }: { m: NonNullable<Insight['marktanalyse']> }) {
       </div>
       {m.quellen_domains?.length > 0 && (
         <p className="text-[10px] text-gray-400 leading-snug">
-          Datenbasis: Preisangaben aus {m.quellen_domains.join(', ')} — aus Web-Suchergebnissen
+          Datenbasis: Preisangaben aus {m.quellen_domains.join(', ')}. Das sind aus Web-Suchergebnissen
           extrahierte Vergleichspreise, keine einzeln geprüften Inserate.
         </p>
       )}

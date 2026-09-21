@@ -250,7 +250,7 @@ export function FahrzeugprofilKarte({
   // das Intervall fahrzeugabhängig (z. B. BMW Condition Based Service), wäre
   // "Ölwechsel-Intervall (Hersteller): 25.000 km" eine falsche starre Vorgabe.
   if (fahrzeugkontext?.wartung_system) {
-    felder.push({ label: 'Service', value: `${fahrzeugkontext.wartung_system} — aktuelle Fälligkeit im Service-Menü des Fahrzeugs prüfen` })
+    felder.push({ label: 'Service', value: `${fahrzeugkontext.wartung_system}: aktuelle Fälligkeit im Service-Menü des Fahrzeugs prüfen` })
   }
   if (fahrzeugkontext?.wartung_oel_km) {
     felder.push({

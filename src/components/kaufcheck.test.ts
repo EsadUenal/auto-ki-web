@@ -61,3 +61,16 @@ test('I: dynamisches Serviceintervall wird nicht als starre Herstellerzahl gezei
   assert.match(details, /aktuelle Fälligkeit im Service-Menü des Fahrzeugs prüfen/)
   assert.match(types, /wartung_system\?: string \| null/)
 })
+
+test('G: sichtbare KaufCheck-Texte ohne Gedankenstrich (Kommentare ausgenommen)', () => {
+  const evidence = readFileSync(new URL('./EvidenceWhy.tsx', import.meta.url), 'utf8')
+  const summary = readFileSync(new URL('./ResultSummary.tsx', import.meta.url), 'utf8')
+  // Platzhalter "—" für einen fehlenden Wert ist kein Stilmittel und bleibt erlaubt.
+  const strich = (quelle: string) =>
+    ohneKommentare(quelle).split('\n').filter((z) => /\S\s—\s\S/.test(z))
+  for (const [name, quelle] of [['EvidenceWhy', evidence], ['KaufCheckDetails', details],
+                                ['KaufCheckView', view], ['ResultSummary', summary]] as const) {
+    assert.deepEqual(strich(quelle), [], `${name} enthält noch sichtbare Gedankenstriche`)
+  }
+  assert.match(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/)
+})

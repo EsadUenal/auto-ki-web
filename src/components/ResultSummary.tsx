@@ -189,7 +189,7 @@ export function ResearchFailedCard({
             </p>
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-xs font-semibold text-emerald-700">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Dieser Check wurde nicht abgeschlossen — dein Kontingent bleibt erhalten.
+              Dieser Check wurde nicht abgeschlossen. Dein Kontingent bleibt erhalten.
             </div>
             <div className="mt-5">
               <button
