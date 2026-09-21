@@ -157,7 +157,19 @@ export interface Fahrzeugkontext {
   erkennung_generation?: string | null
   facelift_merkmale?: string | null
   wartung_oel_km?: number | null
+  /** RC1: fahrzeugabhängig berechnetes Serviceintervall, z. B. "Condition Based Service (CBS)". */
+  wartung_system?: string | null
+  /** RC1: Einordnung des km-Werts — Orientierung, keine starre Herstellervorgabe. */
+  wartung_oel_hinweis?: string | null
   wartung_hu_intervall?: string | null
+}
+
+/** RC1: HU-Termin, im Backend datumssicher gegen "heute" bewertet. */
+export interface HuPruefung {
+  angabe: string
+  status: 'plausibel' | 'abgelaufen' | 'ungewoehnlich_weit' | 'unlesbar' | string
+  monate_bis_faellig?: number | null
+  hinweis: string
 }
 
 // P2-5 — EIN Wartungspunkt, dessen hinterlegtes Intervall in der Nähe der
@@ -418,6 +430,9 @@ export interface KaufCheckResult {
   // Phase 1 (optional; alte Checks besitzen diese Felder nicht)
   insights?: Insight[]
   empfehlung_evidence_ids?: string[]
+  /** RC1: deterministische Begründung der Empfehlung — getrennt von den Risiken. */
+  empfehlung_gruende?: string[]
+  hu_pruefung?: HuPruefung | null
   preis_evidence_ids?: string[]
   risiko_evidence_ids?: string[]
   // Phase 2 (optional; alte Checks besitzen dieses Feld nicht)

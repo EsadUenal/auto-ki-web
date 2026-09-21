@@ -246,8 +246,17 @@ export function FahrzeugprofilKarte({
   }
   if (fahrzeugkontext?.facelift_merkmale) felder.push({ label: 'Facelift', value: fahrzeugkontext.facelift_merkmale })
   if (fahrzeugkontext?.vorgaenger) felder.push({ label: 'Vorgängermodell', value: fahrzeugkontext.vorgaenger })
+  // RC1: Der km-Wert ist ein Richtwert aus der Datenbank. Rechnet der Hersteller
+  // das Intervall fahrzeugabhängig (z. B. BMW Condition Based Service), wäre
+  // "Ölwechsel-Intervall (Hersteller): 25.000 km" eine falsche starre Vorgabe.
+  if (fahrzeugkontext?.wartung_system) {
+    felder.push({ label: 'Service', value: `${fahrzeugkontext.wartung_system} — aktuelle Fälligkeit im Service-Menü des Fahrzeugs prüfen` })
+  }
   if (fahrzeugkontext?.wartung_oel_km) {
-    felder.push({ label: 'Ölwechsel-Intervall (Hersteller)', value: `${fahrzeugkontext.wartung_oel_km.toLocaleString('de-DE')} km` })
+    felder.push({
+      label: 'Ölwechsel-Richtwert (Datenbank)',
+      value: `${fahrzeugkontext.wartung_oel_km.toLocaleString('de-DE')} km${fahrzeugkontext.wartung_system ? ' (nur Orientierung)' : ''}`,
+    })
   }
   if (fahrzeugkontext?.wartung_hu_intervall) {
     felder.push({ label: 'HU-Intervall', value: fahrzeugkontext.wartung_hu_intervall })
@@ -646,6 +655,39 @@ export function KaufLoadingStatus() {
     <div className="mt-6 flex items-center gap-2.5 text-sm text-gray-500" aria-live="polite">
       <Gauge size={15} className="shrink-0 animate-pulse text-gray-400" />
       <span className="transition-opacity">{KAUF_LOADING_MESSAGES[i]}</span>
+    </div>
+  )
+}
+
+/**
+ * RC1: Kaufempfehlung und Preisbewertung sind zwei Dimensionen. Ohne belastbare
+ * Marktbasis darf "KAUFEN NACH BESICHTIGUNG" nicht so wirken, als sei der
+ * Angebotspreis damit bestätigt — die Zeile sagt das ausdrücklich.
+ */
+export function PreisDimensionZeile({ result }: { result: KaufCheckResult }) {
+  const ohneMarkt = result.research_status === 'completed_no_market'
+    || (result.preis_bewertung ?? 'unbekannt') === 'unbekannt'
+  return (
+    <p className="mt-1 text-xs text-gray-500">
+      Technische Einschätzung
+      {ohneMarkt
+        ? <> · Preis: <span className="font-medium">nicht bewertbar</span> (keine belastbare Marktpreisbasis)</>
+        : <> · Preis separat bewertet (siehe Marktpreis)</>}
+    </p>
+  )
+}
+
+/** RC1: "Warum diese Empfehlung?" — eigene Begründung, nicht die Risikoliste. */
+export function EmpfehlungsGruende({ gruende }: { gruende: string[] }) {
+  if (!gruende.length) return null
+  return (
+    <div className="rounded-xl border border-[#ece7e0] bg-white/70 px-4 py-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500 mb-2">
+        Warum diese Empfehlung?
+      </p>
+      <ul className="space-y-1.5 text-sm text-gray-700 list-disc pl-5">
+        {gruende.map((g) => <li key={g}>{g}</li>)}
+      </ul>
     </div>
   )
 }

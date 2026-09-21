@@ -11,8 +11,9 @@ import KeyFindings from './KeyFindings'
 import { marktanalyseOf, CollapsibleReport, ResearchFailedCard } from './ResultSummary'
 import {
   fahrzeugTitel, DatenbasisZeile, MarktpreisModul, LaufleistungKarte, FahrzeugprofilKarte,
-  PruefplanBereich, KaufLoadingStatus,
+  PruefplanBereich, KaufLoadingStatus, EmpfehlungsGruende, PreisDimensionZeile,
 } from './KaufCheckDetails'
+import { formatiereHuEingabe } from './huEingabe'
 import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo } from './autofinder/logic'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
@@ -290,6 +291,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                 <Field label="TÜV bis">
                   <input className={inputCls} value={form.tuevBis}
                     onChange={(e) => set('tuevBis', e.target.value)}
+                    onBlur={(e) => set('tuevBis', formatiereHuEingabe(e.target.value))}
                     placeholder="z. B. 06/2027" />
                 </Field>
                 <div className="flex items-end pb-2.5">
@@ -502,9 +504,13 @@ function KaufCheckReport({
   const subtitle = fahrzeugTitel(result, form)
 
   // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).
-  const empfehlungInsights = insightsByIds(result.insights, result.empfehlung_evidence_ids)
-  const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
   const risikoInsights = insightsByIds(result.insights, result.risiko_evidence_ids)
+  // RC1: was schon als Risiko erscheint, erklärt die Empfehlung nicht — keine
+  // doppelten Karten unter "Warum diese Empfehlung?" und "Warum diese Risiken?".
+  const risikoIds = new Set(risikoInsights.map((i) => i.id))
+  const empfehlungInsights = insightsByIds(result.insights, result.empfehlung_evidence_ids)
+    .filter((i) => !risikoIds.has(i.id))
+  const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
   const marktanalyse = marktanalyseOf(result.insights)
   // §29: IDs, die bereits in den eigenständigen "Warum"-Blöcken stehen — Key
   // Findings rendern dieselbe Insight-Karte nicht nochmal komplett.
@@ -532,6 +538,7 @@ function KaufCheckReport({
               {recStyle.label}
             </p>
             {subtitle && <p className="mt-1.5 text-sm text-gray-600">{subtitle}</p>}
+            <PreisDimensionZeile result={result} />
             <DatenbasisZeile technicalCoverage={result.technical_coverage} />
           </div>
         </div>
@@ -540,7 +547,14 @@ function KaufCheckReport({
       {/* Phase 5: Dealer-Übernahme — nur für Händler-Konten, nur bei gespeichertem Check. */}
       <DealerAddButton checkId={checkId} />
 
-      {empfehlungInsights.length > 0 && (
+      {(result.empfehlung_gruende?.length ?? 0) > 0 ? (
+        <div className="px-1">
+          <EmpfehlungsGruende gruende={result.empfehlung_gruende ?? []} />
+          {empfehlungInsights.length > 0 && (
+            <EvidenceWhy label="Belege zur Empfehlung" insights={empfehlungInsights} />
+          )}
+        </div>
+      ) : empfehlungInsights.length > 0 && (
         <div className="px-1">
           <EvidenceWhy label="Warum diese Empfehlung?" insights={empfehlungInsights} />
         </div>

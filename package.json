@@ -13,7 +13,8 @@
     "test:pricing": "node --test src/components/pricing.test.ts",
     "test:payments": "node --test src/components/payments.test.ts",
     "test:landing": "node --test src/components/landing/landing.test.ts",
-    "test:chat": "node --test src/components/chat.test.ts"
+    "test:chat": "node --test src/components/chat.test.ts",
+    "test:kaufcheck": "node --test src/components/kaufcheck.test.ts"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -6,6 +6,7 @@ import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
 import InseratPanel from './InseratPanel'
+import { formatiereHuEingabe } from './huEingabe'
 import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport, ResearchFailedCard, DeepeningStatus } from './ResultSummary'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
 import { useAuth } from '../context/AuthContext'
@@ -301,6 +302,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                 <Field label="TÜV bis">
                   <input className={inputCls} value={form.tuevBis}
                     onChange={(e) => set('tuevBis', e.target.value)}
+                    onBlur={(e) => set('tuevBis', formatiereHuEingabe(e.target.value))}
                     placeholder="z. B. 06/2027" />
                 </Field>
                 <Field label="Farbe">
