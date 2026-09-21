@@ -114,3 +114,26 @@ test('I: eine abgeschnittene Antwort wird als solche erkannt und angezeigt', () 
 test('J: ein Konversationswechsel schreibt nicht in die falsche Anzeige', () => {
   assert.match(chatView, /if \(convIdRef\.current !== startConvId\) return/)
 })
+
+test('K: reines Modellwissen bekommt KEINEN pseudoquellenartigen Chip', () => {
+  // Live-Befund RC1: unter einer Antwort ohne DB/Web stand nur "KI-Wissen" —
+  // sah aus wie eine Citation, war aber keine.
+  const badgeCode = badge.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+  assert.doesNotMatch(badgeCode, /KI-Wissen/)
+  assert.doesNotMatch(badgeCode, /Quelle unbekannt/)
+  assert.match(badge, /export const BELEGTE_QUELLEN = \['datenbank', 'web', 'gemischt'\] as const/)
+  assert.match(badge, /\{belegt && <SourceChip source=\{meta\.source\} \/>\}/)
+  // Ohne belegte Quelle, ohne Links und ohne Kuerzung: gar nichts rendern.
+  assert.match(badge, /if \(!belegt && links\.length === 0 && !meta\.abgeschnitten\) return null/)
+})
+
+test('L: nur echte Herkunftsarten gelten als belegt', async () => {
+  const { hatBelegteQuelle } = await import('./SourceBadge.tsx').catch(() => ({ hatBelegteQuelle: null }))
+  // SourceBadge.tsx ist JSX und laesst sich ohne Bundler nicht importieren —
+  // die Liste wird deshalb aus dem Quelltext gelesen und hier nachgebildet.
+  const liste = /BELEGTE_QUELLEN = \[([^\]]+)\]/.exec(badge)?.[1] ?? ''
+  const belegt = (s: string) =>
+    hatBelegteQuelle ? hatBelegteQuelle(s) : liste.includes(`'${s.toLowerCase()}'`)
+  for (const s of ['datenbank', 'web', 'gemischt']) assert.ok(belegt(s), s)
+  for (const s of ['gespräch', 'fehler', 'unbekannt', '']) assert.ok(!belegt(s), s)
+})

@@ -1,18 +1,33 @@
-import { ShieldCheck, Globe, Layers, HelpCircle, Sparkles, Scissors } from 'lucide-react'
+import { ShieldCheck, Globe, Layers, Scissors } from 'lucide-react'
 import type { SourceMeta } from '../types'
 
 interface SourceBadgeProps {
   meta: SourceMeta
 }
 
-export default function SourceBadge({ meta }: SourceBadgeProps) {
-  // gespräch = reines KI-Wissen ohne DB/Web-Abruf → neutraler Badge statt null
+/**
+ * Quellenarten, hinter denen eine ECHTE, nachpruefbare Herkunft steht. Alles
+ * andere — reines Modellwissen ("gespräch"), Fehlerantworten, unbekannt —
+ * bekommt KEINEN Chip: ein "KI-Wissen"- oder "Quelle unbekannt"-Chip sah aus
+ * wie eine Citation, war aber keine.
+ */
+export const BELEGTE_QUELLEN = ['datenbank', 'web', 'gemischt'] as const
 
+export function hatBelegteQuelle(source: string | undefined): boolean {
+  return (BELEGTE_QUELLEN as readonly string[]).includes(source?.toLowerCase() ?? '')
+}
+
+export default function SourceBadge({ meta }: SourceBadgeProps) {
   const links = extractLinks(meta.belege)
+  const belegt = hatBelegteQuelle(meta.source)
+
+  // Ohne belegte Quelle, ohne Links und ohne Kuerzungshinweis gibt es nichts
+  // Wahres anzuzeigen — dann auch keine leere Trennlinie.
+  if (!belegt && links.length === 0 && !meta.abgeschnitten) return null
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-[#ece7e0]">
-      <SourceChip source={meta.source} />
+      {belegt && <SourceChip source={meta.source} />}
 
       {meta.abgeschnitten && (
         <span
@@ -62,18 +77,7 @@ function SourceChip({ source }: { source: string }) {
       </span>
     )
   }
-  if (s === 'gespräch') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2.5 py-0.5">
-        <Sparkles size={11} /> KI-Wissen
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs bg-gray-50 text-gray-500 border border-gray-200 rounded-full px-2.5 py-0.5">
-      <HelpCircle size={11} /> Quelle unbekannt
-    </span>
-  )
+  return null
 }
 
 function extractLinks(belege: unknown[] | undefined): string[] {
