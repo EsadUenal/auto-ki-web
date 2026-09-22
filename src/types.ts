@@ -502,6 +502,109 @@ export interface VerkaufsCheckForm {
   vorbesitzer: number | ''
   tuevBis: string
   scheckheft: boolean
+  // RC1: weitere optionale Angaben ("verbessern dein Ergebnis"). Alle optional,
+  // damit gespeicherte Alt-Checks unverändert laden (Merge mit EMPTY im View).
+  erstzulassung: string
+  variante: string
+  karosserie: string
+  antrieb: string
+  schluessel: number | ''
+  letzterServiceDatum: string
+  letzterServiceKm: number | ''
+  wartungsnachweise: '' | 'vollstaendig' | 'teilweise' | 'keine'
+  zweiterRadsatz: boolean
+  reifenZustand: '' | 'neuwertig' | 'gut' | 'mittel' | 'abgefahren'
+  importStatus: '' | 'nein' | 'import' | 'reimport'
+  tuning: string
+  vorschaeden: string
+  zustandInnen: '' | 'sehr_gut' | 'gut' | 'gebrauchsspuren' | 'maengel'
+  zustandAussen: '' | 'sehr_gut' | 'gut' | 'gebrauchsspuren' | 'maengel'
+  technischeMaengel: string     // kommagetrennt
+  optischeMaengel: string       // kommagetrennt
+  plz: string
+  verkaufsziel: '' | 'schnell' | 'ausgewogen' | 'maximal'
+  preisUntergrenze: number | ''
+}
+
+// ---- RC1: deterministischer Verkaufsfahrplan (app/verkaufsplan.py) ----
+
+export interface PlanZeile { label: string; wert: string; quelle: string }
+export interface PlanPunkt { titel: string; text: string; art?: string }
+export interface PlanMinderer { titel: string; text: string; gewicht: 'hoch' | 'mittel' | 'gering' }
+export interface PlanMassnahme {
+  massnahme: string
+  kategorie: 'lohnt' | 'optional' | 'lohnt_nicht'
+  begruendung: string
+}
+export interface PlanKriterium { kriterium: string; erfuellt: boolean }
+
+export interface MarktOrientierung {
+  status: 'ok' | 'nicht_verfuegbar' | 'nicht_gespeichert'
+  text: string
+  grund?: string | null
+  wert_eur?: number
+  quelle?: string
+  spezifitaet?: string
+  unsicherheit?: 'normal' | 'erhoeht'
+  hinweis?: string
+  vergleich?: {
+    preisvorstellung_eur: number
+    differenz_eur: number
+    differenz_pct: number
+    anzeige: string
+    einordnung: string
+  } | null
+}
+
+export interface MarktDauer {
+  status: 'ok'
+  p25_tage: number
+  median_tage: number
+  p75_tage: number
+  text: string
+  hinweis: string
+  quelle: string
+}
+
+export interface Verkaufsplan {
+  version: number
+  fahrzeug: { titel: string; variante?: string | null; zeilen: PlanZeile[]; hinweise: string[]; belastbar: boolean }
+  markt: { orientierung: MarktOrientierung | null; dauer: MarktDauer | null; strategie_hinweis?: string | null }
+  strategie: { ziel: string; label: string; angegeben: boolean; schritte: string[] }
+  werttreiber: PlanPunkt[]
+  wertminderer: PlanMinderer[]
+  vorbereitung: PlanMassnahme[]
+  inserat: {
+    titel: { art: string; text: string }[]
+    kurzbeschreibung: string
+    beschreibung: string
+    faktenblock: string[]
+  }
+  fotoplan: { fotos: { nr: number; motiv: string; tipp: string }[]; hinweise: string[] }
+  plattformen: { kanaele: { kanal: string; text: string }[]; hinweis: string }
+  verhandlung: {
+    preise: {
+      preisvorstellung_eur?: number | null
+      untergrenze_eur?: number | null
+      spielraum_eur?: number | null
+      hinweise: string[]
+    }
+    argumente: { einwand: string; antwort: string }[]
+    fairness: string
+  }
+  dokumente: { dokument: string; pflicht: boolean }[]
+  uebergabe: { punkte: string[]; abmeldung: string; hinweis: string }
+  pruefhinweise: {
+    schwachstellen: { titel: string; text: string; datenqualitaet: string }[]
+    rueckrufe: { titel: string; text: string }[]
+    hinweis?: string | null
+  }
+  inseratsqualitaet: {
+    vollstaendigkeit: { vorhanden?: number | null; gesamt?: number | null }
+    textqualitaet: { label: string; kriterien: PlanKriterium[] } | null
+    transparenz: { label: string; kriterien: PlanKriterium[] }
+  }
+  naechste_schritte: string[]
 }
 
 export interface VerkaufsCheckResult {
@@ -538,4 +641,6 @@ export interface VerkaufsCheckResult {
   // Phase 4 (optional; alte Checks besitzen diese Felder nicht)
   listing_analyse?: ListingAnalyse | null
   inserat_optimierung?: InseratOptimierung | null
+  /** RC1: deterministischer Verkaufsfahrplan. Alte Checks besitzen ihn nicht. */
+  verkaufsplan?: Verkaufsplan | null
 }

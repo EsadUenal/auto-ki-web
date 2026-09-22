@@ -135,13 +135,17 @@ export function NextSteps({ findings }: { findings: KeyFinding[] | undefined }) 
 // schwelle vertieft, zeigen wir rotierende, ehrliche Status-Texte statt eines
 // stummen Spinners. Kein voreiliges "fertig".
 
+// RC1: Der VerkaufsCheck führt keine Marktplatz-Recherche mehr durch (siehe
+// app/web_search.py, Abrufsperre). Die Statustexte beschreiben deshalb, was
+// wirklich passiert: Fahrzeugzuordnung, geprüfte Modelldaten, Inseratsanalyse
+// und der Verkaufsfahrplan.
 const DEEPENING_MESSAGES = [
-  'ENFAL durchsucht den Gebrauchtwagenmarkt …',
-  'Vergleichbare Angebote werden gesammelt …',
-  'ENFAL erweitert die Marktrecherche …',
-  'Weitere Vergleichsangebote werden geprüft …',
-  'Preisdaten werden validiert …',
-  'Marktwert und Preisbewertung werden berechnet …',
+  'ENFAL ordnet dein Fahrzeug zu …',
+  'Geprüfte Modelldaten werden ausgewertet …',
+  'Deine Angaben werden auf Widersprüche geprüft …',
+  'Marktorientierung wird eingeholt …',
+  'Inserat und Verkaufsargumente werden aufbereitet …',
+  'Der Verkaufsfahrplan wird zusammengestellt …',
 ]
 
 export function DeepeningStatus() {

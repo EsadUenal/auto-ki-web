@@ -6,6 +6,7 @@ import AnalyseFrageChat from './AnalyseFrageChat'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import KeyFindings from './KeyFindings'
 import InseratPanel from './InseratPanel'
+import VerkaufsPlan from './VerkaufsPlan'
 import { formatiereHuEingabe } from './huEingabe'
 import { marktanalyseOf, VerkaufMarketMetrics, NextSteps, CollapsibleReport, ResearchFailedCard, DeepeningStatus } from './ResultSummary'
 import type { VerkaufsCheckForm, VerkaufsCheckResult, SavedVerkaufsCheck } from '../types'
@@ -37,7 +38,34 @@ const EMPTY: VerkaufsCheckForm = {
   vorbesitzer: '',
   tuevBis: '',
   scheckheft: false,
+  // RC1: optionale Zusatzangaben
+  erstzulassung: '',
+  variante: '',
+  karosserie: '',
+  antrieb: '',
+  schluessel: '',
+  letzterServiceDatum: '',
+  letzterServiceKm: '',
+  wartungsnachweise: '',
+  zweiterRadsatz: false,
+  reifenZustand: '',
+  importStatus: '',
+  tuning: '',
+  vorschaeden: '',
+  zustandInnen: '',
+  zustandAussen: '',
+  technischeMaengel: '',
+  optischeMaengel: '',
+  plz: '',
+  verkaufsziel: '',
+  preisUntergrenze: '',
 }
+
+const ZIEL_OPTIONS = [
+  { value: 'schnell', label: 'Schnell verkaufen', desc: 'Zügig, dafür defensiver Preis' },
+  { value: 'ausgewogen', label: 'Ausgewogen', desc: 'Realistischer Preis, etwas Spielraum' },
+  { value: 'maximal', label: 'Möglichst hoher Preis', desc: 'Mehr Geduld nötig' },
+]
 
 interface VerkaufsCheckViewProps {
   savedCheck?: SavedVerkaufsCheck | null
@@ -256,6 +284,25 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                 onChange={(e) => set('ausstattung', e.target.value)}
                 placeholder="z. B. Navi, Sport-Sitze, Keyless (kommagetrennt)" />
             </Field>
+            <Field label="Dein Verkaufsziel">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {ZIEL_OPTIONS.map((opt) => (
+                  <button key={opt.value} type="button"
+                    onClick={() => set('verkaufsziel',
+                      (form.verkaufsziel === opt.value ? '' : opt.value) as VerkaufsCheckForm['verkaufsziel'])}
+                    className={`text-left p-3 rounded-xl border text-sm transition-colors ${
+                      form.verkaufsziel === opt.value
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-[#e6e1da] hover:border-gray-300 text-gray-700'
+                    }`}>
+                    <p className="font-medium">{opt.label}</p>
+                    <p className={`text-xs mt-0.5 ${form.verkaufsziel === opt.value ? 'text-green-600/80' : 'text-gray-400'}`}>
+                      {opt.desc}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </Field>
             <Field label="Fahrzeugzustand" required>
               <div className="grid grid-cols-2 gap-2">
                 {ZUSTAND_OPTIONS.map((opt) => (
@@ -280,7 +327,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
               className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium"
             >
               <ChevronDown size={15} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
-              Weitere Angaben (optional)
+              Weitere Angaben (optional, verbessern dein Ergebnis)
             </button>
 
             {showMore && (
@@ -317,18 +364,152 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
                     Scheckheftgepflegt
                   </label>
                 </div>
+                <Field label="Erstzulassung">
+                  <input className={inputCls} value={form.erstzulassung}
+                    onChange={(e) => set('erstzulassung', e.target.value)}
+                    onBlur={(e) => set('erstzulassung', formatiereHuEingabe(e.target.value))}
+                    placeholder="z. B. 03/2018" />
+                </Field>
+                <Field label="Variante / Ausstattungslinie">
+                  <input className={inputCls} value={form.variante}
+                    onChange={(e) => set('variante', e.target.value)} placeholder="z. B. GTI Performance" />
+                </Field>
+                <Field label="Karosserie">
+                  <input className={inputCls} value={form.karosserie}
+                    onChange={(e) => set('karosserie', e.target.value)} placeholder="z. B. Schrägheck" />
+                </Field>
+                <Field label="Antrieb">
+                  <select className={inputCls} value={form.antrieb}
+                    onChange={(e) => set('antrieb', e.target.value)}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="Front">Frontantrieb</option>
+                    <option value="Heck">Heckantrieb</option>
+                    <option value="Allrad">Allradantrieb</option>
+                  </select>
+                </Field>
+                <Field label="Anzahl Schlüssel">
+                  <input className={inputCls} type="number" min={0} max={10} value={form.schluessel}
+                    onChange={(e) => set('schluessel', e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="z. B. 2" />
+                </Field>
+                <Field label="Letzter Service (Monat/Jahr)">
+                  <input className={inputCls} value={form.letzterServiceDatum}
+                    onChange={(e) => set('letzterServiceDatum', e.target.value)}
+                    onBlur={(e) => set('letzterServiceDatum', formatiereHuEingabe(e.target.value))}
+                    placeholder="z. B. 03/2026" />
+                </Field>
+                <Field label="Kilometerstand beim letzten Service">
+                  <input className={inputCls} type="number" min={0} value={form.letzterServiceKm}
+                    onChange={(e) => set('letzterServiceKm', e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="z. B. 88000" />
+                </Field>
+                <Field label="Service-/Wartungsnachweise">
+                  <select className={inputCls} value={form.wartungsnachweise}
+                    onChange={(e) => set('wartungsnachweise', e.target.value as VerkaufsCheckForm['wartungsnachweise'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="vollstaendig">Vollständig vorhanden</option>
+                    <option value="teilweise">Teilweise vorhanden</option>
+                    <option value="keine">Keine vorhanden</option>
+                  </select>
+                </Field>
+                <Field label="Reifenzustand">
+                  <select className={inputCls} value={form.reifenZustand}
+                    onChange={(e) => set('reifenZustand', e.target.value as VerkaufsCheckForm['reifenZustand'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="neuwertig">Neuwertig</option>
+                    <option value="gut">Gut</option>
+                    <option value="mittel">Mittleres Profil</option>
+                    <option value="abgefahren">Abgefahren</option>
+                  </select>
+                </Field>
+                <Field label="Zustand außen">
+                  <select className={inputCls} value={form.zustandAussen}
+                    onChange={(e) => set('zustandAussen', e.target.value as VerkaufsCheckForm['zustandAussen'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="sehr_gut">Sehr gut</option>
+                    <option value="gut">Gut</option>
+                    <option value="gebrauchsspuren">Gebrauchsspuren</option>
+                    <option value="maengel">Mit Mängeln</option>
+                  </select>
+                </Field>
+                <Field label="Zustand innen">
+                  <select className={inputCls} value={form.zustandInnen}
+                    onChange={(e) => set('zustandInnen', e.target.value as VerkaufsCheckForm['zustandInnen'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="sehr_gut">Sehr gut</option>
+                    <option value="gut">Gut</option>
+                    <option value="gebrauchsspuren">Gebrauchsspuren</option>
+                    <option value="maengel">Mit Mängeln</option>
+                  </select>
+                </Field>
+                <Field label="Import / Reimport">
+                  <select className={inputCls} value={form.importStatus}
+                    onChange={(e) => set('importStatus', e.target.value as VerkaufsCheckForm['importStatus'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="nein">Deutsches Fahrzeug</option>
+                    <option value="import">Import</option>
+                    <option value="reimport">Reimport</option>
+                  </select>
+                </Field>
+                <Field label="Preisuntergrenze (nur für dich)">
+                  <div className="relative">
+                    <input className={inputCls + ' pr-8'} type="number" min={0} value={form.preisUntergrenze}
+                      onChange={(e) => set('preisUntergrenze', e.target.value ? parseInt(e.target.value) : '')}
+                      placeholder="z. B. 18.000" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">€</span>
+                  </div>
+                </Field>
+                <Field label="PLZ (Verkaufsregion)">
+                  <input className={inputCls} value={form.plz} maxLength={10}
+                    onChange={(e) => set('plz', e.target.value)} placeholder="z. B. 45127" />
+                </Field>
+                <div className="flex items-end pb-2.5">
+                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" checked={form.zweiterRadsatz}
+                      onChange={(e) => set('zweiterRadsatz', e.target.checked)} />
+                    Zweiter Radsatz vorhanden
+                  </label>
+                </div>
                 <div className="col-span-2">
-                  <Field label="Bekannte Mängel">
+                  <Field label="Technische Mängel">
+                    <input className={inputCls} value={form.technischeMaengel}
+                      onChange={(e) => set('technischeMaengel', e.target.value)}
+                      placeholder="z. B. Klimaanlage kühlt schwach (kommagetrennt)" />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Optische Mängel">
+                    <input className={inputCls} value={form.optischeMaengel}
+                      onChange={(e) => set('optischeMaengel', e.target.value)}
+                      placeholder="z. B. Steinschläge Front, Kratzer Felge (kommagetrennt)" />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Nachlackierungen / bekannte Vorschäden">
+                    <input className={inputCls} value={form.vorschaeden}
+                      onChange={(e) => set('vorschaeden', e.target.value)}
+                      placeholder="z. B. Heckstoßstange nachlackiert" />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Tuning / Umbauten">
+                    <input className={inputCls} value={form.tuning}
+                      onChange={(e) => set('tuning', e.target.value)}
+                      placeholder="z. B. Tieferlegungsfedern, eingetragen" />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Weitere bekannte Mängel">
                     <input className={inputCls} value={form.maengel}
                       onChange={(e) => set('maengel', e.target.value)}
-                      placeholder="z. B. Kratzer Heckstoßstange, Steuerkette (kommagetrennt)" />
+                      placeholder="Alles, was oben nicht passt (kommagetrennt)" />
                   </Field>
                 </div>
                 <div className="col-span-2">
                   <Field label="Beschreibungstext deines Inserats">
                     <textarea className={inputCls + ' resize-none'} rows={3} value={form.inseratText}
                       onChange={(e) => set('inseratText', e.target.value)}
-                      placeholder="Falls du schon einen Beschreibungstext hast — hier einfügen. ENFAL prüft ihn auf Widersprüche und Vollständigkeit." />
+                      placeholder="Falls du schon einen Beschreibungstext hast, hier einfügen. ENFAL prüft ihn auf Widersprüche und Vollständigkeit." />
                   </Field>
                 </div>
               </div>
@@ -472,13 +653,17 @@ function VerkaufsReport({
         </div>
       )}
 
-      {/* P1 #2: Check vollständig, aber kein belastbarer Marktpreis — neutrale
-          Karte statt versteckter/leerer Preisstrategie (kein 0 €, kein Fehler-Look). */}
-      {!hasPreise && result.research_status === 'completed_no_market' && (
+      {/* RC1: Der Verkaufsfahrplan ersetzt die frühere "keine Marktdaten"-Karte.
+          Die Marktorientierung ist dort ein eigener Abschnitt, der auch den
+          ehrlichen Fallback trägt. Alte gespeicherte Checks haben den Plan nicht:
+          für sie bleibt die neutrale Karte darunter. */}
+      {result.verkaufsplan && <VerkaufsPlan plan={result.verkaufsplan} />}
+
+      {!result.verkaufsplan && !hasPreise && result.research_status === 'completed_no_market' && (
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Preisstrategie</p>
           <p className="text-sm text-gray-700 leading-relaxed">
-            Keine belastbaren Marktdaten verfügbar — für dieses Fahrzeug ließ sich aktuell keine
+            Keine belastbaren Marktdaten verfügbar: für dieses Fahrzeug ließ sich keine
             zuverlässige Preisspanne ermitteln.
           </p>
           <p className="mt-1 text-xs text-gray-500 leading-relaxed">
@@ -497,8 +682,9 @@ function VerkaufsReport({
       {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
       <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
 
-      {/* Konkreter nächster Schritt aus vorhandenen Key Findings. */}
-      <NextSteps findings={result.key_findings} />
+      {/* "Was jetzt?" steht im Verkaufsfahrplan; für Alt-Checks bleibt die
+          bisherige Ableitung aus den Key Findings. */}
+      {!result.verkaufsplan && <NextSteps findings={result.key_findings} />}
 
       {/* Phase 4: "Dein Inserat" — deterministische Qualität + on-demand Optimierung. */}
       <InseratPanel

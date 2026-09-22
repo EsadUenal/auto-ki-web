@@ -1119,6 +1119,28 @@ function verkaufsBody(form: VerkaufsCheckForm): Record<string, unknown> {
     vorbesitzer: form.vorbesitzer || undefined,
     tuev_bis: form.tuevBis || undefined,
     scheckheftgepflegt: form.scheckheft || undefined,
+    // RC1: weitere optionale Angaben. Leere Felder werden weggelassen, damit
+    // das Backend "nicht angegeben" von "ausdrücklich nein" unterscheiden kann.
+    erstzulassung: form.erstzulassung || undefined,
+    variante: form.variante || undefined,
+    karosserie: form.karosserie || undefined,
+    antrieb: form.antrieb || undefined,
+    schluessel_anzahl: form.schluessel === '' ? undefined : form.schluessel,
+    letzter_service_datum: form.letzterServiceDatum || undefined,
+    letzter_service_km: form.letzterServiceKm === '' ? undefined : form.letzterServiceKm,
+    wartungsnachweise: form.wartungsnachweise || undefined,
+    zweiter_radsatz: form.zweiterRadsatz || undefined,
+    reifen_zustand: form.reifenZustand || undefined,
+    import_status: form.importStatus || undefined,
+    tuning: form.tuning || undefined,
+    vorschaeden: form.vorschaeden || undefined,
+    zustand_innen: form.zustandInnen || undefined,
+    zustand_aussen: form.zustandAussen || undefined,
+    technische_maengel: form.technischeMaengel ? liste(form.technischeMaengel) : [],
+    optische_maengel: form.optischeMaengel ? liste(form.optischeMaengel) : [],
+    plz: form.plz || undefined,
+    verkaufsziel: form.verkaufsziel || undefined,
+    preis_untergrenze: form.preisUntergrenze === '' ? undefined : form.preisUntergrenze,
   }
 }
 
