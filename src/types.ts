@@ -561,6 +561,8 @@ export interface MarktDauer {
   p25_tage: number
   median_tage: number
   p75_tage: number
+  /** "grob", wenn zwei der drei Werte zusammenfallen (dünne Datenbasis). */
+  aufloesung?: 'normal' | 'grob'
   text: string
   hinweis: string
   quelle: string

@@ -201,6 +201,11 @@ export default function VerkaufsPlan({ plan }: { plan: Verkaufsplan }) {
             <div className="flex items-center gap-1.5 mb-2">
               <Clock size={13} className="text-gray-400" />
               <span className="text-xs font-semibold text-gray-700">Marktdauer vergleichbarer Angebote</span>
+              {markt.dauer.aufloesung === 'grob' && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] bg-amber-100 text-amber-700">
+                  grobe Datenbasis
+                </span>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
               {[
