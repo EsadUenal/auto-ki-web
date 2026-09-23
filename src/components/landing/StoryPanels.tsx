@@ -117,8 +117,8 @@ export function PanelFinden({ aktiv, reduziert }: PanelProps) {
 // ── 2. VERSTEHEN ─────────────────────────────────────────────────────────────
 
 export function PanelVerstehen({ aktiv, reduziert }: PanelProps) {
-  const monat = useZaehler(SHOWCASE_KOSTEN.gesamtMonat, aktiv, reduziert, 1100)
-  const jahr = useZaehler(SHOWCASE_KOSTEN.gesamtJahr, aktiv, reduziert, 1100)
+  const monat = useZaehler(SHOWCASE_KOSTEN.wirtschaftlichMonat, aktiv, reduziert, 1100)
+  const jahr = useZaehler(SHOWCASE_KOSTEN.wirtschaftlichJahr, aktiv, reduziert, 1100)
   const proKm = useZaehler(SHOWCASE_KOSTEN.kostenProKm, aktiv, reduziert, 1100)
   const groesster = SHOWCASE_KOSTEN_TEILE[0].monat
 
@@ -257,7 +257,7 @@ export function PanelPruefen({ aktiv, reduziert }: PanelProps) {
 
 export function PanelEntscheiden({ aktiv, reduziert }: PanelProps) {
   const fit = useZaehler(k.user_fit, aktiv, reduziert, 900)
-  const monat = useZaehler(SHOWCASE_KOSTEN.gesamtMonat, aktiv, reduziert, 900)
+  const monat = useZaehler(SHOWCASE_KOSTEN.wirtschaftlichMonat, aktiv, reduziert, 900)
   const frei = useSequenz(4, aktiv, reduziert, 200)
 
   const zeilen = [

@@ -1030,6 +1030,35 @@ export async function apiAutoFinder(payload: AutoFinderPayload): Promise<AutoFin
   return response.json() as Promise<AutoFinderResponse>
 }
 
+// ---- Autokosten: amtliche Kraftstoff-Referenz (öffentlich, kostenlos) ----
+// Der Rechner selbst läuft komplett im Browser; hier kommt NUR der nationale
+// Wochen-Referenzpreis her (EU Weekly Oil Bulletin, siehe Backend-Router).
+// Fällt der Abruf aus, bleibt der Rechner voll benutzbar — der Aufrufer behandelt
+// das als "keine Referenz" und lässt das Preisfeld leer und editierbar.
+export interface ApiKraftstoffReferenz {
+  kraftstoff: 'benzin' | 'diesel'
+  produkt: string
+  preis: number | null
+  einheit: string
+  land: string
+  quelle: string
+  quelle_datum: string | null
+  abgerufen_am: string | null
+  status: 'ok' | 'veraltet' | 'fallback' | 'nicht_verfuegbar'
+  hinweis: string
+}
+
+export async function apiKraftstoffReferenz(): Promise<ApiKraftstoffReferenz[]> {
+  const response = await fetch(`${BASE_URL}/api/v1/autokosten/kraftstoff-referenz`, {
+    method: 'GET',
+    headers: authHeaders(),
+  })
+  if (!response.ok) throw new Error(`Server-Fehler ${response.status}`)
+  const data = await response.json()
+  const liste = (data?.kraftstoffe ?? []) as ApiKraftstoffReferenz[]
+  return Array.isArray(liste) ? liste : []
+}
+
 // `apiAutoFinderImagesEnsure` ist ersatzlos entfallen: AutoFinder zeigt keine
 // Fahrzeugbilder mehr, und der zugehoerige Endpunkt
 // POST /api/v1/autofinder/images/ensure ist backendseitig abgeschaltet (er war

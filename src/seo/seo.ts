@@ -132,11 +132,12 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     path: '/autokosten',
     title: 'Autokosten-Rechner: Was kostet dein Auto im Monat? | ENFAL',
     description:
-      'Kraftstoff, Versicherung, Steuer, Wartung und Wertverlust: Der ENFAL Autokosten-Rechner zeigt '
-      + 'monatliche und jährliche Kosten. Kostenlos und ohne Konto.',
+      'Kraftstoff, Versicherung, Steuer, Wartung, Wertverlust: Kosten pro Monat, Jahr und Kilometer '
+      + '— mit Budget-Abgleich und Autovergleich. Kostenlos, ohne Konto.',
     jsonLd: [
       webApp('ENFAL Autokosten-Rechner', '/autokosten',
-        'Berechnet monatliche und jährliche Fahrzeugkosten aus Kraftstoff, Versicherung, Steuer, Wartung und Wertverlust.',
+        'Berechnet Fahrzeugkosten pro Monat, Jahr und Kilometer aus Kraftstoff, Versicherung, Steuer, '
+        + 'Wartung und Wertverlust — inklusive Budget-Abgleich und Vergleich zweier Autos.',
         true),
       brotkrumen('/autokosten', 'Autokosten-Rechner'),
     ],

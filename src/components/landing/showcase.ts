@@ -90,20 +90,19 @@ export const SHOWCASE_KOSTEN_FORM: AutokostenForm = {
   garageMonat: '',
   finanzierungMonat: '',
   wertverlustJahr: '1900',
+  budgetMonat: '',
 }
 
 /** Ergebnis der ECHTEN Produktrechnung — einmal beim Laden des Moduls. */
 export const SHOWCASE_KOSTEN = berechne(SHOWCASE_KOSTEN_FORM)
 
-/** Die Kostenbestandteile für die Aufschlüsselung, absteigend nach Anteil. */
-export const SHOWCASE_KOSTEN_TEILE = [
-  { label: 'Wertverlust',  monat: SHOWCASE_KOSTEN.wertverlustMonat },
-  { label: 'Kraftstoff',   monat: SHOWCASE_KOSTEN.energieMonat },
-  { label: 'Versicherung', monat: SHOWCASE_KOSTEN.versicherungMonat },
-  { label: 'Wartung',      monat: SHOWCASE_KOSTEN.wartungMonat },
-  { label: 'Reifen',       monat: SHOWCASE_KOSTEN.reifenMonat },
-  { label: 'Kfz-Steuer',   monat: SHOWCASE_KOSTEN.steuerMonat },
-].sort((a, b) => b.monat - a.monat)
+/** Die Kostenbestandteile für die Aufschlüsselung, absteigend nach Anteil.
+ *  Kommt direkt aus der Produktrechnung (`ergebnis.posten` ist bereits
+ *  absteigend sortiert und enthält nur Posten > 0). */
+export const SHOWCASE_KOSTEN_TEILE = SHOWCASE_KOSTEN.posten.map((p) => ({
+  label: p.label,
+  monat: p.monat,
+}))
 
 /** Die vier Schritte der Story — auch die Sprungmarken der Sticky-Navigation. */
 export const STORY_SCHRITTE = [

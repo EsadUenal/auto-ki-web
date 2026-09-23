@@ -1,28 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  Calculator, RotateCcw, Sparkles, Fuel, ShieldCheck, Wrench as WrenchIcon, CircleDot,
-  Warehouse, Landmark, TrendingDown, type LucideIcon,
-} from 'lucide-react'
+import { Calculator, RotateCcw, Sparkles, ChevronDown, Info } from 'lucide-react'
+import { apiKraftstoffReferenz } from '../../api/client'
 import {
   EMPTY_FORM,
   BEISPIEL_FORM,
   KRAFTSTOFF_OPTIONS,
   berechne,
   validate,
-  parseZahl,
-  formatEuro,
-  formatProKm,
-  formatMenge,
-  energiePreisFeld,
-  energieEinheit,
   speichereForm,
   ladeForm,
   loescheForm,
+  energiePreisFeld,
   type AutokostenForm,
-  type AutokostenErgebnis,
+  type AutokostenErgebnis as Ergebnis,
   type Kraftstoff,
   type FeldFehler,
 } from './logic'
+import {
+  alsMap, referenzFuer, referenzLabel, uebernehmeReferenz, type Referenzen,
+} from './kraftstoffReferenz'
+import AutokostenErgebnis from './AutokostenErgebnis'
 
 const inputCls =
   'w-full rounded-lg border border-[#e6e1da] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300/50 focus:border-orange-300 transition-colors'
@@ -37,10 +34,10 @@ function GroupTitle({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 function Field({
-  label, suffix, value, onChange, placeholder, error,
+  label, suffix, value, onChange, placeholder, error, hint,
 }: {
   label: string; suffix?: string; value: string
-  onChange: (v: string) => void; placeholder?: string; error?: string
+  onChange: (v: string) => void; placeholder?: string; error?: string; hint?: string
 }) {
   return (
     <label className="block">
@@ -48,7 +45,7 @@ function Field({
       <div className="relative">
         <input
           inputMode="decimal"
-          className={inputCls + (error ? ' border-red-300 focus:ring-red-200' : '') + (suffix ? ' pr-12' : '')}
+          className={inputCls + (error ? ' border-red-300 focus:ring-red-200' : '') + (suffix ? ' pr-14' : '')}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -59,50 +56,50 @@ function Field({
         )}
       </div>
       {error && <span className="mt-1 block text-[11px] text-red-600">{error}</span>}
+      {!error && hint && <span className="mt-1 block text-[11px] text-gray-400">{hint}</span>}
     </label>
-  )
-}
-
-function KostenZeile({
-  label, wert, anteil, icon: Icon,
-}: { label: string; wert: number; anteil: number; icon: LucideIcon }) {
-  const pct = anteil > 0 ? Math.min(100, Math.max(0, (wert / anteil) * 100)) : 0
-  return (
-    <div className="py-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm text-gray-600 flex items-center gap-1.5">
-          <Icon size={13} className="text-gray-400" />{label}
-        </span>
-        <span className="text-sm font-semibold text-gray-900 tabular-nums">{formatEuro(wert)}</span>
-      </div>
-      <div className="mt-1.5 h-1.5 rounded-full bg-[#efe9df] overflow-hidden">
-        <div className="h-full rounded-full bg-orange-400" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
   )
 }
 
 export default function AutokostenView() {
   const [form, setForm] = useState<AutokostenForm>(EMPTY_FORM)
-  const [ergebnis, setErgebnis] = useState<AutokostenErgebnis | null>(null)
+  const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null)
   const [fehler, setFehler] = useState<FeldFehler[]>([])
   const [zeigeFehler, setZeigeFehler] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+  const [beispielAktiv, setBeispielAktiv] = useState(false)
+  const [referenz, setReferenz] = useState<Referenzen>({})
   const restoreHandled = useRef(false)
 
-  // §Extras: letzte Eingabe + Berechnung beim Reload wiederherstellen.
+  // Letzte Eingabe + Berechnung beim Reload wiederherstellen.
   useEffect(() => {
     if (restoreHandled.current) return
     restoreHandled.current = true
     const gespeichert = ladeForm()
     if (!gespeichert) return
     setForm(gespeichert)
-    if (validate(gespeichert).length === 0) {
-      setErgebnis(berechne(gespeichert))
-    }
+    if (validate(gespeichert).length === 0) setErgebnis(berechne(gespeichert))
+  }, [])
+
+  // Amtliche Kraftstoff-Referenz nachladen. Rein additiv: schlägt der Abruf fehl,
+  // bleibt der Rechner unverändert benutzbar und die Felder leer/editierbar.
+  useEffect(() => {
+    let aktiv = true
+    apiKraftstoffReferenz()
+      .then((liste) => {
+        if (!aktiv) return
+        const map = alsMap(liste)
+        setReferenz(map)
+        // Nur LEERE Felder füllen — eine bereits getippte Zahl gewinnt immer.
+        setForm((f) => uebernehmeReferenz(f, map))
+      })
+      .catch(() => { /* ohne Referenz weiterrechnen */ })
+    return () => { aktiv = false }
   }, [])
 
   function set<K extends keyof AutokostenForm>(key: K, value: AutokostenForm[K]) {
     setForm((f) => ({ ...f, [key]: value }))
+    if (key !== 'budgetMonat') setBeispielAktiv(false)
   }
   function fehlerFuer(feld: keyof AutokostenForm): string | undefined {
     return zeigeFehler ? fehler.find((e) => e.feld === feld)?.text : undefined
@@ -117,35 +114,44 @@ export default function AutokostenView() {
       setErgebnis(null)
       return
     }
-    const erg = berechne(form)
-    setErgebnis(erg)
+    setErgebnis(berechne(form))
     speichereForm(form)
     setTimeout(() => document.getElementById('ak-ergebnis')?.scrollIntoView({ behavior: 'smooth' }), 60)
   }
 
   function beispielLaden() {
-    setForm(BEISPIEL_FORM)
-    setFehler([])
-    setZeigeFehler(false)
-    setErgebnis(berechne(BEISPIEL_FORM))
-    speichereForm(BEISPIEL_FORM)
+    // Beispielwerte sind Demo-Zahlen. Die Energiepreise bleiben die echte
+    // Referenz (bzw. leer) — ein Beispielpreis würde wie ein Marktpreis aussehen.
+    const mitReferenz = uebernehmeReferenz({ ...BEISPIEL_FORM }, referenz)
+    const fs = validate(mitReferenz)
+    setForm(mitReferenz)
+    setFehler(fs)
+    setBeispielAktiv(true)
+    if (fs.length === 0) {
+      setZeigeFehler(false)
+      setErgebnis(berechne(mitReferenz))
+      speichereForm(mitReferenz)
+    } else {
+      // Liegt keine amtliche Referenz vor, fehlt genau der Energiepreis. Das Feld
+      // wird dann markiert, statt dass stillschweigend kein Ergebnis erscheint.
+      setZeigeFehler(true)
+      setErgebnis(null)
+    }
   }
 
   function zuruecksetzen() {
-    setForm(EMPTY_FORM)
+    setForm(uebernehmeReferenz({ ...EMPTY_FORM }, referenz))
     setErgebnis(null)
     setFehler([])
     setZeigeFehler(false)
+    setBeispielAktiv(false)
     loescheForm()
   }
 
   const kraftstoffOpt = KRAFTSTOFF_OPTIONS.find((o) => o.value === form.kraftstoff)!
   const preisFeld = energiePreisFeld(form.kraftstoff)
-
-  // Rein darstellungsbezogene Ableitung für "So rechnet ENFAL" — dieselben
-  // Eingaben, die berechne() ohnehin verwendet; keine neue Fachlogik.
-  const kmJahrZahl = parseZahl(form.kmProJahr)
-  const preisZahl = parseZahl(form[preisFeld] as string)
+  const aktuelleReferenz = referenzFuer(form.kraftstoff, referenz)
+  const referenzText = referenzLabel(aktuelleReferenz)
 
   return (
     <div
@@ -158,7 +164,7 @@ export default function AutokostenView() {
       </div>
 
       <div className="ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
-        {/* Hero — kompakt */}
+        {/* Hero */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2.5">
@@ -176,13 +182,24 @@ export default function AutokostenView() {
             </button>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-[-0.03em] leading-[1.05]">
-            Was kostet dein Auto <span className="text-gray-400">wirklich im Monat?</span>
+            Autokosten berechnen: <span className="text-gray-400">Was kostet dein Auto wirklich im Monat?</span>
           </h1>
-          <p className="mt-2 text-sm text-gray-500 max-w-md leading-relaxed">
-            Fahrzeug- und Nutzungsdaten eingeben — ENFAL rechnet deine realistischen
-            monatlichen und jährlichen Kosten aus. Deterministisch, ohne Live-Marktdaten.
+          <p className="mt-2 text-sm text-gray-500 max-w-lg leading-relaxed">
+            Kosten pro Monat, pro Jahr und pro Kilometer — inklusive Wertverlust, Budget-Abgleich
+            und Vergleich mit einem zweiten Auto. Kostenlos, ohne Anmeldung, deterministisch gerechnet.
           </p>
         </div>
+
+        {beispielAktiv && (
+          <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <Info size={14} className="mt-0.5 shrink-0 text-amber-500" />
+            <p className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-semibold">Beispieldaten.</span> Versicherung, Steuer, Wartung,
+              Reifen und Wertverlust sind frei gewählte Demo-Zahlen, keine Marktdurchschnitte.
+              Ersetze sie durch deine eigenen Werte.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={berechnen} className="rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
           <div className="divide-y divide-[#efe9df]">
@@ -235,15 +252,33 @@ export default function AutokostenView() {
               </p>
               <div className="grid sm:grid-cols-3 gap-3">
                 <Field label="Benzinpreis" suffix="€/l" value={form.preisBenzin}
-                  onChange={(v) => set('preisBenzin', v)} placeholder="1,75"
-                  error={preisFeld === 'preisBenzin' ? fehlerFuer('preisBenzin') : undefined} />
+                  onChange={(v) => set('preisBenzin', v)} placeholder="2,35"
+                  error={preisFeld === 'preisBenzin' ? fehlerFuer('preisBenzin') : undefined}
+                  hint={referenzLabel(referenz.benzin) ?? undefined} />
                 <Field label="Dieselpreis" suffix="€/l" value={form.preisDiesel}
-                  onChange={(v) => set('preisDiesel', v)} placeholder="1,65"
-                  error={preisFeld === 'preisDiesel' ? fehlerFuer('preisDiesel') : undefined} />
-                <Field label="Strompreis" suffix="€/kWh" value={form.preisStrom}
-                  onChange={(v) => set('preisStrom', v)} placeholder="0,35"
+                  onChange={(v) => set('preisDiesel', v)} placeholder="2,45"
+                  error={preisFeld === 'preisDiesel' ? fehlerFuer('preisDiesel') : undefined}
+                  hint={referenzLabel(referenz.diesel) ?? undefined} />
+                <Field label="Strompreis / dein Ladepreis" suffix="€/kWh" value={form.preisStrom}
+                  onChange={(v) => set('preisStrom', v)} placeholder="z. B. 0,39"
                   error={preisFeld === 'preisStrom' ? fehlerFuer('preisStrom') : undefined} />
               </div>
+              {form.kraftstoff === 'elektro' ? (
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  Trage deinen durchschnittlichen Ladepreis ein. Heimladen und öffentliches
+                  Schnellladen können stark abweichen — einen allgemeingültigen deutschen
+                  Ladepreis gibt es nicht, deshalb gibt ENFAL hier keinen vor.
+                </p>
+              ) : aktuelleReferenz ? (
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  {referenzText ? `${referenzText}. ` : ''}{aktuelleReferenz.hinweis}
+                  {' '}Quelle: {aktuelleReferenz.quelle}. Du kannst den Wert jederzeit überschreiben.
+                </p>
+              ) : (
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  Aktuell keine amtliche Referenz verfügbar — trage deinen eigenen Preis ein.
+                </p>
+              )}
             </section>
 
             {/* 3 — Fixkosten */}
@@ -272,14 +307,31 @@ export default function AutokostenView() {
                 <Field label="Wertverlust" suffix="€/Jahr" value={form.wertverlustJahr}
                   onChange={(v) => set('wertverlustJahr', v)} placeholder="2.000" error={fehlerFuer('wertverlustJahr')} />
               </div>
-              <p className="text-[11px] text-gray-400">
-                Die Finanzierungsrate wird nur als vorhandener Betrag übernommen — ENFAL rechnet
-                bewusst keine Zinsen. Wertverlust bitte als Betrag pro Jahr in Euro.
+              <button
+                type="button"
+                onClick={() => setShowMore((v) => !v)}
+                className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 font-medium"
+              >
+                <ChevronDown size={15} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
+                Budget-Check (optional)
+              </button>
+              {showMore && (
+                <div className="sm:max-w-[50%]">
+                  <Field label="Dein maximales Autobudget pro Monat" suffix="€/Monat"
+                    value={form.budgetMonat} onChange={(v) => set('budgetMonat', v)}
+                    placeholder="400" error={fehlerFuer('budgetMonat')}
+                    hint="Nur für den Abgleich mit dem Ergebnis. Keine Finanzberatung." />
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Wertverlust als Betrag pro Jahr. Wenn du ihn nicht kennst, lass das Feld leer —
+                die Kosten werden dann ohne Wertverlust berechnet und ausdrücklich so gekennzeichnet.
+                ENFAL setzt keine geschätzte Quote ein.
               </p>
             </section>
           </div>
 
-          {/* CTA-Leiste — abgesetzt, damit der Haupt-Call-to-Action klar heraussticht */}
+          {/* CTA-Leiste */}
           <div className="p-5 sm:p-6 bg-[#faf8f5] border-t border-[#efe9df]">
             {zeigeFehler && fehler.length > 0 && (
               <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -301,82 +353,7 @@ export default function AutokostenView() {
 
         {/* Ergebnis */}
         <div id="ak-ergebnis" className="mt-8 scroll-mt-6">
-          {ergebnis && (
-            <div className="space-y-4">
-              {/* 3 starke KPI-Blöcke */}
-              <div className="grid sm:grid-cols-3 gap-3">
-                <div className="rounded-2xl bg-gray-900 text-white p-4 sm:p-5 shadow-[0_16px_36px_-24px_rgba(0,0,0,0.5)]">
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-white/55">Gesamt pro Monat</p>
-                  <p className="mt-1.5 text-3xl font-bold tabular-nums">{formatEuro(ergebnis.gesamtMonat)}</p>
-                </div>
-                <div className="rounded-2xl border border-[#e6e1da] bg-white p-4 sm:p-5 shadow-[0_16px_36px_-28px_rgba(40,25,10,0.22)]">
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400">Gesamt pro Jahr</p>
-                  <p className="mt-1.5 text-3xl font-bold text-gray-900 tabular-nums">{formatEuro(ergebnis.gesamtJahr)}</p>
-                </div>
-                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 sm:p-5">
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-orange-500">Kosten pro Kilometer</p>
-                  <p className="mt-1.5 text-3xl font-bold text-orange-600 tabular-nums">{formatProKm(ergebnis.kostenProKm)}</p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-[#e6e1da] bg-white shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)] overflow-hidden">
-                {/* Kostenaufschlüsselung */}
-                <div className="p-5 sm:p-6">
-                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">Kostenaufschlüsselung</h2>
-                  <p className="mt-1 text-xs text-gray-400">
-                    Deterministisch berechnet aus deinen Angaben · keine Live-Marktpreise
-                  </p>
-                  <div className="mt-4 divide-y divide-[#efe9df]">
-                    <KostenZeile
-                      label={`${kraftstoffOpt.label} (${formatMenge(ergebnis.jahresverbrauch, ergebnis.energieEinheitMenge)}/Jahr)`}
-                      wert={ergebnis.energieMonat} anteil={ergebnis.gesamtMonat} icon={Fuel}
-                    />
-                    <KostenZeile label="Versicherung" wert={ergebnis.versicherungMonat} anteil={ergebnis.gesamtMonat} icon={ShieldCheck} />
-                    <KostenZeile label="Kfz-Steuer" wert={ergebnis.steuerMonat} anteil={ergebnis.gesamtMonat} icon={Landmark} />
-                    <KostenZeile label="Wartung / Inspektion" wert={ergebnis.wartungMonat} anteil={ergebnis.gesamtMonat} icon={WrenchIcon} />
-                    <KostenZeile label="Reifen" wert={ergebnis.reifenMonat} anteil={ergebnis.gesamtMonat} icon={CircleDot} />
-                    {ergebnis.garageMonat > 0 && <KostenZeile label="Stellplatz / Garage" wert={ergebnis.garageMonat} anteil={ergebnis.gesamtMonat} icon={Warehouse} />}
-                    {ergebnis.finanzierungMonat > 0 && <KostenZeile label="Finanzierungsrate" wert={ergebnis.finanzierungMonat} anteil={ergebnis.gesamtMonat} icon={Landmark} />}
-                    {ergebnis.wertverlustMonat > 0 && <KostenZeile label="Wertverlust" wert={ergebnis.wertverlustMonat} anteil={ergebnis.gesamtMonat} icon={TrendingDown} />}
-                  </div>
-                </div>
-
-                {/* So rechnet ENFAL — kurzer, nachvollziehbarer Rechenweg für die Energiekosten */}
-                <div className="border-t border-[#efe9df] bg-[#faf8f5] p-5 sm:p-6">
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400 mb-3">So rechnet ENFAL</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400">Fahrleistung</p>
-                      <p className="mt-1 text-sm font-semibold text-gray-800 tabular-nums">{formatMenge(kmJahrZahl, 'km')}/Jahr</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400">Verbrauch</p>
-                      <p className="mt-1 text-sm font-semibold text-gray-800 tabular-nums">{form.verbrauch} {kraftstoffOpt.einheit}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400">{ergebnis.energieEinheitMenge}/Jahr</p>
-                      <p className="mt-1 text-sm font-semibold text-gray-800 tabular-nums">{formatMenge(ergebnis.jahresverbrauch, ergebnis.energieEinheitMenge)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400">Preis</p>
-                      <p className="mt-1 text-sm font-semibold text-gray-800 tabular-nums">
-                        {preisZahl.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {energieEinheit(form.kraftstoff)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400">Jahreskosten</p>
-                      <p className="mt-1 text-sm font-bold text-orange-600 tabular-nums">{formatEuro(ergebnis.energieJahr)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="px-5 sm:px-6 py-3 text-[11px] text-gray-400 border-t border-[#efe9df]">
-                  Richtwert auf Basis deiner Eingaben. Reale Kosten schwanken mit Fahrweise,
-                  Region, Fahrzeugzustand und Vertragskonditionen.
-                </div>
-              </div>
-            </div>
-          )}
+          {ergebnis && <AutokostenErgebnis ergebnis={ergebnis} form={form} />}
         </div>
       </div>
     </div>

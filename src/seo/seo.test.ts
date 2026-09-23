@@ -254,7 +254,9 @@ test('dist: wesentlicher sichtbarer Inhalt steht im initialen HTML', { skip: !HA
   const erwartet: Record<string, RegExp[]> = {
     '/': [/<h1[^>]*>Finde das Auto,/, /KaufCheck/, /VerkaufsCheck/, /ENFAL Plus/, /AutoFinder/, /16,99/, /keine Mindestlaufzeit/],
     '/autofinder': [/<h1[^>]*>Welches Auto/, /gepflegten Datenbank/],
-    '/autokosten': [/<h1[^>]*>Was kostet dein Auto/, /monatlichen und jährlichen Kosten/],
+    // H1 trägt die Suchintention ("Autokosten berechnen") und die Nutzerfrage.
+    '/autokosten': [/<h1[^>]*>Autokosten berechnen/, /Was kostet dein Auto wirklich im Monat/,
+      /pro Monat, pro Jahr und pro Kilometer/],
     '/pricing': [/<h1[^>]*>Einzeln kaufen oder/, /5,99/, /8,99/, /16,99/],
   }
   for (const [pfad, muster] of Object.entries(erwartet)) {
