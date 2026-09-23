@@ -186,11 +186,17 @@ export default function InseratPanel({
   form,
   checkId,
   initial,
+  hideQualityCard,
 }: {
   analyse?: ListingAnalyse | null
   form: VerkaufsCheckForm
   checkId?: number
   initial?: InseratOptimierung | null
+  /** RC1 Live-Closing: true, wenn der neue Verkaufsplan bereits eine eigene
+   * "Inseratsqualität" zeigt — die Karte hier würde sie sonst doppeln. Der
+   * "Inserat verbessern"-Knopf bleibt in jedem Fall stehen (eigener Zweck,
+   * kein Duplikat). */
+  hideQualityCard?: boolean
 }) {
   const [opt, setOpt] = useState<InseratOptimierung | null>(initial ?? null)
   const [loading, setLoading] = useState(false)
@@ -221,7 +227,7 @@ export default function InseratPanel({
     <div className="space-y-2.5">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Dein Inserat</p>
 
-      {analyse && <QualityCard analyse={analyse} />}
+      {analyse && !hideQualityCard && <QualityCard analyse={analyse} />}
 
       <div className="bg-white border border-[#e6e1da] rounded-2xl p-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
         <div className="flex items-center gap-2 mb-1">

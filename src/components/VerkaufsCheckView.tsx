@@ -620,6 +620,14 @@ function VerkaufsReport({
   chatKey: string
 }) {
   const hasPreise = result.schnellverkaufs_preis || result.empfohlener_preis || result.maximal_preis
+  // RC1 Live-Closing: der neue Verkaufsplan ist die primäre UX (siehe
+  // app/verkaufsplan.py). Ist er vorhanden, bleiben die alten Blöcke unten weg —
+  // sie zeigten dieselbe Preisstrategie/Analyse ein zweites Mal (Live-Befund: nach
+  // dem Plan erschienen erneut "Das solltest du wissen", ein zweites Inseratspaket
+  // und der vollständige alte LLM-Bericht mit "(a) Marktvergleich" usw.).
+  // Alte gespeicherte Checks ohne Plan zeigen weiterhin das bisherige Layout —
+  // reine Backward Compatibility, keine Datenmigration nötig.
+  const hatPlan = Boolean(result.verkaufsplan)
 
   // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).
   const preisInsights = insightsByIds(result.insights, result.preis_evidence_ids)
@@ -635,8 +643,9 @@ function VerkaufsReport({
     <div id="verk-result" className="mt-10 space-y-4">
       <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92]">Analyse-Ergebnis</p>
 
-      {/* Phase 3: Preisstrategie kompakt — Spanne + Marktmedian + Datenqualität. */}
-      {hasPreise && (
+      {/* Phase 3: Preisstrategie kompakt — Spanne + Marktmedian + Datenqualität.
+          Nur im Alt-Layout: der neue Plan hat seine eigene Marktorientierung. */}
+      {!hatPlan && hasPreise && (
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preisstrategie</p>
           <div className="grid grid-cols-3 gap-3">
@@ -659,7 +668,7 @@ function VerkaufsReport({
           für sie bleibt die neutrale Karte darunter. */}
       {result.verkaufsplan && <VerkaufsPlan plan={result.verkaufsplan} />}
 
-      {!result.verkaufsplan && !hasPreise && result.research_status === 'completed_no_market' && (
+      {!hatPlan && !hasPreise && result.research_status === 'completed_no_market' && (
         <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Preisstrategie</p>
           <p className="text-sm text-gray-700 leading-relaxed">
@@ -673,31 +682,48 @@ function VerkaufsReport({
         </div>
       )}
 
-      {preisInsights.length > 0 && (
+      {/* RC1 Live-Closing: nur im Alt-Layout — im neuen Plan trägt "Marktorientierung"
+          bereits den Preisvergleich, eine zweite "Warum dieser Preis?"-Karte ohne
+          sichtbaren Preis darüber wäre ein Dangling-Verweis. */}
+      {!hatPlan && preisInsights.length > 0 && (
         <div className="px-1">
           <EvidenceWhy label="Warum dieser Preis?" insights={preisInsights} />
         </div>
       )}
 
-      {/* Phase 2: verdichtete Kern-Erkenntnisse. */}
-      <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
+      {/* Phase 2: "Das solltest du wissen" — nur im Alt-Layout. Der neue Plan
+          deckt dieselben Erkenntnisse bereits über Werttreiber/Wertminderer und
+          "Selbst prüfen" ab (inkl. aller Rückrufe, unabhängig von ihrer
+          Datenqualität — siehe app/verkaufsplan.py::baue_pruefhinweise). */}
+      {!hatPlan && (
+        <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
+      )}
 
       {/* "Was jetzt?" steht im Verkaufsfahrplan; für Alt-Checks bleibt die
           bisherige Ableitung aus den Key Findings. */}
-      {!result.verkaufsplan && <NextSteps findings={result.key_findings} />}
+      {!hatPlan && <NextSteps findings={result.key_findings} />}
 
-      {/* Phase 4: "Dein Inserat" — deterministische Qualität + on-demand Optimierung. */}
+      {/* Phase 4: "Dein Inserat" — deterministische Qualität + on-demand Optimierung.
+          Im neuen Layout ohne die Qualitätskarte (die zeigt der Plan bereits unter
+          "Inseratsqualität"), der Optimieren-Knopf bleibt in jedem Fall stehen. */}
       <InseratPanel
         analyse={result.listing_analyse}
         form={form}
         checkId={checkId}
         initial={result.inserat_optimierung}
+        hideQualityCard={hatPlan}
       />
 
-      {/* Vollständiger Bericht & Tipps — unverändert, standardmäßig eingeklappt. */}
-      <CollapsibleReport bericht={result.bericht} title="Vollständige Analyse & Tipps anzeigen" />
+      {/* Vollständiger Bericht & Tipps — nur im Alt-Layout. Im neuen Layout bleibt
+          der Freitext-Bericht Teil der gespeicherten Antwort (Claim-Sicherheit
+          läuft unverändert darüber), wird aber nicht mehr zusätzlich gerendert:
+          er dupliziert sonst den Plan mit "(a) Marktvergleich" / "(b) Preisspanne" /
+          "(c) Preis-Optimierungstipps" / "(d) Verkaufsstrategie". */}
+      {!hatPlan && (
+        <CollapsibleReport bericht={result.bericht} title="Vollständige Analyse & Tipps anzeigen" />
+      )}
 
-      {(strategieInsights.length > 0 || argumentInsights.length > 0) && (
+      {!hatPlan && (strategieInsights.length > 0 || argumentInsights.length > 0) && (
         <div className="space-y-2 px-1">
           <EvidenceWhy label="Warum diese Strategie?" insights={strategieInsights} />
           <EvidenceWhy label="Warum diese Verkaufsargumente?" insights={argumentInsights} />

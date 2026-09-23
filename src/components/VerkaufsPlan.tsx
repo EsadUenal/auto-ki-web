@@ -382,9 +382,12 @@ export default function VerkaufsPlan({ plan }: { plan: Verkaufsplan }) {
         titel="Foto-Plan"
         untertitel={`${plan.fotoplan.fotos.length} Motive in sinnvoller Reihenfolge`}
       >
-        <ol className="space-y-1.5">
+        {/* RC1 Live-Closing: bewusst <div>, nicht <ol> — sonst zeigen Browser/
+            Screenreader ihre eigene Nummerierung zusätzlich zum Badge unten
+            ("1. 1 Vorne schräg"). Gleiches Muster wie "Was jetzt?" oben. */}
+        <div className="space-y-1.5">
           {plan.fotoplan.fotos.map((f) => (
-            <li key={f.nr} className="flex items-start gap-2.5">
+            <div key={f.nr} className="flex items-start gap-2.5">
               <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-semibold flex items-center justify-center">
                 {f.nr}
               </span>
@@ -392,9 +395,9 @@ export default function VerkaufsPlan({ plan }: { plan: Verkaufsplan }) {
                 {f.motiv}
                 <span className="block text-xs text-gray-500 leading-relaxed">{f.tipp}</span>
               </span>
-            </li>
+            </div>
           ))}
-        </ol>
+        </div>
         <div className="mt-3 rounded-xl border border-[#e6e1da] bg-[#faf7f3] p-3 space-y-1">
           {plan.fotoplan.hinweise.map((h, i) => (
             <p key={i} className="text-xs text-gray-600 leading-relaxed">{h}</p>
