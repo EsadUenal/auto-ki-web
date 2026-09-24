@@ -201,7 +201,7 @@ export default function AutokostenView() {
           </div>
         )}
 
-        <form onSubmit={berechnen} className="ez-form rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
+        <form onSubmit={berechnen} className="rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
           <div className="divide-y divide-[#efe9df]">
             {/* 1 — Fahrzeug & Nutzung */}
             <section className="p-5 sm:p-6 space-y-3">

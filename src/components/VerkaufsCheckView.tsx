@@ -216,7 +216,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="ez-form space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 space-y-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
             <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#a49c92]">Dein Fahrzeug</p>
             <div className="grid grid-cols-2 gap-4">

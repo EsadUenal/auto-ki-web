@@ -327,7 +327,56 @@ test('P: kein horizontaler Überlauf auf schmalen Viewports', () => {
   const regel = /\.ez-page\s*\{[^}]*\}/.exec(CSS)![0]
   // width:100% deckelt die clamp-Untergrenze auf die verfügbare Breite.
   assert.ok(/width:\s*100%/.test(regel))
-  const form = /\.ez-form\s*\{[^}]*\}/.exec(CSS)![0]
-  assert.ok(/width:\s*100%/.test(form))
-  assert.ok(/max-width:\s*56rem/.test(form))
+})
+
+// ── Q: EINE linke Content-Achse (Regression zum Alignment-Bug) ───────────────
+
+/** Alle Utility-Regeln aus index.css als {selector, body}. */
+function cssRegeln(): { sel: string; body: string }[] {
+  const out: { sel: string; body: string }[] = []
+  const re = /([.#][\w\\:.-]+)\s*\{([^}]*)\}/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(CSS)) !== null) out.push({ sel: m[1], body: m[2] })
+  return out
+}
+
+test('Q: kein zweiter Breiten-Container zentriert sich innerhalb der Seite', () => {
+  // Root Cause des Alignment-Bugs: `.ez-form` hatte max-width 56rem UND
+  // margin-inline:auto und wurde damit INNERHALB der breiteren `.ez-page`
+  // erneut zentriert — die Formularkarte begann um (Seitenbreite - 56rem)/2
+  // weiter rechts als H1 und Bericht. Erlaubt ist genau ein solcher Container:
+  // die Seite selbst.
+  const zentrierteBreite = cssRegeln().filter(
+    (r) => /max-width/.test(r.body) && /margin(-inline)?:\s*(auto|0\s+auto)/.test(r.body),
+  )
+  assert.deepEqual(
+    zentrierteBreite.map((r) => r.sel), ['.ez-page'],
+    'nur .ez-page darf Breite + automatische Seitenränder verbinden',
+  )
+})
+
+test('Q2: die Werkzeugseiten haben genau einen Breiten-Container', () => {
+  for (const datei of [
+    'KaufCheckView.tsx', 'VerkaufsCheckView.tsx',
+    'autofinder/AutoFinderView.tsx', 'autokosten/AutokostenView.tsx',
+  ]) {
+    const code = nurCode(src(datei))
+    assert.equal((code.match(/ez-page/g) ?? []).length, 1, `${datei}: genau ein .ez-page`)
+    assert.ok(!/mx-auto/.test(code), `${datei}: kein zusätzlich zentrierter Block`)
+    assert.ok(!/ez-form/.test(code), `${datei}: der zentrierte Formular-Container ist weg`)
+    assert.ok(!/max-w-3xl/.test(code), `${datei}: alte feste Breite noch vorhanden`)
+  }
+  assert.ok(!/\.ez-form/.test(CSS.replace(/\/\*[\s\S]*?\*\//g, '')),
+    '.ez-form existiert nicht mehr als Regel')
+})
+
+test('Q3: Rechenprobe — der alte Versatz erklaert den Zoom-Zufall', () => {
+  // Rechenprobe zur CSS-Regel: die Seite ist der einzige Container, alle
+  // Bloecke erben deren Innenkante. Frueher: (page - 896) / 2 Versatz.
+  const seite = (vw: number) => Math.min(Math.max(48 * 16, 0.76 * vw), 72 * 16)
+  const versatzFrueher = (vw: number) => Math.max(0, (seite(vw) - 48 - 56 * 16) / 2)
+  const versatzJetzt = () => 0
+  assert.ok(versatzFrueher(1536) > 100, 'der alte Versatz war sichtbar')
+  assert.equal(versatzFrueher(1228) < 1, true, 'und verschwand bei schmalem Viewport — daher der Zoom-Zufall')
+  for (const vw of [1920, 1536, 1440, 1280, 375]) assert.equal(versatzJetzt(), 0, String(vw))
 })

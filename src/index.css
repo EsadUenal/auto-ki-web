@@ -20,19 +20,21 @@
      optimieren, waechst die Seite jetzt mit dem Viewport und hat eine obere
      Grenze — zentriert, mit Weissraum, aber ohne verschenkte Flaeche.
        1920 px -> 1152 px Inhalt (vorher 768), 1536 px (= 1920 @125 %) -> 1152,
-       1280 px -> ~973, darunter fliessend bis zur vollen Breite. */
+       1280 px -> ~973, darunter fliessend bis zur vollen Breite.
+
+     KANONISCHE REGEL fuer alle Werkzeugseiten: `.ez-page` ist der EINZIGE
+     Breiten-Container einer Seite. Eyebrow, H1, Intro, Formularkarte und
+     Bericht liegen darin auf derselben linken Achse und enden an derselben
+     rechten Kante. Ein schmalerer Block INNERHALB der Seite wird nie erneut
+     zentriert — genau das tat zuvor `.ez-form` (max-width 56rem +
+     margin-inline: auto) und schob die Formularkarte bei 1536 px Viewport um
+     104 px nach rechts, waehrend Ueberschrift und Bericht links stehen
+     blieben. Bei starkem Browser-Zoom fiel die Seite unter 56rem, der Versatz
+     ging auf 0 — nur deshalb wirkte das Layout dort korrekt. */
   .ez-page {
     width: 100%;
     margin-inline: auto;
     max-width: clamp(48rem, 76vw, 72rem);
-  }
-  /* Eingabeformulare bleiben auf einer angenehmen Lesebreite — ein zweispaltiges
-     Formular mit 550 px breiten Feldern liest sich schlechter, nicht besser.
-     Berichte/Ergebnisse nutzen die volle `.ez-page`-Breite. */
-  .ez-form {
-    width: 100%;
-    max-width: 56rem;
-    margin-inline: auto;
   }
 
   .scrollbar-thin {

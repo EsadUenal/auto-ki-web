@@ -323,7 +323,7 @@ export default function AutoFinderView() {
           </div>
         )}
 
-        <form onSubmit={submit} className="ez-form rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
+        <form onSubmit={submit} className="rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
           <div className="divide-y divide-[#efe9df]">
             {/* 1 — Budget */}
             <section className="p-5 sm:p-6 space-y-3">
