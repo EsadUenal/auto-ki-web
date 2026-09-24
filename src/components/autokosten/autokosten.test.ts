@@ -75,7 +75,7 @@ test('Route: /autokosten ist in der App-Shell registriert und bleibt ohne Login'
 test('Shell: View nutzt die kanonische ENFAL-Content-Sprache', () => {
   assert.match(viewSrc, /h-full overflow-y-auto scrollbar-thin/)
   assert.match(viewSrc, /ez-aurora/)
-  assert.match(viewSrc, /ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10/)
+  assert.match(viewSrc, /ez-rise ez-page relative px-4 sm:px-6 py-10/)
   assert.match(viewSrc, /ENFAL · Autokosten/)
   assert.match(viewSrc, /Kosten berechnen/)
 })

@@ -184,7 +184,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.09) 0%, transparent 68%)' }} />
       </div>
 
-      <div className="ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <div className="ez-rise ez-page relative px-4 sm:px-6 py-10">
         {/* Hero */}
         <div className="mb-8">
           <div className="flex items-center gap-2.5 mb-5">
@@ -216,7 +216,7 @@ export default function VerkaufsCheckView({ savedCheck, onCheckSaved, onClearSav
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="ez-form space-y-6">
           <div className="bg-white border border-[#e6e1da] rounded-2xl p-6 space-y-5 shadow-[0_16px_36px_-24px_rgba(40,25,10,0.28)]">
             <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#a49c92]">Dein Fahrzeug</p>
             <div className="grid grid-cols-2 gap-4">

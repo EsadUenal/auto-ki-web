@@ -19,7 +19,8 @@ import EmailBestaetigenView from './components/EmailBestaetigenView'
 import LandingView from './components/landing/LandingView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
 import AutokostenView from './components/autokosten/AutokostenView'
-import { setReturnTo } from './components/autofinder/logic'
+import { setReturnTo, getAktiveSuche, AKTIVE_SUCHE_EVENT } from './components/autofinder/logic'
+import { berechneSelection, parseHistorieZeit } from './components/sidebarSelection'
 import Footer from './components/Footer'
 import SplashScreen from './components/SplashScreen'
 import RouteSeo from './seo/RouteSeo'
@@ -120,6 +121,15 @@ function AppContent() {
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
+  // Welche gespeicherte AutoFinder-Suche gerade offen ist, weiss nur die
+  // AutoFinder-Seite — sie meldet es ueber ein Event (kein Raten in der Sidebar).
+  const [afSucheId, setAfSucheId] = useState<string | null>(getAktiveSuche())
+  useEffect(() => {
+    const sync = () => setAfSucheId(getAktiveSuche())
+    window.addEventListener(AKTIVE_SUCHE_EVENT, sync)
+    return () => window.removeEventListener(AKTIVE_SUCHE_EVENT, sync)
+  }, [])
+
   // Bei jedem Seitenwechsel die mobile Sidebar automatisch schließen (z.B. wenn
   // eine Navigation programmatisch erfolgt, nicht nur per Klick in der Sidebar).
   useEffect(() => {
@@ -163,7 +173,7 @@ function AppContent() {
           backendId: c.id,
           title: c.title,
           messages: [],
-          createdAt: new Date(c.created_at),
+          createdAt: parseHistorieZeit(c.created_at) ?? new Date(),
           carContext,
         }
       })
@@ -299,6 +309,12 @@ function AppContent() {
   const handleDeleteCheck = useCallback(async (id: number) => {
     apiDeleteCheck(id).catch(() => {})
     setMyChecks((prev) => prev.filter((c) => c.id !== id))
+    // Wird genau der geoeffnete Check geloescht, darf die Ansicht nicht auf
+    // einem nicht mehr existierenden Objekt stehen bleiben: zurueck auf die
+    // Werkzeug-Startseite (der `key` an der Route erzwingt den sauberen
+    // Neuaufbau, sonst bliebe der alte Bericht stehen).
+    setSavedKaufCheck((prev) => (prev?.id === id ? null : prev))
+    setSavedVerkaufsCheck((prev) => (prev?.id === id ? null : prev))
   }, [])
 
   const handleNewChat = useCallback(() => {
@@ -365,13 +381,25 @@ function AppContent() {
     []
   )
 
+  // In der Sidebar stehen nur Konversationen mit Inhalt — eine frische, leere
+  // "Neuer Chat"-Konversation ist kein History-Eintrag und darf deshalb auch
+  // keinen markieren.
+  const sidebarConversations = conversations.filter(
+    (c) => c.backendId !== undefined || c.messages.length > 0
+  )
+  const selection = berechneSelection({
+    pfad: location.pathname,
+    chatId: sidebarConversations.some((c) => c.id === activeId) ? activeId : null,
+    kaufCheckId: savedKaufCheck?.id ?? null,
+    verkaufCheckId: savedVerkaufsCheck?.id ?? null,
+    autofinderSucheId: afSucheId,
+  })
+
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <Sidebar
-        conversations={conversations.filter(
-          (c) => c.backendId !== undefined || c.messages.length > 0
-        )}
-        activeConvId={activeId}
+        conversations={sidebarConversations}
+        selection={selection}
         onNewChat={handleNewChat}
         onSelectConv={handleSelectConv}
         onDeleteConv={handleDeleteConv}
@@ -422,6 +450,7 @@ function AppContent() {
           <Route path="/kaufcheck" element={
             <Guard authed={!!user} loading={isLoading}>
               <KaufCheckView
+                key={savedKaufCheck?.id ?? 'neu'}
                 savedCheck={savedKaufCheck}
                 onCheckSaved={refreshChecks}
                 onClearSaved={() => setSavedKaufCheck(null)}
@@ -431,6 +460,7 @@ function AppContent() {
           <Route path="/verkaufscheck" element={
             <Guard authed={!!user} loading={isLoading}>
               <VerkaufsCheckView
+                key={savedVerkaufsCheck?.id ?? 'neu'}
                 savedCheck={savedVerkaufsCheck}
                 onCheckSaved={refreshChecks}
                 onClearSaved={() => setSavedVerkaufsCheck(null)}

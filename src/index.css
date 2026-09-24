@@ -13,6 +13,28 @@
 }
 
 @layer utilities {
+  /* ---- Seitenbreite der Werkzeugseiten ----
+     Vorher stand ueberall `max-w-3xl` (768 px): auf einem 1920er Desktop bei
+     100 % Zoom blieben links und rechts riesige leere Flaechen, weshalb erst
+     125 % Browser-Zoom "richtig" aussah. Statt auf einen Zoomwert hin zu
+     optimieren, waechst die Seite jetzt mit dem Viewport und hat eine obere
+     Grenze — zentriert, mit Weissraum, aber ohne verschenkte Flaeche.
+       1920 px -> 1152 px Inhalt (vorher 768), 1536 px (= 1920 @125 %) -> 1152,
+       1280 px -> ~973, darunter fliessend bis zur vollen Breite. */
+  .ez-page {
+    width: 100%;
+    margin-inline: auto;
+    max-width: clamp(48rem, 76vw, 72rem);
+  }
+  /* Eingabeformulare bleiben auf einer angenehmen Lesebreite — ein zweispaltiges
+     Formular mit 550 px breiten Feldern liest sich schlechter, nicht besser.
+     Berichte/Ergebnisse nutzen die volle `.ez-page`-Breite. */
+  .ez-form {
+    width: 100%;
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: #3a3a3a transparent;

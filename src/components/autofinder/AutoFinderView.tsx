@@ -20,6 +20,7 @@ import {
   speichereSuche,
   loescheSuchen,
   takeSucheRestore,
+  setzeAktiveSuche,
   setReturnTo,
   HISTORY_EVENT,
   RESTORE_EVENT,
@@ -109,6 +110,9 @@ export default function AutoFinderView() {
     return () => window.removeEventListener(HISTORY_EVENT, refresh)
   }, [])
   useEffect(() => () => { if (progressTimer.current) clearInterval(progressTimer.current) }, [])
+  // Beim Verlassen der Seite ist keine gespeicherte Suche mehr offen — sonst
+  // behielte die Sidebar die Markierung auf einem Eintrag, den niemand sieht.
+  useEffect(() => () => setzeAktiveSuche(null), [])
 
   // §Punkt 6 / BUG 2: kommt der Nutzer über einen Sidebar-/Panel-Klick auf eine
   // gespeicherte Suche, Filter wiederherstellen und — falls vorhanden — die
@@ -119,6 +123,7 @@ export default function AutoFinderView() {
     const handleRestore = () => {
       const s = takeSucheRestore()
       if (!s) return
+      setzeAktiveSuche(s.id)
       setForm(s.form)
       setShowHistorie(false)
       setError(null)
@@ -172,6 +177,7 @@ export default function AutoFinderView() {
     setError(null)
     setResp(null)
     setRestauriert(false)
+    setzeAktiveSuche(null)
     startProgress()
     try {
       const r = await apiAutoFinder(buildPayload(f))
@@ -182,7 +188,9 @@ export default function AutoFinderView() {
       // ersetzt und kein Kandidat wegen eines fehlenden Bildes entfernt.
       stopProgress()
       setResp(r)
-      setHistorie(speichereSuche(f, r))
+      const gespeichert = speichereSuche(f, r)
+      setHistorie(gespeichert)
+      setzeAktiveSuche(gespeichert[0]?.id ?? null)
       setTimeout(() => document.getElementById('af-results')?.scrollIntoView({ behavior: 'smooth' }), 80)
     } catch (err) {
       stopProgress()
@@ -206,6 +214,7 @@ export default function AutoFinderView() {
   }
 
   function restoreSuche(s: GespeicherteSuche) {
+    setzeAktiveSuche(s.id)
     setForm(s.form)
     setShowHistorie(false)
     if (s.response) {
@@ -240,7 +249,7 @@ export default function AutoFinderView() {
           style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
       </div>
 
-      <div className="ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <div className="ez-rise ez-page relative px-4 sm:px-6 py-8">
         {/* Hero — kompakt: eine Zeile Meta, eine Zeile Headline, kurzer Subtext */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -314,7 +323,7 @@ export default function AutoFinderView() {
           </div>
         )}
 
-        <form onSubmit={submit} className="rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
+        <form onSubmit={submit} className="ez-form rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
           <div className="divide-y divide-[#efe9df]">
             {/* 1 — Budget */}
             <section className="p-5 sm:p-6 space-y-3">

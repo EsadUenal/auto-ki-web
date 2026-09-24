@@ -342,8 +342,9 @@ test('BUG1: KaufCheckView räumt das returnTo weg, wenn es das Prefill übernimm
 })
 
 test('M: View nutzt die kanonische ENFAL-Content-Sprache (wie Kauf-Check/Entdecken)', () => {
-  // gleicher zentrierter Container wie die anderen Werkzeugseiten
-  assert.match(viewTsx, /max-w-3xl mx-auto/)
+  // gleicher zentrierter Container wie die anderen Werkzeugseiten — seit dem
+  // Sidebar-/Layout-Pass die gemeinsame, mitwachsende Breite `.ez-page`
+  assert.match(viewTsx, /ez-page/)
   assert.match(viewTsx, /sm:/)
   assert.match(cardTsx, /sm:flex/)
   // kanonische Chrome-Bausteine
@@ -505,8 +506,10 @@ test('Sidebar E/F: Klick öffnet den RICHTIGEN bestehenden Check (onSelectCheck 
   const s = sidebarSrc()
   // ein gemeinsamer Renderer, der den typ 1:1 an den bestehenden Callback gibt
   assert.match(s, /onClick=\{\(\) => \{ onSelectCheck\(check\.id, typ\); onMobileClose\?\.\(\) \}\}/)
-  // Delete nutzt den bestehenden Callback (keine neue Produktlogik)
-  assert.match(s, /onClick=\{\(e\) => \{ e\.stopPropagation\(\); onDeleteCheck\(check\.id\) \}\}/)
+  // Delete nutzt weiterhin denselben Callback (keine neue Produktlogik) — seit
+  // dem UX-Pass aber erst nach Bestaetigung: der Papierkorb merkt sich nur das Ziel.
+  assert.match(s, /e\.stopPropagation\(\); setLoeschZiel\(\{ art: 'check', id: check\.id/)
+  assert.match(s, /onDeleteCheck\(ziel\.id\)/)
   // KEINE zweite parallele Check-History: Datenquelle bleibt die prop `checks`
   assert.doesNotMatch(s, /localStorage[\s\S]{0,40}check/i)
 })

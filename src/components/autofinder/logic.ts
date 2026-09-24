@@ -494,6 +494,7 @@ export function findeSuche(id: string): GespeicherteSuche | null {
 
 export function loescheSuchen(): void {
   try { localStorage.removeItem(HISTORY_KEY) } catch { /* egal */ }
+  setzeAktiveSuche(null)   // sonst bliebe eine Markierung auf einem geloeschten Eintrag
   fireHistoryEvent()
 }
 
@@ -509,6 +510,24 @@ export function stageSucheRestore(id: string): void {
     sessionStorage.setItem(RESTORE_KEY, id)
     window.dispatchEvent(new CustomEvent(RESTORE_EVENT))
   } catch { /* egal */ }
+}
+
+// Welche gespeicherte Suche gerade auf der AutoFinder-Seite zu sehen ist.
+// Reiner Anzeige-Zustand für die Sidebar-Markierung (kein Storage): die Seite
+// meldet, was sie zeigt, die Sidebar markiert genau diesen Eintrag. Ohne das
+// müsste die Sidebar raten — und genau solches Raten war der Grund für
+// widersprüchliche Markierungen.
+export const AKTIVE_SUCHE_EVENT = 'vira:af-aktive-suche'
+let aktiveSucheId: string | null = null
+
+export function setzeAktiveSuche(id: string | null): void {
+  if (aktiveSucheId === id) return
+  aktiveSucheId = id
+  try { window.dispatchEvent(new CustomEvent(AKTIVE_SUCHE_EVENT)) } catch { /* SSR/Tests */ }
+}
+
+export function getAktiveSuche(): string | null {
+  return aktiveSucheId
 }
 
 export function takeSucheRestore(): GespeicherteSuche | null {

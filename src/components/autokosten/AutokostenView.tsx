@@ -163,7 +163,7 @@ export default function AutokostenView() {
           style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 68%)' }} />
       </div>
 
-      <div className="ez-rise relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <div className="ez-rise ez-page relative px-4 sm:px-6 py-10">
         {/* Hero */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -201,7 +201,7 @@ export default function AutokostenView() {
           </div>
         )}
 
-        <form onSubmit={berechnen} className="rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
+        <form onSubmit={berechnen} className="ez-form rounded-2xl border border-[#e6e1da] bg-white shadow-[0_20px_44px_-30px_rgba(40,25,10,0.24)] overflow-hidden">
           <div className="divide-y divide-[#efe9df]">
             {/* 1 — Fahrzeug & Nutzung */}
             <section className="p-5 sm:p-6 space-y-3">

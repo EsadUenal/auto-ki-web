@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   LogIn, LogOut, Pencil, Trash2, Check, X, CreditCard,
@@ -12,6 +12,11 @@ import {
   HISTORY_EVENT, HISTORY_SIDEBAR_MAX,
   type GespeicherteSuche,
 } from './autofinder/logic'
+import ConfirmDialog from './ConfirmDialog'
+import {
+  formatHistorieZeit, istChatAktiv, istCheckAktiv, istSucheAktiv, werkzeugMarkierung,
+  type SidebarSelection,
+} from './sidebarSelection'
 import type { ApiCheckSummary } from '../api/client'
 import type { Conversation } from '../types'
 
@@ -23,7 +28,9 @@ const ABO_CONFIG = {
 
 interface SidebarProps {
   conversations: Conversation[]
-  activeConvId: string | null
+  /** Kanonischer Auswahl-Zustand (Route + tatsaechlich geoeffnete Entitaet).
+   *  EINZIGE Quelle fuer die orange Markierung — siehe sidebarSelection.ts. */
+  selection: SidebarSelection
   onNewChat: () => void
   onSelectConv: (id: string) => void
   onDeleteConv: (id: string) => void
@@ -38,12 +45,13 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-  conversations, activeConvId, onNewChat, onSelectConv,
+  conversations, selection, onNewChat, onSelectConv,
   onDeleteConv, onRenameConv,
   checks, onSelectCheck, onDeleteCheck,
   mobileOpen = false, onMobileClose,
 }: SidebarProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, isLoading, logout } = useAuth()
 
   const [editingConvId, setEditingConvId] = useState<string | null>(null)
@@ -52,6 +60,23 @@ export default function Sidebar({
 
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Loeschen ist zerstoererisch und lief bisher direkt aus dem Papierkorb-Icon.
+  // Jetzt erst nach ausdruecklicher Bestaetigung; bis dahin passiert NICHTS.
+  type LoeschZiel =
+    | { art: 'chat'; id: string; titel: string }
+    | { art: 'check'; id: number; titel: string }
+    | { art: 'af-alle' }
+  const [loeschZiel, setLoeschZiel] = useState<LoeschZiel | null>(null)
+
+  function loeschenBestaetigt() {
+    const ziel = loeschZiel
+    setLoeschZiel(null)
+    if (!ziel) return
+    if (ziel.art === 'chat') onDeleteConv(ziel.id)
+    else if (ziel.art === 'check') onDeleteCheck(ziel.id)
+    else loescheSuchen()
+  }
 
   // AutoFinder-Suchhistorie (localStorage) — die Sidebar zeigt die letzten
   // paar; auf ein Custom-Event von logic.ts hin sofort neu einlesen.
@@ -95,24 +120,42 @@ export default function Sidebar({
           <Icon size={11} /> {titel}
         </p>
         <div className="space-y-0.5 mt-1">
-          {list.map((check) => (
+          {list.map((check) => {
+            const aktiv = istCheckAktiv(selection, typ, check.id)
+            const zeit = formatHistorieZeit(check.created_at)
+            return (
             <div key={check.id} className="relative group/check">
               <button
                 onClick={() => { onSelectCheck(check.id, typ); onMobileClose?.() }}
-                className="w-full text-left px-3 py-2 rounded-lg text-xs truncate transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2 pr-8"
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center gap-2 pr-8 ${
+                  aktiv
+                    ? 'bg-sidebar-active text-white'
+                    : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text'
+                }`}
               >
-                <Icon size={12} className={`shrink-0 ${iconCls}`} />
-                <span className="truncate min-w-0">{check.titel}</span>
+                <Icon size={12} className={`shrink-0 ${aktiv ? 'text-white' : iconCls}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{check.titel}</span>
+                  {zeit && (
+                    <span className={`block truncate text-[10px] mt-0.5 ${aktiv ? 'text-white/70' : 'text-sidebar-muted'}`}>
+                      {zeit}
+                    </span>
+                  )}
+                </span>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onDeleteCheck(check.id) }}
+                onClick={(e) => { e.stopPropagation(); setLoeschZiel({ art: 'check', id: check.id, titel: check.titel }) }}
                 title="Löschen"
-                className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/check:flex p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
+                aria-label={`Eintrag ${check.titel} löschen`}
+                className={`absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/check:flex p-1 rounded transition-colors ${
+                  aktiv ? 'text-white/80 hover:text-white hover:bg-white/15' : 'text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover'
+                }`}
               >
                 <Trash2 size={12} />
               </button>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
@@ -200,6 +243,13 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* EIN Scrollbereich fuer die gesamte Navigation: "Neuer Chat",
+          Werkzeuge und History. Vorher scrollte nur die History in einem
+          eigenen kleinen Fenster — bei wenig Hoehe (oder 125 % Zoom) zerfiel
+          die Sidebar dadurch sichtbar in zwei Welten. Logo oben und
+          Konto-Bereich unten bleiben fest. */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin pb-3">
+
       {/* Neuer Chat */}
       <div className="px-3 pt-3">
         <button
@@ -227,50 +277,73 @@ export default function Sidebar({
           // freigegeben — kein Sidebar-Eintrag, keine sichtbare Navigation.
           { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },
           { to: '/pricing',       Icon: CreditCard,    label: 'Preise' },
-        ].map(({ to, Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            onClick={onMobileClose}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive ? 'bg-sidebar-active text-white' : 'text-sidebar-text hover:bg-sidebar-hover'
-              }`
-            }
-          >
-            <Icon size={16} />
-            {label}
-          </NavLink>
-        ))}
+        ].map(({ to, Icon, label }) => {
+          // Primaer orange ist ein Werkzeug NUR, wenn kein gespeicherter Eintrag
+          // geoeffnet ist. Sonst traegt der konkrete History-Eintrag die
+          // Markierung und das Werkzeug zeigt hoechstens dezent, wo man sich
+          // befindet (keine zwei widerspruechlichen Aktiv-Zustaende).
+          const mark = werkzeugMarkierung(selection, location.pathname, to)
+          return (
+            <Link
+              key={to}
+              to={to}
+              onClick={onMobileClose}
+              aria-current={mark === 'primaer' ? 'page' : undefined}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                mark === 'primaer'
+                  ? 'bg-sidebar-active text-white'
+                  : mark === 'sekundaer'
+                    ? 'bg-sidebar-hover text-sidebar-text'
+                    : 'text-sidebar-text hover:bg-sidebar-hover'
+              }`}
+            >
+              <Icon size={16} />
+              {label}
+            </Link>
+          )
+        })}
       </nav>
 
-      {/* Verlauf + Meine Checks + AutoFinder-Suchen — EIN gemeinsamer Scroll-
-          Bereich. Footer bleibt immer sichtbar, nichts wird verdrängt. */}
-      {(conversations.length > 0 || checks.length > 0 || afSuchen.length > 0) && (
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      {/* History-Gruppen — im SELBEN Scrollbereich wie die Werkzeuge. */}
           {afSuchen.length > 0 && (
             <div className="px-3 pt-5">
               <p className="px-3 pb-1 text-xs font-medium text-sidebar-muted uppercase tracking-wider flex items-center justify-between gap-1.5">
                 <span className="flex items-center gap-1.5"><Car size={11} /> AutoFinder</span>
                 <button
-                  onClick={() => loescheSuchen()}
+                  onClick={() => setLoeschZiel({ art: 'af-alle' })}
                   title="Suchverlauf löschen"
+                  aria-label="AutoFinder-Suchverlauf löschen"
                   className="text-sidebar-muted hover:text-red-400 transition-colors"
                 >
                   <Trash2 size={11} />
                 </button>
               </p>
               <div className="space-y-0.5 mt-1">
-                {afSuchen.slice(0, HISTORY_SIDEBAR_MAX).map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => openSuche(s)}
-                    className="w-full text-left px-3 py-2 rounded-lg text-xs truncate transition-colors text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text flex items-center gap-2"
-                  >
-                    <Car size={12} className="shrink-0 text-orange-400" />
-                    <span className="truncate min-w-0">{s.label}</span>
-                  </button>
-                ))}
+                {afSuchen.slice(0, HISTORY_SIDEBAR_MAX).map((s) => {
+                  const aktiv = istSucheAktiv(selection, s.id)
+                  const zeit = formatHistorieZeit(s.ts)
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => openSuche(s)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                        aktiv
+                          ? 'bg-sidebar-active text-white'
+                          : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text'
+                      }`}
+                    >
+                      <Car size={12} className={`shrink-0 ${aktiv ? 'text-white' : 'text-orange-400'}`} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{s.label}</span>
+                        {zeit && (
+                          <span className={`block truncate text-[10px] mt-0.5 ${aktiv ? 'text-white/70' : 'text-sidebar-muted'}`}>
+                            {zeit}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -280,7 +353,10 @@ export default function Sidebar({
                 <Clock size={11} /> Verlauf
               </p>
               <div className="space-y-0.5 mt-1">
-                {conversations.map((conv) => (
+                {conversations.map((conv) => {
+                  const aktiv = istChatAktiv(selection, conv.id)
+                  const zeit = formatHistorieZeit(conv.createdAt)
+                  return (
                   <div key={conv.id} className="relative group/conv">
 
                     {editingConvId === conv.id ? (
@@ -308,13 +384,18 @@ export default function Sidebar({
                       <>
                         <button
                           onClick={() => { onSelectConv(conv.id); navigate('/chat'); onMobileClose?.() }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors pr-14 ${
-                            activeConvId === conv.id
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors pr-14 ${
+                            aktiv
                               ? 'bg-sidebar-active text-white'
                               : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text'
                           }`}
                         >
-                          {conv.title}
+                          <span className="block truncate">{conv.title}</span>
+                          {zeit && (
+                            <span className={`block truncate text-[10px] mt-0.5 ${aktiv ? 'text-white/70' : 'text-sidebar-muted'}`}>
+                              {zeit}
+                            </span>
+                          )}
                         </button>
 
                         {/* Action-Buttons — erscheinen beim Hover */}
@@ -322,14 +403,19 @@ export default function Sidebar({
                           <button
                             onClick={(e) => { e.stopPropagation(); startRename(conv) }}
                             title="Umbenennen"
-                            className="p-1 rounded text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover transition-colors"
+                            className={`p-1 rounded transition-colors ${
+                              aktiv ? 'text-white/80 hover:text-white hover:bg-white/15' : 'text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover'
+                            }`}
                           >
                             <Pencil size={12} />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); onDeleteConv(conv.id) }}
+                            onClick={(e) => { e.stopPropagation(); setLoeschZiel({ art: 'chat', id: conv.id, titel: conv.title }) }}
                             title="Löschen"
-                            className="p-1 rounded text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover transition-colors"
+                            aria-label={`Eintrag ${conv.title} löschen`}
+                            className={`p-1 rounded transition-colors ${
+                              aktiv ? 'text-white/80 hover:text-white hover:bg-white/15' : 'text-sidebar-muted hover:text-red-400 hover:bg-sidebar-hover'
+                            }`}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -337,15 +423,15 @@ export default function Sidebar({
                       </>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
 
           {renderCheckSection('KaufCheck', ShoppingCart, 'text-blue-400', kaufChecks, 'kauf')}
           {renderCheckSection('VerkaufsCheck', TrendingUp, 'text-green-400', verkaufChecks, 'verkauf')}
-        </div>
-      )}
+      </div>
 
       {/* User-Footer */}
       <div className="mt-auto border-t border-sidebar-border relative" ref={menuRef}>
@@ -508,6 +594,22 @@ export default function Sidebar({
         )}
       </div>
       </aside>
+
+      {/* Loesch-Bestaetigung — gemeinsam fuer Chat-, Check- und AutoFinder-
+          Verlauf. Ohne Bestaetigung wird nichts geloescht. */}
+      <ConfirmDialog
+        offen={loeschZiel !== null}
+        titel={loeschZiel?.art === 'af-alle'
+          ? 'Gesamten AutoFinder-Suchverlauf löschen?'
+          : 'Diesen Eintrag wirklich löschen?'}
+        detail={loeschZiel && loeschZiel.art !== 'af-alle' ? loeschZiel.titel : undefined}
+        hinweis={loeschZiel?.art === 'af-alle'
+          ? 'Alle gespeicherten Suchen dieses Geräts werden entfernt. Das lässt sich nicht rückgängig machen.'
+          : 'Das lässt sich nicht rückgängig machen.'}
+        bestaetigenLabel={loeschZiel?.art === 'af-alle' ? 'Verlauf löschen' : 'Löschen'}
+        onBestaetigen={loeschenBestaetigt}
+        onAbbrechen={() => setLoeschZiel(null)}
+      />
     </>
   )
 }
