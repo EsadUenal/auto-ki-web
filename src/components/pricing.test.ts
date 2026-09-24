@@ -61,8 +61,10 @@ test('K: die alten Consumer-Preise sind vollständig verschwunden', () => {
 
 test('Guthaben-Zusage: Einzelchecks verfallen nicht, Plus-Kontingente schon', () => {
   assert.match(pricing, /Dein Guthaben verfällt nicht\./)
-  assert.match(pricing, /Monatliche Kontingente verfallen\s*\n?\s*zum Monatsende/)
-  assert.match(pricing, /einzeln gekaufte Checks behältst du dauerhaft/)
+  // Plus-Kontingente werden je bezahltem Zeitraum neu gesetzt (app/plus.py),
+  // Uebertrag gibt es nicht — genau das muss hier stehen.
+  assert.match(pricing, /mit jedem Abrechnungszeitraum erneuert/)
+  assert.match(pricing, /Einzeln gekaufte Checks behältst du dauerhaft/)
 })
 
 test('Abo-Transparenz ist fachlich korrekt formuliert', () => {
@@ -161,4 +163,74 @@ test('Login/Registrierung: Netzwerk- und Proxyfehler erscheinen nie als Rohtext'
   assert.match(client, /return authAntwort\(res, 'Die Anmeldung'\)/)
   assert.match(client, /return authAntwort\(res, 'Die Registrierung'\)/)
   assert.match(client, /await res\.json\(\)\.catch\(\(\) => null\)/)
+})
+
+// ── Pricing-/Entitlement-Audit: E-Books raus, Plus-Zustand, Kontingent-Copy ──
+//
+// Die Aussagen der Preisseite muessen zu dem passen, was der Server tatsaechlich
+// tut. Geprueft wird deshalb nicht nur "steht da ein Text", sondern der
+// jeweilige fachliche Kern: Check-Kontingente folgen dem Abrechnungszeitraum
+// (app/plus.py, grant_periode auf invoice.paid), AutoFinder/Chat dem
+// UTC-Kalendermonat (app/usage_limit.py), gekauftes Guthaben verfaellt nie.
+
+test('Q: ein aktives Plus zeigt den Zustand statt eines zweiten Kaufknopfes', () => {
+  // Der Server lehnt ein zweites Abo mit 409 ab (payments._hat_laufendes_abo) —
+  // ein Kaufknopf koennte hier also nur in eine Fehlermeldung fuehren.
+  assert.match(pricing, /user\?\.plus_aktiv \?/)
+  assert.match(pricing, /ENFAL Plus aktiv/)
+  assert.match(pricing, /Abo verwalten/)
+  assert.match(pricing, /to="\/settings"/)
+  // Der Kaufknopf existiert weiterhin — aber nur im Nicht-Plus-Zweig.
+  const abZustand = pricing.slice(pricing.indexOf('user?.plus_aktiv ?'))
+  const zweig = abZustand.indexOf(') : (')
+  assert.ok(zweig > 0 && abZustand.indexOf('ENFAL Plus starten') > zweig,
+    'der Kaufknopf steht im else-Zweig')
+})
+
+test('Q2: Plus-Kontingent-Copy trennt Abrechnungszeitraum und Kalendermonat', () => {
+  assert.match(pricing, /mit jedem Abrechnungszeitraum erneuert/)
+  assert.match(pricing, /nicht Genutztes wird\s*\r?\n?\s*nicht übertragen/)
+  assert.match(pricing, /AutoFinder- und Chat-Kontingente zählen je Kalendermonat/)
+  assert.match(pricing, /Einzeln gekaufte Checks behältst du dauerhaft/)
+  // Die alte, fuer die Check-Kontingente falsche Formulierung ist weg:
+  // sie verfallen zum Ende des BEZAHLTEN Zeitraums, nicht zum Monatsende.
+  assert.doesNotMatch(pricing, /Monatliche Kontingente verfallen/)
+})
+
+test('Q3: Einmalkäufe sind als solche gekennzeichnet', () => {
+  assert.match(pricing, /Einmal zahlen · kein Abo/)
+  assert.match(pricing, /Dein Guthaben verfällt nicht\./)
+})
+
+test('S: die App-Sidebar führt keinen E-Books-Bereich mehr', () => {
+  assert.doesNotMatch(sidebar, /ebooks/i)
+  assert.doesNotMatch(sidebar, /BookOpen/)
+})
+
+test('T: es gibt keine zweite (mobile) Navigation mit E-Books', () => {
+  // Mobile nutzt dieselbe Sidebar (Off-Canvas), es gibt keine getrennte Leiste.
+  assert.match(app, /Menü öffnen/)
+  // Nur ausfuehrbarer Code zaehlt — der Kommentar an der Route nennt EbookView
+  // bewusst, weil die Datei fuer den spaeteren Verkauf erhalten bleibt.
+  assert.doesNotMatch(app, /import EbookView/)
+  assert.doesNotMatch(app, /<EbookView/)
+  // und keine andere sichtbare App-Oberflaeche verlinkt noch dorthin
+  for (const datei of ['SettingsView.tsx', 'HelpView.tsx', 'PricingView.tsx']) {
+    const code = readFileSync(new URL(`./${datei}`, import.meta.url), 'utf8')
+    assert.doesNotMatch(code, /\/ebooks/, datei)
+  }
+})
+
+test('U: ein alter /ebooks-Aufruf landet kontrolliert, nicht auf einer leeren Fläche', () => {
+  assert.match(app, /<Route path="\/ebooks" element=\{<Navigate to="\/pricing" replace \/>\} \/>/)
+  // KEIN Link auf eine erfundene Sektion einer fremden Seite.
+  assert.doesNotMatch(app, /getenfal\.de\/#?ebooks/)
+})
+
+test('V: die E-Book-Inhalte bleiben für den späteren Verkauf erhalten', () => {
+  // Entfernt wurde die App-Navigation, nicht das Produkt.
+  assert.ok(ebooks.length > 500, 'EbookView.tsx ist weiterhin vorhanden')
+  const client = readFileSync(new URL('../api/client.ts', import.meta.url), 'utf8')
+  assert.match(client, /apiListEbooks/)
+  assert.match(client, /apiDownloadEbook/)
 })

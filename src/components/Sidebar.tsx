@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   MessageSquare, ShoppingCart, TrendingUp, Plus, Clock,
   LogIn, LogOut, Pencil, Trash2, Check, X, CreditCard,
-  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, BookOpen, Store, Car, Calculator,
+  Settings, HelpCircle, ChevronUp, Zap, Star, Crown, Store, Car, Calculator,
   Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -275,7 +275,8 @@ export default function Sidebar({
           ...(user?.dealer_access ? [{ to: '/dealer', Icon: Store, label: 'Dealer' }] : []),
           // Ersatzteile: technisch im Repo geparkt, aber NICHT im Consumer-UI
           // freigegeben — kein Sidebar-Eintrag, keine sichtbare Navigation.
-          { to: '/ebooks',        Icon: BookOpen,      label: 'E-Books' },
+          // E-Books sind ein Marketing-/Commerce-Produkt und gehoeren auf die
+          // oeffentliche Seite getenfal.de, nicht in die App-Navigation.
           { to: '/pricing',       Icon: CreditCard,    label: 'Preise' },
         ].map(({ to, Icon, label }) => {
           // Primaer orange ist ein Werkzeug NUR, wenn kein gespeicherter Eintrag

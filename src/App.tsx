@@ -8,7 +8,6 @@ import VerkaufsCheckView from './components/VerkaufsCheckView'
 import DealerView from './components/DealerView'
 import DealerVehicleView from './components/DealerVehicleView'
 import EntdeckenView from './components/EntdeckenView'
-import EbookView from './components/EbookView'
 import ErsatzteileView from './components/ErsatzteileView'
 import PricingView from './components/PricingView'
 import SettingsView from './components/SettingsView'
@@ -493,7 +492,12 @@ function AppContent() {
               </Guard>
             }
           />
-          <Route path="/ebooks" element={<Guard authed={!!user} loading={isLoading}><EbookView /></Guard>} />
+          {/* E-Books sind aus der App genommen (Produktentscheidung): sie werden
+              spaeter auf der oeffentlichen Seite getenfal.de verkauft. Die Route
+              bleibt nur als kontrollierte Umleitung, damit ein alter Link oder ein
+              Lesezeichen keine leere Flaeche zeigt. Inhalte (EbookView, API-Client,
+              Backend-Router, Dateien) bleiben fuer den Marketing-Pass erhalten. */}
+          <Route path="/ebooks" element={<Navigate to="/pricing" replace />} />
           <Route path="/ersatzteile" element={<Guard authed={!!user} loading={isLoading}><ErsatzteileView /></Guard>} />
           <Route path="/pricing" element={<PricingView />} />
           <Route path="/settings" element={<Guard authed={!!user} loading={isLoading}><SettingsView /></Guard>} />

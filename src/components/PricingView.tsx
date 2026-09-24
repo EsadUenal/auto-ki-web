@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Calculator,
   Car,
@@ -94,6 +94,10 @@ function PaidCard({
       <div className="mb-6">
         <span className="text-4xl font-bold tracking-[-0.04em] text-gray-900">{price}</span>
         <span className="ml-2 text-sm text-gray-500">einmalig pro Check</span>
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+          <Check size={12} className="text-emerald-600" />
+          Einmal zahlen · kein Abo
+        </p>
       </div>
       <FeatureList features={features} accent={accent} />
       <p className="text-xs text-gray-400 mb-4 -mt-3">Dein Guthaben verfällt nicht.</p>
@@ -106,6 +110,13 @@ function PaidCard({
       </button>
     </article>
   )
+}
+
+/** Deutsches Datum aus dem gespeicherten Wert; ohne gueltigen Wert leer. */
+function datum(wert: string): string {
+  const d = new Date(wert)
+  if (Number.isNaN(d.getTime())) return wert
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export default function PricingView() {
@@ -250,18 +261,43 @@ export default function PricingView() {
               <p className="text-xs text-gray-500 leading-relaxed mb-5">
                 16,99 € pro Monat. Verlängert sich automatisch um einen Monat, bis du kündigst.
                 Nach der Kündigung läuft Plus bis zum Ende des bezahlten Monats weiter.
-                Keine Mindestlaufzeit, keine Jahresbindung. Monatliche Kontingente verfallen
-                zum Monatsende — <strong>einzeln gekaufte Checks behältst du dauerhaft.</strong>
+                Keine Mindestlaufzeit, keine Jahresbindung. Die Plus-Kontingente für KaufCheck und
+                VerkaufsCheck werden mit jedem Abrechnungszeitraum erneuert; nicht Genutztes wird
+                nicht übertragen. AutoFinder- und Chat-Kontingente zählen je Kalendermonat.
+                <strong>Einzeln gekaufte Checks behältst du dauerhaft.</strong>
               </p>
 
-              <button
-                type="button"
-                onClick={startPlus}
-                className="w-full sm:w-auto rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
-                style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 10px 24px -8px rgba(249,115,22,0.5)' }}
-              >
-                ENFAL Plus starten
-              </button>
+              {/* Ein Konto mit laufendem Plus kann kein zweites Abo abschliessen —
+                  der Server lehnt das mit 409 ab. Hier steht deshalb der Zustand
+                  statt eines Kaufknopfes, der nur in eine Fehlermeldung fuehrt. */}
+              {user?.plus_aktiv ? (
+                <div className="rounded-xl border border-orange-200 bg-orange-50/60 px-4 py-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-orange-700">
+                    <Check size={16} className="shrink-0" />
+                    ENFAL Plus aktiv
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    {user.plus_kuendigt_zum
+                      ? `Läuft noch bis ${datum(user.plus_kuendigt_zum)}.`
+                      : user.plus_period_end
+                        ? `Verlängert sich automatisch am ${datum(user.plus_period_end)}.`
+                        : 'Verlängert sich automatisch, bis du kündigst.'}
+                    {' '}
+                    <Link to="/settings" className="font-medium text-orange-700 underline underline-offset-2">
+                      Abo verwalten
+                    </Link>
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startPlus}
+                  className="w-full sm:w-auto rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)', boxShadow: '0 10px 24px -8px rgba(249,115,22,0.5)' }}
+                >
+                  ENFAL Plus starten
+                </button>
+              )}
 
               {plusCheckout && <PlusCheckout onAbbrechen={() => setPlusCheckout(false)} />}
             </div>
