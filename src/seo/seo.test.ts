@@ -33,6 +33,10 @@ const PRIVAT = [
   '/impressum', '/datenschutz', '/agb', '/widerruf',
   // Landeseite des Bestätigungslinks: persönlicher Einmal-Link, nie indexieren.
   '/email-bestaetigen',
+  // Closed-Beta-Einladung: ebenfalls ein persönlicher Einmal-Link. Die Seite
+  // darf nicht in den Index — weder die Route selbst noch ein Hinweis darauf,
+  // dass es eine geschlossene Beta gibt, gehört in eine Suchmaschine.
+  '/beta',
 ]
 const OEFFENTLICH = PUBLIC_ROUTES.map((r) => r.path)
 const VERBOTEN = /localhost|127\.0\.0\.1|getvira|autoki\.de|\bvira\b|app\.getenfal\.de|api\.getenfal\.de/i
