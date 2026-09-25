@@ -191,7 +191,7 @@ export function hatKriterium(form: AutoFinderForm): boolean {
 }
 
 export const LEERE_SUCHE_HINWEIS =
-  'Wähle mindestens ein Kriterium aus — zum Beispiel Budget, Karosserie, ' +
+  'Wähle mindestens ein Kriterium aus, zum Beispiel Budget, Karosserie, ' +
   'Kraftstoff, Getriebe oder wofür du das Auto nutzt.'
 
 /** Clientseitige Vorprüfung — spiegelt die Backend-model_validator-Regeln,
@@ -367,7 +367,7 @@ export function coverageState(resp: AutoFinderResponse): CoverageState {
       headline: 'Kein wirklich starker Treffer',
       detail:
         'Zu deinen Angaben gibt es aktuell keine Empfehlung, die richtig gut passt. ' +
-        'Versuche es mit weniger oder etwas weiteren Filtern — z. B. Budget, Baujahr oder Karosserie.',
+        'Versuche es mit weniger oder etwas weiteren Filtern, zum Beispiel Budget, Baujahr oder Karosserie.',
     }
   }
   if (resp.status === 'no_internal_match' || resp.kandidaten.length === 0) {
@@ -391,7 +391,7 @@ export function coverageState(resp: AutoFinderResponse): CoverageState {
 const PRICE_CONF_LABEL: Record<string, string> = {
   HIGH: 'grobe Orientierung',
   MEDIUM: 'grobe Orientierung',
-  LOW: 'sehr grobe Orientierung — bitte großzügig einplanen',
+  LOW: 'sehr grobe Orientierung, bitte großzügig einplanen',
   UNKNOWN: '',
 }
 

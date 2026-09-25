@@ -145,7 +145,7 @@ export function PaymentReturnHinweis({ zustand }: { zustand: Bestaetigung }) {
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
       <p className="text-sm text-amber-800">
         Deine Zahlung wird noch verarbeitet. Das dauert normalerweise nur wenige Sekunden.
-        Lade die Seite gleich neu — sobald die Zahlung bestätigt ist, kannst du den Check starten.
+        Lade die Seite gleich neu. Sobald die Zahlung bestätigt ist, kannst du den Check starten.
       </p>
     </div>
   )
@@ -279,8 +279,8 @@ export default function PurchaseGate({
           </p>
           <p className="text-sm text-amber-700 mb-4">
             Für diesen {info.titel} ist noch keine Berechtigung vorhanden.
-            Du zahlst <strong>{info.preis} einmalig</strong> für genau einen {info.titel} —
-            kein Abo, keine automatische Verlängerung.
+            Du zahlst <strong>{info.preis} einmalig</strong> für genau einen {info.titel}.
+            Kein Abo, keine automatische Verlängerung.
           </p>
 
           <div className="space-y-2.5 mb-4">

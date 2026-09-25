@@ -111,7 +111,7 @@ function Projektion({ e }: { e: Ergebnis }) {
     <Abschnitt
       icon={<CalendarClock size={14} />}
       titel="Bei gleichbleibenden Annahmen kostet dich dieses Auto"
-      hinweis="Hochrechnung deiner Jahreskosten — keine Prognose von Kraftstoffpreisen, Reparaturen oder Wertverlaufskurven."
+      hinweis="Hochrechnung deiner Jahreskosten. Keine Prognose von Kraftstoffpreisen, Reparaturen oder Wertverlaufskurven."
     >
       <div className="grid grid-cols-3 gap-3 text-center">
         {e.projektion.map((p) => (
@@ -125,7 +125,7 @@ function Projektion({ e }: { e: Ergebnis }) {
       </div>
       <p className="mt-3 text-[11px] text-gray-400">
         Der Kaufpreis ist hier nicht zusätzlich enthalten
-        {e.hatWertverlust ? ' — sein Verzehr steckt bereits im Wertverlust.' : '.'}
+        {e.hatWertverlust ? '. Sein Verzehr steckt bereits im Wertverlust.' : '.'}
       </p>
     </Abschnitt>
   )
@@ -244,7 +244,7 @@ function WasWaereWenn({ basisForm, basis }: { basisForm: AutokostenForm; basis: 
     <Abschnitt
       icon={<SlidersHorizontal size={14} />}
       titel="Was wäre, wenn?"
-      hinweis="Werte ändern — das Ergebnis rechnet sofort mit. Deine ursprüngliche Eingabe oben bleibt unangetastet."
+      hinweis="Werte ändern, das Ergebnis rechnet sofort mit. Deine ursprüngliche Eingabe oben bleibt unangetastet."
     >
       <div className="grid sm:grid-cols-2 gap-3">
         {SIM_FELDER.map(({ feld, label, suffix }) => (
@@ -355,7 +355,7 @@ function Vergleich({ formA, a }: { formA: AutokostenForm; a: Ergebnis }) {
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-gray-900">Mit einem anderen Auto vergleichen</span>
             <span className="block text-xs text-gray-500 mt-0.5">
-              Du gibst das zweite Auto selbst ein — ENFAL schlägt keines vor.
+              Du gibst das zweite Auto selbst ein. ENFAL schlägt keines vor.
             </span>
           </span>
           <ArrowRight size={15} className="ml-auto shrink-0 text-gray-300" />
@@ -530,7 +530,7 @@ export default function AutokostenErgebnis({ ergebnis, form }: {
           <p className="text-sm font-semibold text-amber-900">Wertverlust nicht berücksichtigt</p>
           <p className="mt-0.5 text-xs text-amber-800 leading-relaxed">
             Du hast keinen Wertverlust angegeben. Deine tatsächlichen wirtschaftlichen Kosten
-            können dadurch deutlich höher sein — ENFAL setzt hier bewusst keinen geschätzten Wert ein.
+            können dadurch deutlich höher sein. ENFAL setzt hier bewusst keinen geschätzten Wert ein.
           </p>
         </div>
       )}

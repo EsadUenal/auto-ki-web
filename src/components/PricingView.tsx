@@ -168,7 +168,7 @@ export default function PricingView() {
             Einzeln kaufen oder <span className="text-gray-400">monatlich mehr bekommen.</span>
           </h1>
           <p className="text-gray-500 text-base mt-4 leading-relaxed">
-            Starte kostenlos. Bezahle einzelne Checks nur bei Bedarf — oder hol dir mit
+            Starte kostenlos. Bezahle einzelne Checks nur bei Bedarf, oder hol dir mit
             ENFAL Plus jeden Monat ein festes Kontingent.
           </p>
         </header>

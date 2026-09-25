@@ -185,7 +185,7 @@ export default function AutokostenView() {
             Autokosten berechnen: <span className="text-gray-400">Was kostet dein Auto wirklich im Monat?</span>
           </h1>
           <p className="mt-2 text-sm text-gray-500 max-w-lg leading-relaxed">
-            Kosten pro Monat, pro Jahr und pro Kilometer — inklusive Wertverlust, Budget-Abgleich
+            Kosten pro Monat, pro Jahr und pro Kilometer, inklusive Wertverlust, Budget-Abgleich
             und Vergleich mit einem zweiten Auto. Kostenlos, ohne Anmeldung, deterministisch gerechnet.
           </p>
         </div>
@@ -266,7 +266,7 @@ export default function AutokostenView() {
               {form.kraftstoff === 'elektro' ? (
                 <p className="text-[11px] text-gray-400 leading-relaxed">
                   Trage deinen durchschnittlichen Ladepreis ein. Heimladen und öffentliches
-                  Schnellladen können stark abweichen — einen allgemeingültigen deutschen
+                  Schnellladen können stark abweichen. Einen allgemeingültigen deutschen
                   Ladepreis gibt es nicht, deshalb gibt ENFAL hier keinen vor.
                 </p>
               ) : aktuelleReferenz ? (
@@ -276,7 +276,7 @@ export default function AutokostenView() {
                 </p>
               ) : (
                 <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Aktuell keine amtliche Referenz verfügbar — trage deinen eigenen Preis ein.
+                  Aktuell keine amtliche Referenz verfügbar. Trage deinen eigenen Preis ein.
                 </p>
               )}
             </section>
@@ -324,7 +324,7 @@ export default function AutokostenView() {
                 </div>
               )}
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Wertverlust als Betrag pro Jahr. Wenn du ihn nicht kennst, lass das Feld leer —
+                Wertverlust als Betrag pro Jahr. Wenn du ihn nicht kennst, lass das Feld leer.
                 die Kosten werden dann ohne Wertverlust berechnet und ausdrücklich so gekennzeichnet.
                 ENFAL setzt keine geschätzte Quote ein.
               </p>

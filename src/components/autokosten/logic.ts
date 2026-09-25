@@ -313,7 +313,7 @@ export function baueInsights(e: AutokostenErgebnis, form: AutokostenForm): Insig
     const mengeLabel = e.energieEinheitMenge === 'kWh' ? 'kWh' : 'Liter'
     out.push({
       key: 'energie',
-      text: `Energie kostet dich ${formatEuro(e.energieJe100km)} je 100 km — `
+      text: `Energie kostet dich ${formatEuro(e.energieJe100km)} je 100 km. `
         + `${formatMenge(e.jahresverbrauch, mengeLabel)} im Jahr.`,
     })
   }
@@ -336,7 +336,7 @@ export function baueInsights(e: AutokostenErgebnis, form: AutokostenForm): Insig
     const fuenf = e.wirtschaftlichJahr * 5
     out.push({
       key: 'kaufpreis-relation',
-      text: `In fünf Jahren summieren sich die laufenden Kosten auf ${formatEuro(fuenf)} — `
+      text: `In fünf Jahren summieren sich die laufenden Kosten auf ${formatEuro(fuenf)}. `
         + `das ${formatFaktor(fuenf / kaufpreis)} des Kaufpreises.`,
     })
   }

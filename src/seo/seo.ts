@@ -133,11 +133,11 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     title: 'Autokosten-Rechner: Was kostet dein Auto im Monat? | ENFAL',
     description:
       'Kraftstoff, Versicherung, Steuer, Wartung, Wertverlust: Kosten pro Monat, Jahr und Kilometer '
-      + '— mit Budget-Abgleich und Autovergleich. Kostenlos, ohne Konto.',
+      + 'mit Budget-Abgleich und Autovergleich. Kostenlos, ohne Konto.',
     jsonLd: [
       webApp('ENFAL Autokosten-Rechner', '/autokosten',
         'Berechnet Fahrzeugkosten pro Monat, Jahr und Kilometer aus Kraftstoff, Versicherung, Steuer, '
-        + 'Wartung und Wertverlust — inklusive Budget-Abgleich und Vergleich zweier Autos.',
+        + 'Wartung und Wertverlust, inklusive Budget-Abgleich und Vergleich zweier Autos.',
         true),
       brotkrumen('/autokosten', 'Autokosten-Rechner'),
     ],
@@ -161,7 +161,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
 /** Shell für alle nicht öffentlichen/unbekannten Pfade (App, Login, Legal-Platzhalter, 404). */
 export const APP_SHELL_SEO = {
   title: 'ENFAL',
-  description: 'ENFAL — KI-Autoberatung für Kauf, Verkauf und technische Fragen.',
+  description: 'ENFAL: KI-Autoberatung für Kauf, Verkauf und technische Fragen.',
 }
 
 export interface HeadSeo {

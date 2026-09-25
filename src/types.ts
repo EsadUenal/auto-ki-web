@@ -405,10 +405,19 @@ export interface KaufCheckForm {
   baujahr: number
   kilometerstand: number
   motor: string
+  /** Kraftstoff. Genau die vier Werte, die die Auswertung normalisiert
+   *  (app/marktvergleich.py, app/car_lookup.py). Ist er gesetzt, verwirft der
+   *  Marktvergleich Angebote mit anderem Kraftstoff hart. Mild-, Voll- und
+   *  Plug-in-Hybrid landen dort alle auf "hybrid", deshalb steht hier nur die
+   *  eine Hybrid-Option statt einer Genauigkeit, die nicht ausgewertet wird. */
+  kraftstoff: '' | 'benzin' | 'diesel' | 'hybrid' | 'elektro'
+  /** Motorleistung in PS. Optional; ist sie gesetzt, schlägt sie im
+   *  Marktvergleich die ungeprüfte Datenbank-Variante. */
+  leistungPs: number | ''
   ausstattung: string   // comma/newline separated → split before sending
   preis: number
   beschreibung: string
-  // Zusätzliche Angaben (optional) — verbessern die Risikoeinschätzung
+  // Zusätzliche Angaben (optional), verbessern die Risikoeinschätzung
   unfallfrei: '' | 'ja' | 'nein' | 'unbekannt'
   vorbesitzer: number | ''
   tuevBis: string

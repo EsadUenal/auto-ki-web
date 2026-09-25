@@ -639,7 +639,10 @@ test('§3: Hero zeigt Monat, Jahr, km und die 1/3/5-Jahres-Sicht mit Annahme-Hin
   assert.match(ergebnisSrc, /Pro Jahr/)
   assert.match(ergebnisSrc, /Pro Kilometer/)
   assert.match(ergebnisSrc, /Bei gleichbleibenden Annahmen/)
-  assert.match(ergebnisSrc, /keine Prognose von Kraftstoffpreisen/)
+  // Gross-/Kleinschreibung offen: geprueft wird die ZUSAGE (keine Prognose),
+  // nicht die Zeichensetzung davor. Der Satz begann frueher nach einem
+  // Gedankenstrich klein und beginnt jetzt nach einem Punkt gross.
+  assert.match(ergebnisSrc, /keine Prognose von Kraftstoffpreisen/i)
   assert.match(ergebnisSrc, /Kaufpreis ist hier nicht zusätzlich enthalten/)
 })
 test('§2: die Doppelzählungs-Erklärung steht in der Oberfläche', () => {

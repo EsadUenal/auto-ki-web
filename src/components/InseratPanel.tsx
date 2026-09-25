@@ -208,7 +208,7 @@ export default function InseratPanel({
 
   async function generate() {
     if (checkId == null) {
-      setError('Der Check wird gerade gespeichert — bitte kurz warten und erneut versuchen.')
+      setError('Der Check wird gerade gespeichert. Bitte kurz warten und erneut versuchen.')
       return
     }
     setLoading(true)
@@ -235,7 +235,7 @@ export default function InseratPanel({
           <p className="text-sm font-semibold text-gray-900">Inserat verbessern</p>
         </div>
         <p className="text-xs text-gray-500 mb-3">
-          ENFAL formuliert aus deinen Angaben einen professionellen Titel und eine Beschreibung —
+          ENFAL formuliert aus deinen Angaben einen professionellen Titel und eine Beschreibung,
           ganz ohne erfundene Fakten.
         </p>
 

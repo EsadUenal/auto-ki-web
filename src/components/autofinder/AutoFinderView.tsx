@@ -285,7 +285,7 @@ export default function AutoFinderView() {
             Welches Auto <span className="text-gray-400">passt zu dir?</span>
           </h1>
           <p className="mt-2 text-sm text-gray-500 max-w-md leading-relaxed">
-            Budget, Fahrweise und Prioritäten — ENFAL schlägt dir die am besten passenden
+            Budget, Fahrweise und Prioritäten. ENFAL schlägt dir die am besten passenden
             Modelle aus seiner gepflegten Datenbank vor. Kostenlos, ohne Konto.
           </p>
         </div>

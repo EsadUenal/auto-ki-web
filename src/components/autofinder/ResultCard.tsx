@@ -63,7 +63,7 @@ function karosserieHinweis(k: AutoFinderKandidat): string | null {
   }
   if (k.karosserie_quelle === 'nutzerwunsch') {
     return 'Die Baureihe wird laut ENFAL-Datensatz in dieser Karosserie angeboten. '
-      + 'Ob genau diese Motorisierung darin lieferbar war, führt ENFAL nicht je Motor — '
+      + 'Ob genau diese Motorisierung darin lieferbar war, führt ENFAL nicht je Motor. '
       + 'beim Angebot bitte prüfen.'
   }
   return null
@@ -272,7 +272,7 @@ export default function ResultCard({ k, rank }: Props) {
             )}
             {k.motor_hergeleitet && (
               <p className="mt-2 text-[11px] text-gray-400">
-                Für diese Motorisierung ist keine Handelsbezeichnung hinterlegt — die
+                Für diese Motorisierung ist keine Handelsbezeichnung hinterlegt. Die
                 Angabe oben ist aus Hubraum und Kraftstoffart abgeleitet.
               </p>
             )}
@@ -282,10 +282,10 @@ export default function ResultCard({ k, rank }: Props) {
             <h4 className="text-[11px] font-bold tracking-[0.15em] uppercase text-gray-500">Datenqualität</h4>
             <p className="mt-1.5 text-gray-600 leading-relaxed">
               {k.source_type === 'web_discovered'
-                ? 'Aus einer Web-Recherche zusammengetragen — die genannten technischen Angaben sind in den Quellen belegt, aber nicht von ENFAL geprüft.'
+                ? 'Aus einer Web-Recherche zusammengetragen. Die genannten technischen Angaben sind in den Quellen belegt, aber nicht von ENFAL geprüft.'
                 : `ENFAL-gepflegter Datensatz${k.datenqualitaet >= 1
-                    ? ' — alle Kernfelder zu Motor und Technik sind hinterlegt'
-                    : ` — Kernfelder zu ${Math.round(k.datenqualitaet * 100)} % hinterlegt`}.` +
+                    ? ': alle Kernfelder zu Motor und Technik sind hinterlegt'
+                    : `: Kernfelder zu ${Math.round(k.datenqualitaet * 100)} % hinterlegt`}.` +
                   (k.enrichment_status === 'fallback'
                     ? ' Die ausführliche KI-Analyse konnte diesmal nicht vollständig geladen werden.'
                     : '')}
