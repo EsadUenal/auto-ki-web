@@ -36,6 +36,10 @@ function authHeaders(): Record<string, string> {
 export interface AuthUser {
   id: number
   email: string
+  /** Bestätigte Adresse. Gate für die KOSTENLOSEN Kontingente (Chat,
+   *  AutoFinder) — gekaufte Checks hängen bewusst nicht daran.
+   *  `/auth/me` liefert das Feld; ältere Antworten ohne es gelten als unbekannt. */
+  email_verified?: boolean
   abo_typ: 'none' | 'light' | 'pro' | 'max'
   /** Generisches Alt-Kontingent — gilt weiterhin fuer BEIDE Check-Arten. */
   checks_verbleibend: number
@@ -1222,4 +1226,41 @@ export async function optimiereInserat(
   const data = await res.json().catch(() => null)
   if (!res.ok) throw new Error(extractMessage(data))
   return data as InseratOptimierung
+}
+
+// ── Closed Beta (Release-Schritt 10) ─────────────────────────────────────────
+
+/** Ergebnis einer Einlösung. Serverseitig festgelegt — der Client schlägt
+ *  weder das Paket noch den Ausgang vor. */
+export interface BetaEinloesung {
+  status: 'aktiviert' | 'bereits_aktiviert' | 'nicht_verwendbar'
+  kaufchecks: number
+  verkaufschecks: number
+}
+
+/**
+ * Löst eine persönliche Closed-Beta-Einladung für das eingeloggte Konto ein.
+ *
+ * Das Backend antwortet auf alle regulären Ausgänge mit HTTP 200 und einem
+ * `status` — bewusst ohne unterscheidbare Fehlercodes, damit der Endpunkt kein
+ * Orakel für gültige Token oder eingeladene Adressen ist. Nur echte
+ * Ausnahmezustände (nicht eingeloggt, Server nicht erreichbar) werfen hier.
+ */
+export async function apiRedeemBeta(token: string): Promise<BetaEinloesung> {
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}/api/v1/beta/redeem`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+  } catch {
+    throw new Error(BACKEND_NICHT_ERREICHBAR)
+  }
+  const data: unknown = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error(data ? extractMessage(data) : consumerServiceError('Die Aktivierung', res.status))
+  }
+  return data as BetaEinloesung
 }

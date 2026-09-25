@@ -15,7 +15,8 @@
     "test:landing": "node --test src/components/landing/landing.test.ts",
     "test:chat": "node --test src/components/chat.test.ts",
     "test:kaufcheck": "node --test src/components/kaufcheck.test.ts",
-    "test:sidebar": "node --test src/components/sidebar.test.ts"
+    "test:sidebar": "node --test src/components/sidebar.test.ts",
+    "test:beta": "node --test src/components/beta.test.ts"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -15,6 +15,7 @@ import HelpView from './components/HelpView'
 import LoginView from './components/LoginView'
 import LegalView from './components/LegalView'
 import EmailBestaetigenView from './components/EmailBestaetigenView'
+import BetaAcceptView from './components/BetaAcceptView'
 import LandingView from './components/landing/LandingView'
 import AutoFinderView from './components/autofinder/AutoFinderView'
 import AutokostenView from './components/autokosten/AutokostenView'
@@ -563,6 +564,10 @@ export function AppRoutes() {
         {/* Landeseite des Bestätigungslinks aus der Registrierungsmail —
             ohne Login erreichbar (Link kann in anderem Browser landen). */}
         <Route path="/email-bestaetigen" element={<EmailBestaetigenView />} />
+        {/* Landeseite des persoenlichen Closed-Beta-Links. Ohne Login
+            erreichbar: wer eingeladen ist, hat oft noch gar kein Konto —
+            die Seite fuehrt ihn dann zur Anmeldung und loest danach ein. */}
+        <Route path="/beta" element={<BetaAcceptView />} />
         {/* Die ENFAL-App-Shell. Kein Blanket-Auth-Gate mehr — der Schutz
             sitzt pro Route (<Guard>), damit die öffentliche /autofinder-
             Seite dieselbe Shell nutzen kann. */}
