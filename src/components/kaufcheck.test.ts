@@ -74,3 +74,62 @@ test('G: sichtbare KaufCheck-Texte ohne Gedankenstrich (Kommentare ausgenommen)'
   }
   assert.match(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/)
 })
+
+// ── Prelaunch-Polish: strukturierter Kraftstoff und Leistung ────────────────
+//
+// Beide Felder wirken im Backend HART (Marktvergleich und Auflösung der
+// Motorvariante). Ein Feld, das die Oberfläche zwar anzeigt, aber nicht
+// mitschickt, wäre genau die Art dekoratives Feld, die hier nicht entstehen
+// soll. Geprüft wird deshalb die ganze Kette im Frontend: Typ, Formular,
+// Request-Body.
+
+const client = ohneKommentare(readFileSync(new URL('../api/client.ts', import.meta.url), 'utf8'))
+const viewCode = ohneKommentare(view)
+const typesCode = ohneKommentare(types)
+
+test('P: Kraftstoff und Leistung stehen im Formulartyp', () => {
+  assert.match(typesCode, /kraftstoff: '' \| 'benzin' \| 'diesel' \| 'hybrid' \| 'elektro'/)
+  assert.match(typesCode, /leistungPs: number \| ''/)
+})
+
+test('P: genau die vier Kraftstoffwerte, die das Backend normalisiert', () => {
+  // app/marktvergleich.py und app/car_lookup.py kennen benzin, diesel, hybrid
+  // und elektro. Mild-, Voll- und Plug-in-Hybrid landen dort alle auf "hybrid";
+  // eine feinere Auswahl wäre eine Genauigkeit, die nirgends ankommt.
+  for (const wert of ['benzin', 'diesel', 'hybrid', 'elektro']) {
+    assert.match(viewCode, new RegExp(`<option value="${wert}">`))
+  }
+  assert.ok(!/value="mildhybrid"|value="plugin"|value="phev"/.test(viewCode),
+    'Kraftstoffwert angeboten, den die Auswertung nicht normalisiert')
+})
+
+test('P: beide Felder landen im Request-Body', () => {
+  assert.match(client, /kraftstoff: form\.kraftstoff \|\| undefined/)
+  assert.match(client, /leistung_ps: form\.leistungPs \|\| undefined/)
+})
+
+test('P: Leistung bleibt optional und plausibel begrenzt', () => {
+  // 30 bis 1500 PS, identisch zur Schemagrenze in app/models.py. Ein
+  // Pflichtfeld wäre falsch: viele Inserate nennen die Leistung nicht klar,
+  // und geraten wäre schlechter als weggelassen.
+  assert.match(viewCode, /type="number" min=\{30\} max=\{1500\}/)
+  assert.ok(!/label="Leistung" required/.test(viewCode))
+})
+
+test('P: Pflichtfelder wurden NICHT vermehrt', () => {
+  // Das Formular soll kurz bleiben: weiterhin genau fünf Pflichtangaben.
+  const pflicht = [...viewCode.matchAll(/<Field label="([^"]+)" required>/g)].map((m) => m[1])
+  assert.deepEqual(pflicht.sort(),
+    ['Angebotspreis', 'Baujahr', 'Kilometerstand', 'Marke', 'Modell'])
+})
+
+test('P: Verkäuferangaben bleiben als Angaben formuliert', () => {
+  // ENFAL stellt Unfallfreiheit und Servicehistorie nicht fest, das Inserat
+  // behauptet sie. Die Labels dürfen das nicht verwischen.
+  assert.match(viewCode, /label="Unfallstatus laut Inserat"/)
+  assert.match(viewCode, /Laut Inserat unfallfrei/)
+  assert.match(viewCode, /Unfallschaden angegeben/)
+  assert.match(viewCode, /Scheckheft laut Inserat gepflegt/)
+  assert.ok(!/>Ja, unfallfrei</.test(viewCode),
+    '"Ja, unfallfrei" behauptet mehr, als das Inserat hergibt')
+})

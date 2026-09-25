@@ -23,6 +23,8 @@ const EMPTY: KaufCheckForm = {
   baujahr: new Date().getFullYear() - 3,
   kilometerstand: 0,
   motor: '',
+  kraftstoff: '',
+  leistungPs: '',
   ausstattung: '',
   preis: 0,
   beschreibung: '',
@@ -241,8 +243,34 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <Field label="Motor / Antrieb">
               <input className={inputCls} value={form.motor}
                 onChange={(e) => set('motor', e.target.value)}
-                placeholder="z. B. 2.0 TDI 150 PS, Diesel" />
+                placeholder="z. B. 2.0 TDI, 320d" />
             </Field>
+            {/* Kraftstoff und Leistung stehen strukturiert NEBEN dem Freitext,
+                nicht darin: beide wirken in der Auswertung hart (Marktvergleich
+                und Motorvarianten-Auflösung), und aus Freitext waren sie bisher
+                nur zu erraten. Zwei Felder in einer Zeile, damit das Formular
+                nicht länger wird. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Kraftstoff">
+                <select className={inputCls} value={form.kraftstoff}
+                  onChange={(e) => set('kraftstoff', e.target.value as KaufCheckForm['kraftstoff'])}>
+                  <option value="">Nicht angegeben</option>
+                  <option value="benzin">Benzin</option>
+                  <option value="diesel">Diesel</option>
+                  <option value="hybrid">Hybrid</option>
+                  <option value="elektro">Elektro</option>
+                </select>
+              </Field>
+              <Field label="Leistung">
+                <div className="relative">
+                  <input className={inputCls + ' pr-10'} type="number" min={30} max={1500}
+                    value={form.leistungPs}
+                    onChange={(e) => set('leistungPs', e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="z. B. 150" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">PS</span>
+                </div>
+              </Field>
+            </div>
             <Field label="Ausstattung">
               <textarea className={inputCls + ' resize-none'} rows={2} value={form.ausstattung}
                 onChange={(e) => set('ausstattung', e.target.value)}
@@ -260,7 +288,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <Field label="Inserat-Text / Beschreibung">
               <textarea className={inputCls + ' resize-none'} rows={4} value={form.beschreibung}
                 onChange={(e) => set('beschreibung', e.target.value)}
-                placeholder="Text aus dem Inserat einfügen, je mehr, desto besser…" />
+                placeholder="Inserattext hier einfügen. Je mehr konkrete Angaben enthalten sind, desto genauer kann ENFAL prüfen." />
             </Field>
 
             <button
@@ -274,13 +302,17 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
 
             {showMore && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <Field label="Unfallfrei laut Inserat">
+                <Field label="Unfallstatus laut Inserat">
+                  {/* Formulierungen bleiben bewusst bei "laut Inserat": das ist
+                      eine Verkäuferangabe, keine Feststellung. Die Werte selbst
+                      bleiben unverändert, damit gespeicherte Checks weiterhin
+                      gelesen werden können. */}
                   <select className={inputCls} value={form.unfallfrei}
                     onChange={(e) => set('unfallfrei', e.target.value as KaufCheckForm['unfallfrei'])}>
                     <option value="">Nicht angegeben</option>
-                    <option value="ja">Ja, unfallfrei</option>
-                    <option value="nein">Unfallschaden vorhanden</option>
-                    <option value="unbekannt">Unklar/nicht erwähnt</option>
+                    <option value="ja">Laut Inserat unfallfrei</option>
+                    <option value="nein">Unfallschaden angegeben</option>
+                    <option value="unbekannt">Im Inserat nicht erwähnt</option>
                   </select>
                 </Field>
                 <Field label="Anzahl Vorbesitzer">
@@ -298,7 +330,7 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                     <input type="checkbox" checked={form.scheckheft}
                       onChange={(e) => set('scheckheft', e.target.checked)} />
-                    Scheckheftgepflegt laut Inserat
+                    Scheckheft laut Inserat gepflegt
                   </label>
                 </div>
               </div>

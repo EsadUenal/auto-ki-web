@@ -1087,6 +1087,8 @@ export async function runKaufCheck(
     baujahr: form.baujahr || undefined,
     kilometerstand: form.kilometerstand || undefined,
     motor: form.motor || undefined,
+    kraftstoff: form.kraftstoff || undefined,
+    leistung_ps: form.leistungPs || undefined,
     preis_eur: form.preis || undefined,
     ausstattung: ausstattungListe,
     beschreibung: form.beschreibung || undefined,
@@ -1233,7 +1235,10 @@ export async function optimiereInserat(
 /** Ergebnis einer Einlösung. Serverseitig festgelegt — der Client schlägt
  *  weder das Paket noch den Ausgang vor. */
 export interface BetaEinloesung {
-  status: 'aktiviert' | 'bereits_aktiviert' | 'nicht_verwendbar'
+  /** `email_unbestaetigt`: Adresse passt, ist aber noch nicht bestätigt. Die
+   *  Einladung bleibt dabei unverbraucht und gültig, der Tester muss nur
+   *  bestätigen und den Link erneut öffnen. */
+  status: 'aktiviert' | 'bereits_aktiviert' | 'email_unbestaetigt' | 'nicht_verwendbar'
   kaufchecks: number
   verkaufschecks: number
 }

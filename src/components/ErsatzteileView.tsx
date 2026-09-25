@@ -212,7 +212,7 @@ function ResultCard({
       {ergebnis.kompatibilitaet === 'uncertain' && (
         <div className="flex items-start gap-1.5 mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-[11px] leading-snug text-amber-800">
           <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-500" />
-          <span>{ergebnis.kompat_hinweis || 'Kompatibilität nicht bestätigt – vor Bestellung per FIN/OE-Nummer prüfen.'}</span>
+          <span>{ergebnis.kompat_hinweis || 'Kompatibilität nicht bestätigt. Vor der Bestellung bitte per FIN oder OE-Nummer prüfen.'}</span>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { apiRedeemBeta } from '../api/client'
+import { apiRedeemBeta, apiResendVerification } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import {
   BETA_ROUTE,
@@ -27,6 +27,7 @@ type Zustand =
   | 'anmelden'      // Einladung erkannt, aber kein Konto angemeldet
   | 'ok'            // aktiviert
   | 'schon_aktiv'   // dieses Konto hatte die Einladung bereits eingelöst
+  | 'unbestaetigt'  // Adresse passt, ist aber noch nicht bestätigt
   | 'unbrauchbar'   // falsches Konto / abgelaufen / unbekannt / ersetzt
   | 'ohne_token'    // Seite ohne Einladungslink geöffnet
   | 'fehler'        // technischer Fehler (Netz, Server)
@@ -37,6 +38,7 @@ export default function BetaAcceptView() {
   const [zustand, setZustand] = useState<Zustand>('pruefe')
   const [meldung, setMeldung] = useState('')
   const [paket, setPaket] = useState<{ kauf: number; verkauf: number }>({ kauf: 0, verkauf: 0 })
+  const [versand, setVersand] = useState<'' | 'laeuft' | 'gesendet' | 'fehler'>('')
   const eingeloest = useRef(false)
 
   // Token aus dem Fragment holen und die Adresszeile sofort säubern.
@@ -103,13 +105,18 @@ export default function BetaAcceptView() {
   async function einloesen(t: string) {
     try {
       const res = await apiRedeemBeta(t)
-      clearBetaToken()
+      if (res.status !== 'email_unbestaetigt') clearBetaToken()
       if (res.status === 'aktiviert') {
         setPaket({ kauf: res.kaufchecks, verkauf: res.verkaufschecks })
         setZustand('ok')
         refreshUser().catch(() => {})
       } else if (res.status === 'bereits_aktiviert') {
         setZustand('schon_aktiv')
+      } else if (res.status === 'email_unbestaetigt') {
+        // Kein Fehlschlag, sondern ein Zwischenstand: die Einladung bleibt
+        // serverseitig unverbraucht. Der Token wird deshalb NICHT verworfen,
+        // damit der Tester nach dem Bestätigen direkt weitermachen kann.
+        setZustand('unbestaetigt')
       } else {
         setZustand('unbrauchbar')
       }
@@ -126,6 +133,7 @@ export default function BetaAcceptView() {
     anmelden: 'Du wurdest zur ENFAL Closed Beta eingeladen.',
     ok: 'Closed Beta aktiviert',
     schon_aktiv: 'Deine Beta-Einladung wurde bereits aktiviert.',
+    unbestaetigt: 'Bestätige zuerst deine E-Mail-Adresse.',
     unbrauchbar: 'Diese Einladung kann nicht verwendet werden.',
     ohne_token: 'Kein Einladungslink erkannt.',
     fehler: 'Das hat gerade nicht geklappt.',
@@ -145,7 +153,7 @@ export default function BetaAcceptView() {
         {zustand === 'anmelden' && (
           <>
             <p className="mt-3 text-sm text-gray-500 leading-relaxed">
-              Melde dich an oder erstelle ein Konto — danach wird deine Einladung automatisch
+              Melde dich an oder erstelle ein Konto. Deine Einladung wird danach automatisch
               aktiviert. Bitte nutze die Adresse, an die die Einladung geschickt wurde.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
@@ -168,7 +176,7 @@ export default function BetaAcceptView() {
             </p>
             {user && user.email_verified === false && (
               <p className="mt-4 text-sm text-gray-500 leading-relaxed">
-                Für AutoFinder und KI-Chat bestätige bitte noch deine E-Mail-Adresse — den Link
+                Für AutoFinder und KI-Chat bestätige bitte noch deine E-Mail-Adresse. Den Link
                 dazu hast du bei der Registrierung bekommen.
               </p>
             )}
@@ -183,13 +191,74 @@ export default function BetaAcceptView() {
         {zustand === 'schon_aktiv' && (
           <>
             <p className="mt-3 text-sm text-gray-500 leading-relaxed">
-              Du hast sie bereits eingelöst — dein Konto hat die Beta-Checks schon bekommen.
+              Du hast sie bereits eingelöst. Dein Konto hat die Beta-Checks schon bekommen.
             </p>
             <div className="mt-6">
               <button type="button" onClick={() => navigate('/chat')} className={primaer}>
                 ENFAL testen
               </button>
             </div>
+          </>
+        )}
+
+        {zustand === 'unbestaetigt' && (
+          <>
+            <p className="mt-3 text-sm text-gray-500 leading-relaxed">
+              Deine Einladung ist für diese E-Mail-Adresse reserviert und bleibt gültig.
+              Bestätige zuerst deine Adresse, danach kannst du die Closed Beta aktivieren.
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={async () => {
+                  setVersand('laeuft')
+                  try {
+                    // Liefert true, wenn die Adresse inzwischen schon bestätigt
+                    // ist. Dann direkt erneut einlösen, statt eine überflüssige
+                    // Mail zu verschicken.
+                    const schonBestaetigt = await apiResendVerification()
+                    if (schonBestaetigt) {
+                      setVersand('')
+                      const t = token ?? ''
+                      if (t) { setZustand('pruefe'); void einloesen(t) }
+                      return
+                    }
+                    setVersand('gesendet')
+                  } catch {
+                    setVersand('fehler')
+                  }
+                }}
+                disabled={versand === 'laeuft' || versand === 'gesendet'}
+                className={primaer + ' disabled:opacity-60'}
+              >
+                {versand === 'laeuft' ? 'Wird gesendet …'
+                  : versand === 'gesendet' ? 'Neuer Link unterwegs'
+                  : 'Bestätigungs-E-Mail erneut senden'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = token ?? ''
+                  if (!t) { setZustand('ohne_token'); return }
+                  setZustand('pruefe')
+                  void einloesen(t)
+                }}
+                className={sekundaer}
+              >
+                Ich habe bestätigt
+              </button>
+            </div>
+            {versand === 'gesendet' && (
+              <p className="mt-3 text-xs text-gray-500">
+                Wir haben dir einen neuen Bestätigungslink geschickt. Klicke ihn an und komm
+                dann hierher zurück.
+              </p>
+            )}
+            {versand === 'fehler' && (
+              <p className="mt-3 text-xs text-red-600">
+                Der Link konnte gerade nicht angefordert werden. Bitte versuche es gleich noch einmal.
+              </p>
+            )}
           </>
         )}
 
