@@ -414,6 +414,12 @@ export interface KaufCheckForm {
   /** Motorleistung in PS. Optional; ist sie gesetzt, schlägt sie im
    *  Marktvergleich die ungeprüfte Datenbank-Variante. */
   leistungPs: number | ''
+  /** Getriebeart. Bewusst nur zwei Werte: ENFAL kann DSG, DKG, CVT und
+   *  Wandlerautomatik nicht zuverlässig auseinanderhalten, und eine Auswahl,
+   *  die nirgends ausgewertet wird, wäre Dekoration. Ist sie gesetzt, bestimmt
+   *  sie die Probefahrt-Prüfhinweise (Kupplung vs. Fahrstufen) und wird gegen
+   *  den Inseratstext auf Widerspruch geprüft. */
+  getriebe: '' | 'automatik' | 'manuell'
   ausstattung: string   // comma/newline separated → split before sending
   preis: number
   beschreibung: string
@@ -421,7 +427,19 @@ export interface KaufCheckForm {
   unfallfrei: '' | 'ja' | 'nein' | 'unbekannt'
   vorbesitzer: number | ''
   tuevBis: string
-  scheckheft: boolean
+  /** Verkäuferart laut Inserat. Wirkt AUSSCHLIESSLICH auf Unterlagen- und
+   *  Nachfragepunkte der Checkliste — nicht auf Technik, Rückrufe oder Preis,
+   *  und ohne rechtliche Aussagen. */
+  verkaeuferart: '' | 'privat' | 'haendler'
+  /** Servicehistorie laut Inserat. Ersetzt die alte Scheckheft-Checkbox.
+   *  "vollstaendig_angegeben" heißt: das Inserat behauptet es — nicht, dass
+   *  ENFAL es geprüft hätte. */
+  servicehistorie: '' | 'vollstaendig_angegeben' | 'teilweise' | 'umfang_unklar' | 'nicht_vorhanden'
+  /** LEGACY: die alte Scheckheft-Checkbox. Nicht mehr in der Oberfläche und
+   *  nicht mehr im Request — aber in bereits gespeicherten Checks vorhanden.
+   *  `mitLegacyServicehistorie` bildet sie beim Laden auf `servicehistorie` ab
+   *  (src/components/kaufcheckFelder.ts). */
+  scheckheft?: boolean
 }
 
 // Exact backend response shape
