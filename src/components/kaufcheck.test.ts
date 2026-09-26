@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import { formatiereHuEingabe } from './huEingabe.ts'
+import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder.ts'
+import type { KaufCheckForm } from '../types.ts'
 
 /**
  * Regressionstests KaufCheck RC1 (Frontend).
@@ -129,7 +131,132 @@ test('P: Verkäuferangaben bleiben als Angaben formuliert', () => {
   assert.match(viewCode, /label="Unfallstatus laut Inserat"/)
   assert.match(viewCode, /Laut Inserat unfallfrei/)
   assert.match(viewCode, /Unfallschaden angegeben/)
-  assert.match(viewCode, /Scheckheft laut Inserat gepflegt/)
+  // Die frühere Checkbox "Scheckheft laut Inserat gepflegt" ist durch das
+  // Auswahlfeld "Servicehistorie laut Inserat" ersetzt — dieselbe Anforderung,
+  // vier statt zwei Zustände.
+  assert.match(viewCode, /label="Servicehistorie laut Inserat"/)
+  assert.match(viewCode, /label="Verkäufer laut Inserat"/)
   assert.ok(!/>Ja, unfallfrei</.test(viewCode),
     '"Ja, unfallfrei" behauptet mehr, als das Inserat hergibt')
+})
+
+// ── KaufCheck Inputs Final: Getriebe, Verkäuferart, Servicehistorie ──────────
+
+test('Q: Getriebe steht bei Kraftstoff und Leistung, mit nur zwei Werten', () => {
+  assert.match(viewCode, /label="Getriebe"/)
+  assert.match(viewCode, /set\('getriebe', e\.target\.value as KaufCheckForm\['getriebe'\]\)/)
+  for (const wert of ['automatik', 'manuell']) {
+    assert.match(viewCode, new RegExp(`<option value="${wert}">`))
+  }
+  // Keine Auswahl, die die Auswertung nicht unterscheiden kann.
+  assert.ok(!/value="dsg"|value="dkg"|value="cvt"|value="wandler"/.test(viewCode),
+    'Getriebeart angeboten, die ENFAL nicht zuverlässig unterscheidet')
+})
+
+test('Q: Servicehistorie ersetzt die Checkbox durch vier Zustände', () => {
+  for (const wert of ['vollstaendig_angegeben', 'teilweise', 'umfang_unklar', 'nicht_vorhanden']) {
+    assert.match(viewCode, new RegExp(`<option value="${wert}">`))
+  }
+  // Die alte Checkbox ist weg — nicht nur unsichtbar.
+  assert.ok(!/form\.scheckheft/.test(viewCode),
+    'Die alte Scheckheft-Checkbox ist noch im Formular verdrahtet')
+  assert.ok(!/type="checkbox"/.test(viewCode),
+    'Im KaufCheck-Formular steht noch eine Checkbox')
+})
+
+test('Q: alle drei Felder landen im Request-Body', () => {
+  assert.match(client, /getriebe: form\.getriebe \|\| undefined/)
+  assert.match(client, /verkaeuferart: form\.verkaeuferart \|\| undefined/)
+  assert.match(client, /servicehistorie: form\.servicehistorie \|\| undefined/)
+  // Das Legacy-Feld wird nicht mehr GESENDET (die Abbildung passiert beim Laden).
+  // Nur der KaufCheck-Body wird geprüft: `verkaufsBody` sendet es weiterhin und
+  // soll das auch — der VerkaufsCheck hat sein eigenes Formular.
+  const kaufBody = client.slice(client.indexOf('export async function runKaufCheck'),
+    client.indexOf('function verkaufsBody('))
+  assert.ok(kaufBody.length > 200, 'KaufCheck-Abschnitt nicht gefunden')
+  assert.ok(!/scheckheftgepflegt/.test(kaufBody),
+    'runKaufCheck sendet weiterhin das alte scheckheftgepflegt')
+})
+
+test('Q: die neuen Felder stehen im Formular-Typ', () => {
+  assert.match(typesCode, /getriebe: '' \| 'automatik' \| 'manuell'/)
+  assert.match(typesCode, /verkaeuferart: '' \| 'privat' \| 'haendler'/)
+  assert.match(typesCode, /servicehistorie: '' \| 'vollstaendig_angegeben'/)
+  // Das Legacy-Feld bleibt OPTIONAL im Typ — gespeicherte Checks tragen es.
+  assert.match(typesCode, /scheckheft\?: boolean/)
+})
+
+test('Q: Optional-Bereich bleibt optional, Pflichtfelder unverändert', () => {
+  const pflicht = [...viewCode.matchAll(/<Field label="([^"]+)" required>/g)].map((m) => m[1])
+  assert.deepEqual(pflicht.sort(),
+    ['Angebotspreis', 'Baujahr', 'Kilometerstand', 'Marke', 'Modell'])
+  // Verkäufer und Servicehistorie stehen NACH dem Aufklapper, Getriebe davor.
+  const aufklapper = viewCode.indexOf('Weitere Angaben (optional)')
+  assert.ok(aufklapper > 0)
+  assert.ok(viewCode.indexOf('label="Getriebe"') < aufklapper,
+    'Getriebe sollte bei Kraftstoff/Leistung sichtbar stehen')
+  assert.ok(viewCode.indexOf('label="Verkäufer laut Inserat"') > aufklapper)
+  assert.ok(viewCode.indexOf('label="Servicehistorie laut Inserat"') > aufklapper)
+})
+
+test('Q: drei Felder in einer Reihe erst, wenn sie breit genug bleiben', () => {
+  // Kraftstoff | Leistung | Getriebe nur ab xl. Darunter zwei Spalten, auf
+  // 375 px eine — statt drei Felder in eine zu enge Reihe zu quetschen.
+  assert.match(viewCode, /grid-cols-1 sm:grid-cols-2 xl:grid-cols-3/)
+})
+
+test('Q: gespeicherte Checks werden über das Legacy-Mapping geladen', () => {
+  assert.match(viewCode, /setForm\(mitLegacyServicehistorie\(savedCheck\.eingabe\)\)/)
+  assert.match(viewCode, /import \{ mitLegacyServicehistorie, normalisiereGetriebe \}/)
+})
+
+// ── Verhalten, nicht Quelltext: Legacy-Mapping und Getriebe-Normalisierung ────
+
+test('R: gespeicherter Alt-Check mit gesetzter Checkbox wird abgebildet', () => {
+  const alt = {
+    marke: 'BMW', modell: '320d', baujahr: 2019, kilometerstand: 90000, motor: '320d',
+    kraftstoff: 'diesel', leistungPs: 190, ausstattung: '', preis: 22000,
+    beschreibung: '', unfallfrei: 'ja', vorbesitzer: 1, tuevBis: '06/2027',
+    scheckheft: true,
+  } as unknown as KaufCheckForm
+  const neu = mitLegacyServicehistorie(alt)
+  assert.equal(neu.servicehistorie, 'vollstaendig_angegeben')
+  // Die neuen Felder existieren, sind aber leer — nichts wird erfunden.
+  assert.equal(neu.getriebe, '')
+  assert.equal(neu.verkaeuferart, '')
+  // Alle Altwerte bleiben unangetastet.
+  assert.equal(neu.marke, 'BMW')
+  assert.equal(neu.tuevBis, '06/2027')
+})
+
+test('R: nicht angekreuzte oder fehlende Checkbox bleibt "Nicht angegeben"', () => {
+  for (const scheckheft of [false, undefined]) {
+    const alt = { marke: 'VW', modell: 'Golf', scheckheft } as unknown as KaufCheckForm
+    assert.equal(mitLegacyServicehistorie(alt).servicehistorie, '')
+  }
+})
+
+test('R: ein neuer Check wird beim Laden nicht überschrieben', () => {
+  const neuerCheck = {
+    marke: 'Opel', modell: 'Astra', getriebe: 'manuell', verkaeuferart: 'privat',
+    servicehistorie: 'nicht_vorhanden', scheckheft: true,
+  } as unknown as KaufCheckForm
+  const geladen = mitLegacyServicehistorie(neuerCheck)
+  assert.equal(geladen.servicehistorie, 'nicht_vorhanden')
+  assert.equal(geladen.getriebe, 'manuell')
+  assert.equal(geladen.verkaeuferart, 'privat')
+})
+
+test('R: freie Getriebetexte werden auf die zwei Auswahlwerte gebracht', () => {
+  for (const wert of ['Automatik', '8-Gang-Automatik', 'DSG', 'S tronic', 'Steptronic',
+    'Doppelkupplung', 'CVT']) {
+    assert.equal(normalisiereGetriebe(wert), 'automatik', wert)
+  }
+  for (const wert of ['Manuell', '6-Gang Manuell', 'Schaltgetriebe', 'Handschalter']) {
+    assert.equal(normalisiereGetriebe(wert), 'manuell', wert)
+  }
+  // Unklares und Widersprüchliches wird NICHT geraten.
+  for (const wert of ['', null, undefined, 'unbekannt', 'Automatik oder Schaltgetriebe']) {
+    assert.equal(normalisiereGetriebe(wert), '', String(wert))
+  }
 })

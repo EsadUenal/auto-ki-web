@@ -15,6 +15,7 @@ import {
 } from './KaufCheckDetails'
 import { formatiereHuEingabe } from './huEingabe'
 import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo } from './autofinder/logic'
+import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
 const EMPTY: KaufCheckForm = {
@@ -25,13 +26,15 @@ const EMPTY: KaufCheckForm = {
   motor: '',
   kraftstoff: '',
   leistungPs: '',
+  getriebe: '',
   ausstattung: '',
   preis: 0,
   beschreibung: '',
   unfallfrei: '',
   vorbesitzer: '',
   tuevBis: '',
-  scheckheft: false,
+  verkaeuferart: '',
+  servicehistorie: '',
 }
 
 interface KaufCheckViewProps {
@@ -75,7 +78,11 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
   // Gespeicherten Check laden
   useEffect(() => {
     if (savedCheck) {
-      setForm(savedCheck.eingabe)
+      // Gespeicherte Checks kennen die neuen Felder nicht und tragen ggf. noch
+      // die alte Scheckheft-Checkbox. `mitLegacyServicehistorie` ergänzt die
+      // fehlenden Felder und bildet die Checkbox ab — der gespeicherte Bericht
+      // bleibt unangetastet.
+      setForm(mitLegacyServicehistorie(savedCheck.eingabe))
       setResult(savedCheck.ergebnis)
       setError(null)
       setTimeout(
@@ -101,6 +108,12 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           modell: pf.modell || EMPTY.modell,
           motor: pf.motor || EMPTY.motor,
           baujahr: pf.baujahr ?? EMPTY.baujahr,
+          // Die Getriebeart des AutoFinder-Kandidaten steht jetzt im Auswahlfeld
+          // statt nur im Kontexttext. Sie war ohnehin schon wirksam (die
+          // Getriebeerkennung liest den Beschreibungstext mit) — sichtbar und
+          // korrigierbar ist ehrlicher. Freie Formen wie "8-Gang-Automatik"
+          // werden abgebildet, Unklares bleibt leer.
+          getriebe: normalisiereGetriebe(pf.getriebe),
           beschreibung: kontext ? `Aus AutoFinder übernommen: ${kontext}` : EMPTY.beschreibung,
         })
         setResult(null)
@@ -245,12 +258,16 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                 onChange={(e) => set('motor', e.target.value)}
                 placeholder="z. B. 2.0 TDI, 320d" />
             </Field>
-            {/* Kraftstoff und Leistung stehen strukturiert NEBEN dem Freitext,
-                nicht darin: beide wirken in der Auswertung hart (Marktvergleich
-                und Motorvarianten-Auflösung), und aus Freitext waren sie bisher
-                nur zu erraten. Zwei Felder in einer Zeile, damit das Formular
-                nicht länger wird. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Kraftstoff, Leistung und Getriebe stehen strukturiert NEBEN dem
+                Freitext, nicht darin: alle drei wirken in der Auswertung
+                (Marktvergleich, Motorvarianten-Auflösung, Probefahrt-Prüfhinweise),
+                und aus Freitext waren sie bisher nur zu erraten.
+
+                Drei Spalten erst ab xl (ab 1280 px Viewport bleibt jedes Feld
+                ausreichend breit). Darunter zwei Spalten: Kraftstoff | Leistung,
+                Getriebe darunter — statt drei Felder in eine zu enge Reihe zu
+                quetschen. Auf 375 px steht jedes Feld einzeln. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               <Field label="Kraftstoff">
                 <select className={inputCls} value={form.kraftstoff}
                   onChange={(e) => set('kraftstoff', e.target.value as KaufCheckForm['kraftstoff'])}>
@@ -269,6 +286,18 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                     placeholder="z. B. 150" />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">PS</span>
                 </div>
+              </Field>
+              {/* Nur zwei Werte: DSG, DKG, CVT und Wandlerautomatik lassen sich
+                  in der ENFAL-Datenbasis nicht zuverlässig unterscheiden. Eine
+                  feinere Auswahl würde eine Genauigkeit vorgeben, die die
+                  Auswertung nicht einlöst. */}
+              <Field label="Getriebe">
+                <select className={inputCls} value={form.getriebe}
+                  onChange={(e) => set('getriebe', e.target.value as KaufCheckForm['getriebe'])}>
+                  <option value="">Nicht angegeben</option>
+                  <option value="automatik">Automatik</option>
+                  <option value="manuell">Manuell (Schaltgetriebe)</option>
+                </select>
               </Field>
             </div>
             <Field label="Ausstattung">
@@ -326,13 +355,29 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                     onBlur={(e) => set('tuevBis', formatiereHuEingabe(e.target.value))}
                     placeholder="z. B. 06/2027" />
                 </Field>
-                <div className="flex items-end pb-2.5">
-                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input type="checkbox" checked={form.scheckheft}
-                      onChange={(e) => set('scheckheft', e.target.checked)} />
-                    Scheckheft laut Inserat gepflegt
-                  </label>
-                </div>
+                <Field label="Verkäufer laut Inserat">
+                  <select className={inputCls} value={form.verkaeuferart}
+                    onChange={(e) => set('verkaeuferart', e.target.value as KaufCheckForm['verkaeuferart'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="privat">Privat</option>
+                    <option value="haendler">Händler</option>
+                  </select>
+                </Field>
+                {/* Ersetzt die frühere Checkbox "Scheckheft laut Inserat gepflegt".
+                    Sie konnte nur ja/nein und musste damit "vollständig",
+                    "teilweise" und "irgendetwas vorhanden" in einem Haken
+                    abbilden. Die Optionen benennen ausdrücklich, dass es um die
+                    ANGABE des Inserats geht: ENFAL hat keine Unterlagen gesehen. */}
+                <Field label="Servicehistorie laut Inserat">
+                  <select className={inputCls} value={form.servicehistorie}
+                    onChange={(e) => set('servicehistorie', e.target.value as KaufCheckForm['servicehistorie'])}>
+                    <option value="">Nicht angegeben</option>
+                    <option value="vollstaendig_angegeben">Vollständig angegeben</option>
+                    <option value="teilweise">Teilweise vorhanden</option>
+                    <option value="umfang_unklar">Vorhanden, Umfang unklar</option>
+                    <option value="nicht_vorhanden">Nicht vorhanden</option>
+                  </select>
+                </Field>
               </div>
             )}
           </div>

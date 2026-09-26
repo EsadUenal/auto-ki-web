@@ -1089,13 +1089,20 @@ export async function runKaufCheck(
     motor: form.motor || undefined,
     kraftstoff: form.kraftstoff || undefined,
     leistung_ps: form.leistungPs || undefined,
+    getriebe: form.getriebe || undefined,
     preis_eur: form.preis || undefined,
     ausstattung: ausstattungListe,
     beschreibung: form.beschreibung || undefined,
     unfallfrei: form.unfallfrei || undefined,
     vorbesitzer: form.vorbesitzer || undefined,
     tuev_bis: form.tuevBis || undefined,
-    scheckheftgepflegt: form.scheckheft || undefined,
+    verkaeuferart: form.verkaeuferart || undefined,
+    // `servicehistorie` ersetzt das frühere `scheckheftgepflegt`. Das alte Feld
+    // wird NICHT mehr gesendet: beim Laden eines gespeicherten Checks ist es
+    // bereits auf `servicehistorie` abgebildet (mitLegacyServicehistorie), eine
+    // zweite Übertragung derselben Aussage wäre nur eine Fehlerquelle. Das
+    // Backend akzeptiert es weiterhin für ältere Clients.
+    servicehistorie: form.servicehistorie || undefined,
     bild_base64: screenshot ?? undefined,
   }
 
