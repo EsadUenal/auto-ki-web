@@ -260,3 +260,16 @@ test('R: freie Getriebetexte werden auf die zwei Auswahlwerte gebracht', () => {
     assert.equal(normalisiereGetriebe(wert), '', String(wert))
   }
 })
+
+// ── Live-Run-Closing: ungeprüfte Inseratsangabe wird nicht als Qualität gelabelt
+
+test('S: "Pluspunkt" gilt nur für belegte Vorteile, nicht für Inseratsangaben', () => {
+  const kf = readFileSync(new URL('./KeyFindings.tsx', import.meta.url), 'utf8')
+  // Die Kategorie der Servicehistorie-Karte bekommt ein eigenes Label.
+  assert.match(kf, /inseratangabe: 'Positive Inseratangabe'/)
+  // Es wird auch wirklich verwendet und nicht nur definiert.
+  assert.match(kf, /const label = KATEGORIE_LABEL\[finding\.kategorie\] \?\? style\.label/)
+  assert.match(kf, /\{label\}/)
+  // "Pluspunkt" bleibt für belegte Vorteile erhalten (stufe "chance").
+  assert.match(kf, /label: 'Pluspunkt'/)
+})
