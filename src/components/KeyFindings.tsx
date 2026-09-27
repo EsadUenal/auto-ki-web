@@ -39,6 +39,23 @@ const STUFE_STYLE: Record<string, { card: string; accent: string; badge: string;
   },
 }
 
+/**
+ * Label-Ausnahmen nach Kategorie.
+ *
+ * Befund aus dem echten Production-Run: "Servicehistorie laut Inserat
+ * vollständig angegeben" trug das Label "Pluspunkt" (aus stufe="chance"). Das
+ * bewertet eine Behauptung des Inserats bereits als geprüfte Qualität — ENFAL
+ * hat weder Serviceheft noch Rechnung gesehen. Die Farbgebung bleibt ruhig
+ * positiv, das Label sagt aber, worum es sich handelt.
+ *
+ * Nur für Kategorien, die AUSDRÜCKLICH eine ungeprüfte Inseratsangabe sind.
+ * Ein belegter Vorteil (kategorie "vorteil", z.B. "keine schweren bekannten
+ * Motorprobleme" aus der Fahrzeugdatenbank) behält "Pluspunkt".
+ */
+const KATEGORIE_LABEL: Record<string, string> = {
+  inseratangabe: 'Positive Inseratangabe',
+}
+
 function FindingCard({
   finding, insights, shownInsightIds,
 }: {
@@ -47,6 +64,7 @@ function FindingCard({
   shownInsightIds: Set<string>
 }) {
   const style = STUFE_STYLE[finding.stufe] ?? STUFE_STYLE.info
+  const label = KATEGORIE_LABEL[finding.kategorie] ?? style.label
   const evidenceInsights = insightsByIds(insights, finding.evidence_ids)
   // §29: Insights, die bereits in einer eigenständigen "Warum"-Karte weiter oben auf
   // der Seite stehen (Preisstrategie/Verkaufsstrategie), hier NICHT nochmal komplett
@@ -63,7 +81,7 @@ function FindingCard({
           <div className="flex items-center gap-2 flex-wrap">
             <p className={`text-sm font-semibold ${style.accent}`}>{finding.titel}</p>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${style.badge}`}>
-              {style.label}
+              {label}
             </span>
           </div>
 
