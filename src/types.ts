@@ -145,6 +145,31 @@ export interface WebVehicleIdentity {
   quellen?: EvidenceQuelle[]
 }
 
+/**
+ * Die einzige vom KaufCheck freigegebene Fahrzeugidentität. Die Feldwerte und
+ * ihre Herkunft kommen vollständig vom Backend; die Oberfläche leitet daraus
+ * weder Motor, Generation noch Antrieb eigenständig ab.
+ */
+export interface VehicleIdentity {
+  make?: string | null
+  model?: string | null
+  model_variant?: string | null
+  generation?: string | null
+  year?: number | null
+  engine_name?: string | null
+  engine_code?: string | null
+  fuel?: string | null
+  powertrain?: string | null
+  transmission?: string | null
+  drivetrain?: string | null
+  horsepower?: number | null
+  field_evidence?: Record<string, {
+    status?: 'provided' | 'plausible' | 'identified' | 'unknown' | string
+    confidence?: string
+    provenance?: string[]
+  }>
+}
+
 // P1-4 — ergänzender Fahrzeugkontext aus der ENFAL-Fahrzeugdatenbank. KEINE
 // Evidence, KEINE Bewertung des Fahrzeugzustands — beschreibt die Baureihe
 // allgemein (Segment, Erkennungsmerkmale, Herstellerintervalle). Alle Felder
@@ -444,6 +469,10 @@ export interface KaufCheckForm {
 
 // Exact backend response shape
 export interface KaufCheckResult {
+  vehicle_identity?: VehicleIdentity | null
+  accident_status?: string | null
+  datenbasis?: string[]
+  risiko_titel?: string
   bericht: string
   empfehlung: 'kaufen' | 'kaufen_nach_besichtigung' | 'nur_mit_werkstattpruefung' | 'preis_nachverhandeln' | 'hohes_risiko' | 'finger_weg' | 'unbekannt' | string
   preis_bewertung: 'extrem_guenstig' | 'guenstig' | 'marktgerecht' | 'teuer' | 'extrem_teuer' | 'unbekannt' | string

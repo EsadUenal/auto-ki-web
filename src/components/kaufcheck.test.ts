@@ -273,3 +273,20 @@ test('S: "Pluspunkt" gilt nur für belegte Vorteile, nicht für Inseratsangaben'
   // "Pluspunkt" bleibt für belegte Vorteile erhalten (stufe "chance").
   assert.match(kf, /label: 'Pluspunkt'/)
 })
+
+test('T: aktuelle KaufCheck-Antworten nutzen Identität, Datenbasis und Risikotitel vom Backend', () => {
+  assert.match(typesCode, /vehicle_identity\?: VehicleIdentity \| null/)
+  assert.match(typesCode, /datenbasis\?: string\[\]/)
+  assert.match(typesCode, /risiko_titel\?: string/)
+  assert.match(details, /const identity = result\.vehicle_identity/)
+  assert.match(viewCode, /<DatenbasisZeile datenbasis=\{result\.datenbasis\} \/>/)
+  assert.match(viewCode, /\{result\.risiko_titel \?\? 'Relevante Risiken und Hinweise'\}/)
+  assert.match(viewCode, /vehicleIdentity=\{result\.vehicle_identity\}/)
+  assert.doesNotMatch(ohneKommentare(details), /Datenbasis: ENFAL-Datenbank/)
+})
+
+test('T: Rückrufdarstellung stuft series_only nicht als offenen Rückruf hoch', () => {
+  const evidence = readFileSync(new URL('./EvidenceWhy.tsx', import.meta.url), 'utf8')
+  assert.match(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/)
+  assert.doesNotMatch(ohneKommentare(evidence), /offene?r? Rückruf/i)
+})

@@ -616,7 +616,7 @@ function KaufCheckReport({
             </p>
             {subtitle && <p className="mt-1.5 text-sm text-gray-600">{subtitle}</p>}
             <PreisDimensionZeile result={result} />
-            <DatenbasisZeile technicalCoverage={result.technical_coverage} />
+            <DatenbasisZeile datenbasis={result.datenbasis} />
           </div>
         </div>
       </div>
@@ -641,6 +641,9 @@ function KaufCheckReport({
       <KeyFindings findings={result.key_findings} insights={result.insights} shownInsightIds={shownInsightIds} />
       {risikoInsights.length > 0 && (
         <div className="px-1">
+          <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-[#a49c92] mb-2">
+            {result.risiko_titel ?? 'Relevante Risiken und Hinweise'}
+          </p>
           <EvidenceWhy label="Warum diese Risiken?" insights={risikoInsights} />
         </div>
       )}
@@ -660,7 +663,11 @@ function KaufCheckReport({
       )}
 
       {/* 6) Fahrzeug-/Datenkontext (P1-4 + Web-Identität bei DB-Miss). */}
-      <FahrzeugprofilKarte fahrzeugkontext={result.fahrzeugkontext} webIdentitaet={result.web_identitaet} />
+      <FahrzeugprofilKarte
+        fahrzeugkontext={result.fahrzeugkontext}
+        webIdentitaet={result.web_identitaet}
+        vehicleIdentity={result.vehicle_identity}
+      />
 
       {/* 7) Ausführliche Analyse — unverändert vollständig, standardmäßig eingeklappt. */}
       <CollapsibleReport bericht={result.bericht} title="Ausführliche Analyse anzeigen" />

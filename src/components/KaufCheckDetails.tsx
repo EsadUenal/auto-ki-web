@@ -5,7 +5,7 @@ import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import { MarketMetrics } from './ResultSummary'
 import type {
   KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen, KaufCheckForm,
-  Fahrzeugkontext, Laufleistungskontext, WebVehicleIdentity, Marktanalyse, Insight,
+  Fahrzeugkontext, Laufleistungskontext, WebVehicleIdentity, VehicleIdentity, Marktanalyse, Insight,
 } from '../types'
 
 /**
@@ -42,18 +42,25 @@ export function formatUnbekannterPreiswert(wert: string): string {
 }
 
 // ── Fahrzeug-Titelzeile für den Decision-Header ──────────────────────────────
-// §3/§12: Marke/Modell, erkannte Baureihe/Generation, erkannter Motor — soweit
-// vorhanden. Bevorzugt die per Webrecherche BELEGTE Identität (web_identitaet),
-// wenn der DB-Pfad keine hat (DB-Miss + bestätigtes reales Fahrzeug, §12) —
-// niemals eine erfundene DB-ID, nie der interne Begriff "WebVehicleIdentity".
-// `motor_erkannt` selbst ist eine DB-Slug-ID ("bmw-3er-g20-320d") und deshalb
-// NICHT direkt anzeigbar — als Ersatz die vom Nutzer eingegebene Motor-
-// Bezeichnung zeigen, aber NUR wenn das Backend eine Motorvariante erkannt hat.
+// Bei neuen Checks ist `vehicle_identity` die einzige Quelle. Die alten
+// Fallbacks dienen ausschließlich gespeicherten Ergebnissen, die dieses Feld
+// noch nicht enthalten.
 export function fahrzeugTitel(
   result: KaufCheckResult,
   form: { marke: string; modell: string; baujahr: number; motor: string },
 ): string {
   const teile: string[] = []
+  const identity = result.vehicle_identity
+  if (identity) {
+    const kern = [identity.make, identity.model, identity.model_variant].filter(Boolean).join(' ')
+    if (kern) teile.push(kern)
+    if (identity.generation) teile.push(identity.generation)
+    if (identity.year) teile.push(String(identity.year))
+    if (identity.engine_name) teile.push(identity.engine_name)
+    if (identity.engine_code && identity.engine_code !== identity.engine_name) teile.push(identity.engine_code)
+    if (identity.horsepower) teile.push(`${identity.horsepower} PS`)
+    return teile.join(' · ')
+  }
   const webId = result.web_identitaet
 
   if (webId?.belegt && (webId.marke || webId.modell)) {
@@ -75,18 +82,9 @@ export function fahrzeugTitel(
 
 // ── Datenbasis-Zeile (§3, §9) — dezent, keine Rohwerte ───────────────────────
 
-const DATENBASIS_TEXT: Record<string, string> = {
-  db: 'Datenbasis: ENFAL-Datenbank',
-  db_plus_web: 'Datenbasis: Datenbank + Webrecherche',
-  web: 'Datenbasis: aktuelle Webrecherche',
-  partial: 'Datenbasis eingeschränkt',
-}
-
-export function DatenbasisZeile({ technicalCoverage }: { technicalCoverage?: string }) {
-  if (!technicalCoverage) return null
-  const text = DATENBASIS_TEXT[technicalCoverage]
-  if (!text) return null
-  return <p className="text-xs text-gray-400 mt-1.5">{text}</p>
+export function DatenbasisZeile({ datenbasis }: { datenbasis?: string[] }) {
+  if (!datenbasis?.length) return null
+  return <p className="text-xs text-gray-400 mt-1.5">Datenbasis: {datenbasis.join(' · ')}</p>
 }
 
 // ── Marktpreis — eigenes Modul (§10) ──────────────────────────────────────────
@@ -233,13 +231,27 @@ export function LaufleistungKarte({ kontext }: { kontext?: Laufleistungskontext 
 export function FahrzeugprofilKarte({
   fahrzeugkontext,
   webIdentitaet,
+  vehicleIdentity,
 }: {
   fahrzeugkontext?: Fahrzeugkontext | null
   webIdentitaet?: WebVehicleIdentity | null
+  vehicleIdentity?: VehicleIdentity | null
 }) {
   const felder: { label: string; value: string }[] = []
 
-  if (fahrzeugkontext?.generation) felder.push({ label: 'Generation', value: fahrzeugkontext.generation })
+  if (vehicleIdentity) {
+    if (vehicleIdentity.generation) felder.push({ label: 'Generation', value: vehicleIdentity.generation })
+    if (vehicleIdentity.year) felder.push({ label: 'Baujahr', value: String(vehicleIdentity.year) })
+    if (vehicleIdentity.engine_name) felder.push({ label: 'Motor', value: vehicleIdentity.engine_name })
+    if (vehicleIdentity.engine_code) felder.push({ label: 'Motorcode / Motorfamilie', value: vehicleIdentity.engine_code })
+    if (vehicleIdentity.fuel) felder.push({ label: 'Kraftstoff', value: vehicleIdentity.fuel })
+    if (vehicleIdentity.powertrain) felder.push({ label: 'Antriebsart', value: vehicleIdentity.powertrain })
+    if (vehicleIdentity.transmission) felder.push({ label: 'Getriebe', value: vehicleIdentity.transmission })
+    if (vehicleIdentity.drivetrain) felder.push({ label: 'Antrieb', value: vehicleIdentity.drivetrain })
+    if (vehicleIdentity.horsepower) felder.push({ label: 'Leistung', value: `${vehicleIdentity.horsepower} PS` })
+  }
+
+  if (!vehicleIdentity && fahrzeugkontext?.generation) felder.push({ label: 'Generation', value: fahrzeugkontext.generation })
   if (fahrzeugkontext?.segment) felder.push({ label: 'Segment', value: fahrzeugkontext.segment })
   if (fahrzeugkontext?.erkennung_generation) {
     felder.push({ label: 'Erkennungsmerkmale', value: fahrzeugkontext.erkennung_generation })
