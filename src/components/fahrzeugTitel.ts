@@ -57,6 +57,9 @@ export function fahrzeugTitel(
   result: KaufCheckResult,
   form: { marke: string; modell: string; baujahr: number; motor: string },
 ): string {
+  // Final-Stabilization: die kanonische, im Backend deduplizierte Bezeichnung
+  // (app/anzeige.py::fahrzeug_titel) hat Vorrang — dieselbe Zeile wie im Bericht.
+  if (result.anzeige_titel) return result.anzeige_titel
   const teile: string[] = []
   const gesehen = new Set<string>()
   const identity = result.vehicle_identity

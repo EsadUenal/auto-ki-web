@@ -472,6 +472,13 @@ export interface KaufCheckResult {
   vehicle_identity?: VehicleIdentity | null
   accident_status?: string | null
   datenbasis?: string[]
+  /** KaufCheck-Final-Stabilization (optional; alte Checks besitzen die Felder
+   *  nicht): EINE Empfehlungsentscheidung und EINE deduplizierte
+   *  Fahrzeugbezeichnung aus dem Backend — das Frontend rendert sie nur. */
+  recommendation_state?: 'NORMAL' | 'LIMITED_ANALYSIS' | 'INSUFFICIENT_IDENTITY' | string | null
+  empfehlung_anzeige?: string | null
+  empfehlung_hinweis?: string | null
+  anzeige_titel?: string | null
   risiko_titel?: string
   bericht: string
   empfehlung: 'kaufen' | 'kaufen_nach_besichtigung' | 'nur_mit_werkstattpruefung' | 'preis_nachverhandeln' | 'hohes_risiko' | 'finger_weg' | 'unbekannt' | string

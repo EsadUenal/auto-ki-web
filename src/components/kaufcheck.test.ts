@@ -327,3 +327,16 @@ test('U: Titelzeile dedupliziert generisch, unabhängig von Marke/Modell (Kontro
 test('U: fahrzeugTitel ist aus einem eigenen Modul importiert (isoliert testbar wie huEingabe.ts)', () => {
   assert.match(details, /import \{ fahrzeugTitel \} from '\.\/fahrzeugTitel'/)
 })
+
+test('Final-Stabilization: die kanonische Backend-Bezeichnung hat Vorrang (keine zweite Titellogik)', () => {
+  const titel = fahrzeugTitel({
+    anzeige_titel: 'Testmarke Alpha T1 2018 2.0 TX (40 TX) 190 PS',
+    vehicle_identity: { make: 'Testmarke', model: 'Alpha', engine_name: 'Alpha' },
+  } as unknown as KaufCheckResult, leereForm)
+  assert.equal(titel, 'Testmarke Alpha T1 2018 2.0 TX (40 TX) 190 PS')
+})
+
+test('Final-Stabilization: Empfehlungskarte zeigt die Backend-Entscheidung statt eines eigenen Labels', () => {
+  assert.match(viewCode, /result\.empfehlung_anzeige \|\| recStyle\.label/)
+  assert.match(viewCode, /result\.empfehlung_hinweis/)
+})

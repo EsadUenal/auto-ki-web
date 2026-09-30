@@ -612,8 +612,15 @@ function KaufCheckReport({
               Kaufempfehlung
             </p>
             <p className={`text-xl sm:text-2xl font-bold tracking-[-0.01em] leading-tight ${recStyle.label_cls}`}>
-              {recStyle.label}
+              {/* Backend-Entscheidung (app/empfehlungs_policy.py) hat Vorrang: bei
+                  eingeschränkter Fahrzeugidentität steht hier "Analyse
+                  eingeschränkt – …" statt eines generischen "Unbekannt". Alte
+                  gespeicherte Checks ohne dieses Feld fallen auf das Label zurück. */}
+              {result.empfehlung_anzeige || recStyle.label}
             </p>
+            {result.empfehlung_hinweis && (
+              <p className="mt-1.5 text-sm text-gray-700">{result.empfehlung_hinweis}</p>
+            )}
             {subtitle && <p className="mt-1.5 text-sm text-gray-600">{subtitle}</p>}
             <PreisDimensionZeile result={result} />
             <DatenbasisZeile datenbasis={result.datenbasis} />
