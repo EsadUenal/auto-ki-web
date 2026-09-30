@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
+import { fahrzeugTitel } from './fahrzeugTitel.ts'
 import { formatiereHuEingabe } from './huEingabe.ts'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder.ts'
-import type { KaufCheckForm } from '../types.ts'
+import type { KaufCheckForm, KaufCheckResult } from '../types.ts'
 
 /**
  * Regressionstests KaufCheck RC1 (Frontend).
@@ -278,7 +279,8 @@ test('T: aktuelle KaufCheck-Antworten nutzen Identität, Datenbasis und Risikoti
   assert.match(typesCode, /vehicle_identity\?: VehicleIdentity \| null/)
   assert.match(typesCode, /datenbasis\?: string\[\]/)
   assert.match(typesCode, /risiko_titel\?: string/)
-  assert.match(details, /const identity = result\.vehicle_identity/)
+  const fahrzeugTitelSrc = readFileSync(new URL('./fahrzeugTitel.ts', import.meta.url), 'utf8')
+  assert.match(fahrzeugTitelSrc, /const identity = result\.vehicle_identity/)
   assert.match(viewCode, /<DatenbasisZeile datenbasis=\{result\.datenbasis\} \/>/)
   assert.match(viewCode, /\{result\.risiko_titel \?\? 'Relevante Risiken und Hinweise'\}/)
   assert.match(viewCode, /vehicleIdentity=\{result\.vehicle_identity\}/)
@@ -289,4 +291,39 @@ test('T: Rückrufdarstellung stuft series_only nicht als offenen Rückruf hoch',
   const evidence = readFileSync(new URL('./EvidenceWhy.tsx', import.meta.url), 'utf8')
   assert.match(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/)
   assert.doesNotMatch(ohneKommentare(evidence), /offene?r? Rückruf/i)
+})
+
+// Produktions-Befund: "BMW M4 M4 · F82 · 2016 · M4 · S55B30 · 431 PS" — Modell,
+// Variante und Motorbezeichnung waren für dieses performance-benannte Modell
+// alle drei "M4" und erschienen dreifach in der Titelzeile. `fahrzeugTitel`
+// wurde nach ./fahrzeugTitel.ts ausgelagert, damit sich die Regel
+// (markenübergreifend: kein Wort-Token doppelt) real ausführen lässt statt nur
+// als Text-Assertion auf dem Quellcode.
+const leereForm: KaufCheckForm = {
+  marke: '', modell: '', baujahr: 0, kilometerstand: 0, motor: '', kraftstoff: '',
+} as unknown as KaufCheckForm
+
+function ergebnisMit(identity: NonNullable<KaufCheckResult['vehicle_identity']>): KaufCheckResult {
+  return { vehicle_identity: identity } as unknown as KaufCheckResult
+}
+
+test('U: Titelzeile wiederholt kein Wort-Token (BMW M4 F82 2016 — Realfall)', () => {
+  const titel = fahrzeugTitel(ergebnisMit({
+    make: 'BMW', model: 'M4', model_variant: 'M4', generation: 'F82', year: 2016,
+    engine_name: 'M4', engine_code: 'S55B30', horsepower: 431,
+  }), leereForm)
+  assert.equal(titel, 'BMW M4 · F82 · 2016 · S55B30 · 431 PS')
+  assert.doesNotMatch(titel, /\bM4\b.*\bM4\b/)
+})
+
+test('U: Titelzeile dedupliziert generisch, unabhängig von Marke/Modell (Kontrollfall ohne Wiederholung)', () => {
+  const titel = fahrzeugTitel(ergebnisMit({
+    make: 'Mercedes-Benz', model: 'C-Klasse', model_variant: null, generation: 'W205', year: 2019,
+    engine_name: 'C 300', engine_code: 'M264', horsepower: 258,
+  }), leereForm)
+  assert.equal(titel, 'Mercedes-Benz C-Klasse · W205 · 2019 · C 300 · M264 · 258 PS')
+})
+
+test('U: fahrzeugTitel ist aus einem eigenen Modul importiert (isoliert testbar wie huEingabe.ts)', () => {
+  assert.match(details, /import \{ fahrzeugTitel \} from '\.\/fahrzeugTitel'/)
 })

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Search, Car, MessageCircle, FileText, Gauge, Printer } from 'lucide-react'
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import { MarketMetrics } from './ResultSummary'
+import { fahrzeugTitel } from './fahrzeugTitel'
 import type {
   KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen, KaufCheckForm,
   Fahrzeugkontext, Laufleistungskontext, WebVehicleIdentity, VehicleIdentity, Marktanalyse, Insight,
@@ -42,43 +43,10 @@ export function formatUnbekannterPreiswert(wert: string): string {
 }
 
 // ── Fahrzeug-Titelzeile für den Decision-Header ──────────────────────────────
-// Bei neuen Checks ist `vehicle_identity` die einzige Quelle. Die alten
-// Fallbacks dienen ausschließlich gespeicherten Ergebnissen, die dieses Feld
-// noch nicht enthalten.
-export function fahrzeugTitel(
-  result: KaufCheckResult,
-  form: { marke: string; modell: string; baujahr: number; motor: string },
-): string {
-  const teile: string[] = []
-  const identity = result.vehicle_identity
-  if (identity) {
-    const kern = [identity.make, identity.model, identity.model_variant].filter(Boolean).join(' ')
-    if (kern) teile.push(kern)
-    if (identity.generation) teile.push(identity.generation)
-    if (identity.year) teile.push(String(identity.year))
-    if (identity.engine_name) teile.push(identity.engine_name)
-    if (identity.engine_code && identity.engine_code !== identity.engine_name) teile.push(identity.engine_code)
-    if (identity.horsepower) teile.push(`${identity.horsepower} PS`)
-    return teile.join(' · ')
-  }
-  const webId = result.web_identitaet
-
-  if (webId?.belegt && (webId.marke || webId.modell)) {
-    const kern = [webId.marke, webId.modell].filter(Boolean).join(' ')
-    if (kern) teile.push(kern)
-    if (webId.generation) teile.push(webId.generation)
-  } else {
-    const kern = [form.marke, form.modell].filter(Boolean).join(' ')
-    if (kern) teile.push(kern)
-    if (result.fahrzeugkontext?.generation) teile.push(result.fahrzeugkontext.generation)
-  }
-  if (form.baujahr) teile.push(String(form.baujahr))
-
-  const motorLabel = webId?.belegt && webId.motor ? webId.motor : (result.motor_erkannt && form.motor ? form.motor : null)
-  if (motorLabel) teile.push(motorLabel)
-
-  return teile.filter(Boolean).join(' · ')
-}
+// Ausgelagert nach ./fahrzeugTitel.ts (wie huEingabe.ts / kaufcheckFelder.ts),
+// damit sich die Zusammensetzung isoliert testen lässt. Re-Export, damit
+// bestehende Importe von hier unverändert funktionieren.
+export { fahrzeugTitel }
 
 // ── Datenbasis-Zeile (§3, §9) — dezent, keine Rohwerte ───────────────────────
 
