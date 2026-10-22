@@ -167,6 +167,18 @@ export interface VehicleIdentity {
     status?: 'provided' | 'plausible' | 'identified' | 'unknown' | string
     confidence?: string
     provenance?: string[]
+    // Reliability-Review (Risiko 1): `status` ist eine vereinfachte Legacy-Sicht
+    // auf `verification_state` (app/vehicle_identity.py::_STATUS_AUS_STATE) und
+    // unterschlägt die wichtigste Unterscheidung — ob ein Feld unabhängig
+    // bestätigt wurde oder nur aus EINER ungeprüften Quelle stammt (z.B.
+    // "web_only"/status "web_verified" heißt im Backend selbst ausdrücklich
+    // "über Webquellen plausibilisiert, am Fahrzeug nicht geprüft" — NICHT
+    // bestätigt). `verification_state` liegt bereits auf der Leitung
+    // (dasselbe Dict-Feld in `_feld_eintrag`), war im Contract bisher nur
+    // nicht deklariert. Kein neues Backend-Feld — nur eine fehlende, bereits
+    // tatsächlich gelieferte Eigenschaft ergänzt.
+    verification_state?: 'user_only' | 'user_confirmed' | 'user_refined' | 'conflict'
+      | 'reference_only' | 'web_only' | 'ambiguous' | 'unknown' | 'plausible' | string
   }>
 }
 

@@ -4,9 +4,11 @@ import { Search, Car, MessageCircle, FileText, Gauge, Printer } from 'lucide-rea
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import { MarketMetrics } from './ResultSummary'
 import { fahrzeugTitel } from './fahrzeugTitel'
+import { TECHNICAL_COVERAGE_LABEL, baueVehicleIdentityFelder } from './kaufcheckEvidence'
 import type {
   KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen, KaufCheckForm,
   Fahrzeugkontext, Laufleistungskontext, WebVehicleIdentity, VehicleIdentity, Marktanalyse, Insight,
+  TechnicalCoverage,
 } from '../types'
 
 /**
@@ -62,15 +64,26 @@ export function DatenbasisZeile({ datenbasis }: { datenbasis?: string[] }) {
 // hier behandelt — das bleibt der bestehende, eigenständige ResearchFailedCard-
 // Zweig auf oberster Ebene (KaufCheckView), unverändert.
 
-export function NoMarketCard() {
+// Root-Cause-Fix (Lexus-RC-F-Forensik, Frontend-Anteil): dieser Block behauptete
+// bisher unbedingt "Der technische KaufCheck und die Prüflisten sind davon
+// unabhängig vollständig" — eine reine UI-Erfindung, an kein Backend-Feld
+// gebunden, unabhängig vom tatsächlichen Rechercheergebnis. `technical_coverage`
+// sagt NICHTS über die Vollständigkeit der Prüflisten aus (das ist eine andere
+// Achse, siehe app/models.py), sondern nur, woher die technischen Felder
+// stammen (DB/Web/teilweise) — genau das und nur das wird hier jetzt gezeigt.
+// Fehlt das Feld (sehr alter Check), wird gar keine Herkunftsaussage gemacht
+// statt eine falsche Vollständigkeit zu behaupten. Label-Tabelle siehe
+// ./kaufcheckEvidence.ts (isoliert testbar, wie fahrzeugTitel.ts).
+export function NoMarketCard({ technicalCoverage }: { technicalCoverage?: TechnicalCoverage }) {
+  const coverageHinweis = technicalCoverage ? TECHNICAL_COVERAGE_LABEL[technicalCoverage] : null
   return (
     <div className="bg-[#faf8f5] border border-[#e6e1da] rounded-xl p-4">
       <p className="text-sm text-gray-700 leading-relaxed">
         Für dieses Fahrzeug liegt aktuell keine belastbare Marktpreisbewertung vor.
       </p>
-      <p className="mt-1 text-xs text-gray-500 leading-relaxed">
-        Der technische KaufCheck und die Prüflisten sind davon unabhängig vollständig.
-      </p>
+      {coverageHinweis && (
+        <p className="mt-1 text-xs text-gray-500 leading-relaxed">{coverageHinweis}</p>
+      )}
     </div>
   )
 }
@@ -109,7 +122,7 @@ export function MarktpreisModul({
       </div>
       {noMarket ? (
         <div className="mt-3">
-          <NoMarketCard />
+          <NoMarketCard technicalCoverage={result.technical_coverage} />
         </div>
       ) : (
         <MarketMetrics
@@ -196,6 +209,18 @@ export function LaufleistungKarte({ kontext }: { kontext?: Laufleistungskontext 
 // DB-Miss + bestätigter Web-Identität auf web_identitaet zurück — dem Nutzer
 // als ganz normale Fahrzeugdarstellung, ohne den internen Begriff.
 
+// B: "Antriebsart" und "Antrieb" klangen für Endnutzer fast gleich, meinten aber
+// zwei verschiedene Achsen (Backend `app/technical_research.py`: `powertrain` =
+// Elektrifizierungsgrad/Motor-Energieart — Verbrenner/Hybrid/Plug-in-Hybrid/BEV;
+// `drivetrain` = Radantrieb — Front/Heck/Allrad). Labels eindeutig an die
+// vorhandene Backend-Semantik angeglichen, ohne Backend-Code zu ändern.
+//
+// D: field_evidence existiert bereits im Vertrag (`VehicleIdentity.field_evidence`)
+// und wird laut Backend (`app/vehicle_identity.py::_feld_eintrag`) für jedes
+// kanonische Feld gesetzt — `status`/`provenance` claim-gebunden pro Feld, nicht
+// pauschal fürs ganze Fahrzeug. Fehlt ein Eintrag oder ist er "unknown", wird
+// NICHTS erfunden. Label-Tabellen + `herkunftLabel` siehe ./kaufcheckEvidence.ts.
+
 export function FahrzeugprofilKarte({
   fahrzeugkontext,
   webIdentitaet,
@@ -205,19 +230,7 @@ export function FahrzeugprofilKarte({
   webIdentitaet?: WebVehicleIdentity | null
   vehicleIdentity?: VehicleIdentity | null
 }) {
-  const felder: { label: string; value: string }[] = []
-
-  if (vehicleIdentity) {
-    if (vehicleIdentity.generation) felder.push({ label: 'Generation', value: vehicleIdentity.generation })
-    if (vehicleIdentity.year) felder.push({ label: 'Baujahr', value: String(vehicleIdentity.year) })
-    if (vehicleIdentity.engine_name) felder.push({ label: 'Motor', value: vehicleIdentity.engine_name })
-    if (vehicleIdentity.engine_code) felder.push({ label: 'Motorcode / Motorfamilie', value: vehicleIdentity.engine_code })
-    if (vehicleIdentity.fuel) felder.push({ label: 'Kraftstoff', value: vehicleIdentity.fuel })
-    if (vehicleIdentity.powertrain) felder.push({ label: 'Antriebsart', value: vehicleIdentity.powertrain })
-    if (vehicleIdentity.transmission) felder.push({ label: 'Getriebe', value: vehicleIdentity.transmission })
-    if (vehicleIdentity.drivetrain) felder.push({ label: 'Antrieb', value: vehicleIdentity.drivetrain })
-    if (vehicleIdentity.horsepower) felder.push({ label: 'Leistung', value: `${vehicleIdentity.horsepower} PS` })
-  }
+  const felder: { label: string; value: string; herkunft?: string }[] = baueVehicleIdentityFelder(vehicleIdentity)
 
   if (!vehicleIdentity && fahrzeugkontext?.generation) felder.push({ label: 'Generation', value: fahrzeugkontext.generation })
   if (fahrzeugkontext?.segment) felder.push({ label: 'Segment', value: fahrzeugkontext.segment })
@@ -263,7 +276,10 @@ export function FahrzeugprofilKarte({
         {felder.map((f) => (
           <div key={f.label} className="min-w-0">
             <dt className="text-[10px] font-medium uppercase tracking-wide text-gray-400">{f.label}</dt>
-            <dd className="text-sm text-gray-800 mt-0.5 leading-relaxed">{f.value}</dd>
+            <dd className="text-sm text-gray-800 mt-0.5 leading-relaxed">
+              {f.value}
+              {f.herkunft && <span className="ml-1.5 text-xs text-gray-400">· {f.herkunft}</span>}
+            </dd>
           </div>
         ))}
       </dl>

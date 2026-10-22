@@ -5,6 +5,7 @@ import test from 'node:test'
 import { fahrzeugTitel } from './fahrzeugTitel.ts'
 import { formatiereHuEingabe } from './huEingabe.ts'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder.ts'
+import { herkunftLabel, TECHNICAL_COVERAGE_LABEL, FELD_LABEL, baueVehicleIdentityFelder } from './kaufcheckEvidence.ts'
 import type { KaufCheckForm, KaufCheckResult } from '../types.ts'
 
 /**
@@ -339,4 +340,215 @@ test('Final-Stabilization: die kanonische Backend-Bezeichnung hat Vorrang (keine
 test('Final-Stabilization: Empfehlungskarte zeigt die Backend-Entscheidung statt eines eigenen Labels', () => {
   assert.match(viewCode, /result\.empfehlung_anzeige \|\| recStyle\.label/)
   assert.match(viewCode, /result\.empfehlung_hinweis/)
+})
+
+// ── Root-Cause-Fix: NoMarketCard behauptete unbedingt technische Vollständigkeit ──
+
+test('NoMarketCard: die unbelegte Vollständigkeitsbehauptung ist entfernt', () => {
+  assert.doesNotMatch(details, /davon unabhängig vollständig/)
+  assert.doesNotMatch(details, /Prüflisten sind.*vollständig/)
+})
+
+test('NoMarketCard: bekommt technical_coverage vom MarktpreisModul durchgereicht', () => {
+  assert.match(details, /<NoMarketCard technicalCoverage=\{result\.technical_coverage\} \/>/)
+})
+
+test('technical_coverage: jede Ausprägung sagt nur Herkunft, nie "vollständig"', () => {
+  for (const text of Object.values(TECHNICAL_COVERAGE_LABEL)) {
+    assert.doesNotMatch(text, /vollständig/i)
+  }
+  assert.equal(TECHNICAL_COVERAGE_LABEL.db, 'Die technischen Angaben stammen aus der ENFAL-Fahrzeugdatenbank.')
+  assert.match(TECHNICAL_COVERAGE_LABEL.partial, /teilweise/)
+})
+
+// ── herkunftLabel: pro Feld claim-gebundene Evidence, nichts erfinden ──────────
+//
+// Reliability-Review (Risiko 1): die erste Fassung zeigte nur Quellennamen aus
+// `provenance` und vermischte damit "woher" mit "wie sicher". Backend-Referenz
+// (app/anzeige.py::herkunft, dieselbe field_evidence-Struktur): "web_only"
+// heißt dort ausdrücklich NICHT bestätigt ("plausibilisiert, am Fahrzeug nicht
+// geprüft"), ebenso "reference_only" (reiner DB-Treffer). NUR "user_confirmed"/
+// "user_refined" rechtfertigt "bestätigt". Diese Tests bilden `verification_state`
+// ab — das tatsächliche, bereits auf der Leitung befindliche Feld.
+
+test('herkunftLabel: fehlender Eintrag (sehr alter Check) -> unbestätigt, keine Erfindung', () => {
+  assert.equal(herkunftLabel(undefined), 'unbestätigt')
+})
+
+test('herkunftLabel: UNKNOWN bleibt UNKNOWN', () => {
+  assert.equal(herkunftLabel({ status: 'unknown', verification_state: 'unknown', provenance: [] }), 'unbestätigt')
+  assert.equal(herkunftLabel({ status: undefined, provenance: ['web'] } as never), 'unbestätigt')
+})
+
+test('herkunftLabel: widersprüchliche Quellen werden als Widerspruch markiert, nicht als Bestätigung', () => {
+  assert.equal(
+    herkunftLabel({ status: 'conflict', verification_state: 'conflict', provenance: ['user'] }),
+    'widersprüchliche Angaben',
+  )
+})
+
+test('herkunftLabel: mehrdeutige Lage bleibt als solche erkennbar', () => {
+  assert.equal(herkunftLabel({ status: 'ambiguous', verification_state: 'ambiguous', provenance: [] }), 'mehrdeutig')
+})
+
+test('herkunftLabel: Risiko 1 — "web_only" (Legacy-Status "web_verified") erscheint NICHT als bestätigt', () => {
+  const fe = { status: 'web_verified', verification_state: 'web_only', provenance: ['web'] }
+  const label = herkunftLabel(fe)
+  assert.doesNotMatch(label, /^bestätigt/)
+  assert.doesNotMatch(label, /^Webrecherche$/, 'darf nicht wie eine blanke, unqualifizierte Quellenangabe wirken')
+  assert.match(label, /nicht geprüft/)
+})
+
+test('herkunftLabel: Risiko 1 — reiner DB-Treffer ("reference_only") ist Referenz, keine Bestätigung', () => {
+  const label = herkunftLabel({ status: 'identified', verification_state: 'reference_only', provenance: ['enfal'] })
+  assert.doesNotMatch(label, /^bestätigt/)
+  assert.match(label, /nicht geprüft/)
+})
+
+test('herkunftLabel: Risiko 1 — reine Nutzer-/Inseratangabe bekommt NICHT dieselbe Kennzeichnung wie eine Variantenübereinstimmung', () => {
+  const nutzer = herkunftLabel({ status: 'provided', verification_state: 'user_only', provenance: ['user'] })
+  const uebereinstimmung = herkunftLabel({
+    status: 'confirmed', verification_state: 'user_confirmed', provenance: ['user', 'enfal'],
+  })
+  assert.notEqual(nutzer, uebereinstimmung)
+  assert.match(nutzer, /unbestätigt/)
+  assert.match(uebereinstimmung, /^Nutzerangabe, stimmt mit/)
+})
+
+test('herkunftLabel: Folgeprüfung — "stimmt überein" behauptet NIE eine Fahrzeug-/FIN-Prüfung', () => {
+  // Backend-Realität (app/vehicle_identity.py::_vergleiche): "user_confirmed"
+  // heißt "Inseratangabe == Referenzwert der zugeordneten Variante", NICHT
+  // "dieses konkrete Fahrzeug wurde geprüft" — derselbe Unterschied wie bei
+  // Rückrufen (`applicability: variant_match`, niemals `confirmed_by_vin`).
+  const label = herkunftLabel({ status: 'confirmed', verification_state: 'user_confirmed', provenance: ['user', 'web'] })
+  assert.equal(label, 'Nutzerangabe, stimmt mit Webrecherche überein (keine Fahrzeugprüfung)')
+  assert.doesNotMatch(label, /^bestätigt/)
+  assert.match(label, /keine Fahrzeugprüfung/)
+})
+
+test('herkunftLabel: Legacy-Fallback ohne verification_state (alte gespeicherte Checks) bleibt konsistent zum Backend', () => {
+  // Dieselbe Rückrichtungs-Tabelle wie app/anzeige.py::herkunft Zeile 117-119.
+  // "confirmed" ist dort bewusst NICHT eindeutig rückführbar (kann
+  // user_confirmed ODER user_refined sein) und fällt daher auf "unknown".
+  assert.match(herkunftLabel({ status: 'web_verified', provenance: ['web'] }), /nicht geprüft/)
+  assert.match(herkunftLabel({ status: 'identified', provenance: ['enfal'] }), /nicht geprüft/)
+  assert.equal(herkunftLabel({ status: 'provided', provenance: ['user'] }), 'Nutzerangabe, unbestätigt')
+  assert.equal(herkunftLabel({ status: 'confirmed', provenance: ['enfal', 'web'] }), 'unbestätigt')
+})
+
+test('herkunftLabel: doppelte Provenance-Einträge werden nicht doppelt gelistet', () => {
+  assert.equal(
+    herkunftLabel({ status: 'confirmed', verification_state: 'user_confirmed', provenance: ['user', 'web', 'web'] }),
+    'Nutzerangabe, stimmt mit Webrecherche überein (keine Fahrzeugprüfung)',
+  )
+})
+
+test('herkunftLabel: unbekannter Provenance-Code wird nicht erfunden/angezeigt', () => {
+  assert.equal(
+    herkunftLabel({ status: 'plausible', verification_state: 'plausible', provenance: ['irgendwas_unbekanntes'] }),
+    'ENFAL-Datenbank (plausibilisiert, nicht gesichert)',
+  )
+})
+
+// ── B: Antriebsart (Motor/Energie) vs. Antrieb (Radantrieb) — Begriffe eindeutig ──
+
+test('FahrzeugprofilKarte: powertrain und drivetrain haben eindeutig unterscheidbare Labels', () => {
+  assert.equal(FELD_LABEL.powertrain, 'Antriebsart (Motor/Energie)')
+  assert.equal(FELD_LABEL.drivetrain, 'Antrieb (Radantrieb)')
+  assert.notEqual(FELD_LABEL.powertrain, FELD_LABEL.drivetrain)
+})
+
+test('FahrzeugprofilKarte: liest field_evidence pro Feld (kein pauschaler SourceBadge)', () => {
+  assert.match(details, /vehicleIdentity\.field_evidence|baueVehicleIdentityFelder/)
+  assert.doesNotMatch(details, /<SourceBadge/)
+})
+
+// ── Echte UI-Fixtures: baueVehicleIdentityFelder (tatsächlicher Render-Code) ───
+// Keine fahrzeugspezifischen Produktions-Fixes — die folgenden Marken/Modelle
+// sind generische Stellvertreter für die geforderten Antriebsarten.
+
+test('UI-Fixture: Benziner, Inseratangabe stimmt mit DB-Variante überein (keine Fahrzeugprüfung behauptet)', () => {
+  const felder = baueVehicleIdentityFelder({
+    make: 'Testmarke', model: 'Modell A', fuel: 'Benzin', powertrain: 'Verbrenner',
+    field_evidence: {
+      fuel: { status: 'confirmed', verification_state: 'user_confirmed', provenance: ['user', 'enfal'] },
+      powertrain: { status: 'identified', verification_state: 'reference_only', provenance: ['enfal'] },
+    },
+  })
+  const kraftstoff = felder.find((f) => f.label === 'Kraftstoff')
+  const antriebsart = felder.find((f) => f.label === FELD_LABEL.powertrain)
+  assert.equal(kraftstoff?.herkunft, 'Nutzerangabe, stimmt mit ENFAL-Datenbank überein (keine Fahrzeugprüfung)')
+  assert.match(antriebsart?.herkunft ?? '', /nicht geprüft/)
+})
+
+test('UI-Fixture: Diesel, reine Nutzerangabe ohne unabhängige Bestätigung', () => {
+  const felder = baueVehicleIdentityFelder({
+    fuel: 'Diesel',
+    field_evidence: { fuel: { status: 'provided', verification_state: 'user_only', provenance: ['user'] } },
+  })
+  assert.equal(felder.find((f) => f.label === 'Kraftstoff')?.herkunft, 'Nutzerangabe, unbestätigt')
+})
+
+test('UI-Fixture: HEV (Hybrid) — nur durch Webrecherche plausibilisiert, am Fahrzeug nicht geprüft', () => {
+  const felder = baueVehicleIdentityFelder({
+    powertrain: 'Hybrid',
+    field_evidence: { powertrain: { status: 'web_verified', verification_state: 'web_only', provenance: ['web'] } },
+  })
+  const f = felder.find((x) => x.label === FELD_LABEL.powertrain)
+  assert.equal(f?.value, 'Hybrid')
+  assert.match(f?.herkunft ?? '', /Webrecherche.*nicht geprüft/)
+})
+
+test('UI-Fixture: PHEV — widersprüchliche Evidence bleibt als Widerspruch sichtbar', () => {
+  const felder = baueVehicleIdentityFelder({
+    powertrain: 'Plug-in-Hybrid',
+    field_evidence: { powertrain: { status: 'conflict', verification_state: 'conflict', provenance: ['user'] } },
+  })
+  assert.equal(felder.find((f) => f.label === FELD_LABEL.powertrain)?.herkunft, 'widersprüchliche Angaben')
+})
+
+test('UI-Fixture: BEV — DB-Referenz ohne Fahrzeugabgleich (keine Bestätigung behauptet)', () => {
+  const felder = baueVehicleIdentityFelder({
+    powertrain: 'BEV',
+    field_evidence: { powertrain: { status: 'identified', verification_state: 'reference_only', provenance: ['enfal'] } },
+  })
+  const f = felder.find((x) => x.label === FELD_LABEL.powertrain)
+  assert.equal(f?.value, 'BEV')
+  assert.doesNotMatch(f?.herkunft ?? '', /^bestätigt/)
+})
+
+test('UI-Fixture: unbekannter Antrieb — Feld fehlt, kein erfundener Eintrag in der Liste', () => {
+  const felder = baueVehicleIdentityFelder({ make: 'Testmarke', model: 'Modell B', powertrain: null })
+  assert.equal(felder.find((f) => f.label === FELD_LABEL.powertrain), undefined)
+})
+
+test('UI-Fixture: fehlende Evidence für ein gesetztes Feld -> "unbestätigt", kein Crash', () => {
+  const felder = baueVehicleIdentityFelder({ fuel: 'Benzin', field_evidence: {} })
+  assert.equal(felder.find((f) => f.label === 'Kraftstoff')?.herkunft, 'unbestätigt')
+})
+
+test('UI-Fixture: gar keine vehicleIdentity -> leere Liste, kein Crash', () => {
+  assert.deepEqual(baueVehicleIdentityFelder(null), [])
+  assert.deepEqual(baueVehicleIdentityFelder(undefined), [])
+})
+
+// ── Echte UI-Fixtures: NoMarketCard / technical_coverage über MarktpreisModul ──
+
+test('UI-Fixture: fehlende Rechercheabdeckung (technical_coverage "partial") -> ehrlicher Hinweis, keine Vollständigkeit', () => {
+  const text = TECHNICAL_COVERAGE_LABEL.partial
+  assert.match(text, /teilweise/)
+  assert.doesNotMatch(text, /vollständig|geprüft|verifiziert/i)
+})
+
+test('UI-Fixture: teilweise abgeschlossene Recherche (technical_coverage "db_plus_web") nennt beide Quellen, keine Bewertung', () => {
+  const text = TECHNICAL_COVERAGE_LABEL.db_plus_web
+  assert.match(text, /ENFAL-Fahrzeugdatenbank/)
+  assert.match(text, /Webrecherche/)
+  assert.doesNotMatch(text, /vollständig|ausreichend/i)
+})
+
+test('UI-Fixture: Default "db" ohne explizite Web-Recherche behauptet keine Qualität/Vollständigkeit', () => {
+  // app/technical_research.py::technical_coverage — "db" bedeutet nur "DB-Treffer
+  // vorhanden, kein Web-Fallback nötig", NICHT "Felder vollständig/geprüft".
+  assert.doesNotMatch(TECHNICAL_COVERAGE_LABEL.db, /vollständig|geprüft|verifiziert|ausreichend/i)
 })
