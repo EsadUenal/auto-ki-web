@@ -5,7 +5,9 @@ import test from 'node:test'
 import { fahrzeugTitel } from './fahrzeugTitel.ts'
 import { formatiereHuEingabe } from './huEingabe.ts'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder.ts'
-import { herkunftLabel, TECHNICAL_COVERAGE_LABEL, FELD_LABEL, baueVehicleIdentityFelder } from './kaufcheckEvidence.ts'
+import {
+  herkunftLabel, TECHNICAL_COVERAGE_LABEL, FELD_LABEL, baueVehicleIdentityFelder, applicabilityLabel,
+} from './kaufcheckEvidence.ts'
 import type { KaufCheckForm, KaufCheckResult } from '../types.ts'
 
 /**
@@ -76,7 +78,67 @@ test('G: sichtbare KaufCheck-Texte ohne Gedankenstrich (Kommentare ausgenommen)'
                                 ['KaufCheckView', view], ['ResultSummary', summary]] as const) {
     assert.deepEqual(strich(quelle), [], `${name} enthält noch sichtbare Gedankenstriche`)
   }
-  assert.match(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/)
+  // L5b (ENFAL-Recherchepfad-Folgeauftrag, 2026-11): die Applicability-Label-Logik
+  // wurde nach kaufcheckEvidence.ts ausgelagert (s. dort), damit sie wie herkunftLabel
+  // direkt ausführbar testbar ist -- der Literal lebt seitdem dort, nicht mehr hier.
+  assert.doesNotMatch(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/,
+    'die Applicability-Labels sollten nur noch in kaufcheckEvidence.ts stehen (eine Quelle)')
+  assert.match(evidence, /import \{ APPLICABILITY_CLS, applicabilityLabel \} from '\.\/kaufcheckEvidence'/)
+})
+
+// ── L5b: Rückruf-Sublabel kennt rueckruf_baureihe_bekannt (ENFAL-Recherchepfad- ──
+// Folgeauftrag, 2026-11). Befund: `rueckruf_wortlaut()` (Backend, app/recall_filter.py)
+// unterscheidet seit F6 "Baureihe" (ENFAL-Katalogeintrag bekannt) von "Modell"
+// (canonical-only, RC-W6) -- das Frontend-Badge in EvidenceWhy kannte das Feld
+// `rueckruf_baureihe_bekannt` bisher nicht und zeigte IMMER "Baureihe". Getestet
+// wird hier `applicabilityLabel()` direkt (derselbe Pfad, den EvidenceCard/
+// EvidenceWhy tatsächlich rendert), nicht nur eine Quelltext-Kopie der Regel.
+test('L5b: canonical-only-Rückruf (rueckruf_baureihe_bekannt=false) zeigt "Modell", nicht "Baureihe"', () => {
+  const label = applicabilityLabel({ applicability: 'series_only', rueckruf_baureihe_bekannt: false })
+  assert.equal(label, 'Für Teile dieses Modells gemeldet (keine ENFAL-Baureihen-Zuordnung): per FIN prüfen')
+  assert.doesNotMatch(label ?? '', /Baureihe gemeldet/)
+})
+
+test('L5b: ENFAL-Katalog-Rückruf (rueckruf_baureihe_bekannt=true) behält "Baureihe"', () => {
+  const label = applicabilityLabel({ applicability: 'series_only', rueckruf_baureihe_bekannt: true })
+  assert.equal(label, 'Für Teile der Baureihe gemeldet: FIN prüfen')
+})
+
+test('L5b: Rückwärtskompatibilität — Feld nicht gesetzt (alte gespeicherte Checks, null/undefined) behält "Baureihe"', () => {
+  assert.equal(
+    applicabilityLabel({ applicability: 'series_only', rueckruf_baureihe_bekannt: null }),
+    'Für Teile der Baureihe gemeldet: FIN prüfen',
+  )
+  assert.equal(
+    applicabilityLabel({ applicability: 'series_only' }),
+    'Für Teile der Baureihe gemeldet: FIN prüfen',
+  )
+})
+
+test('L5b: Alt-Wert "wahrscheinlich" (vor Reliability-Sprint 3) wird GLEICH behandelt wie "series_only"', () => {
+  assert.equal(
+    applicabilityLabel({ applicability: 'wahrscheinlich', rueckruf_baureihe_bekannt: false }),
+    'Für Teile dieses Modells gemeldet (keine ENFAL-Baureihen-Zuordnung): per FIN prüfen',
+  )
+})
+
+test('L5b: andere Applicability-Werte (variant_match, unclear) bleiben von rueckruf_baureihe_bekannt unberührt', () => {
+  assert.equal(
+    applicabilityLabel({ applicability: 'variant_match', rueckruf_baureihe_bekannt: false }),
+    'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
+  )
+  assert.equal(
+    applicabilityLabel({ applicability: 'unclear', rueckruf_baureihe_bekannt: false }),
+    'Betroffenheit unklar: FIN prüfen',
+  )
+})
+
+test('L5b: keine Applicability -> kein Label (kein Rückruf-Insight)', () => {
+  assert.equal(applicabilityLabel({}), null)
+})
+
+test('L5b: Insight-Typ kennt rueckruf_baureihe_bekannt (Frontend-Vertrag, nicht nur Backend-Modell)', () => {
+  assert.match(typesCode, /rueckruf_baureihe_bekannt\?: boolean \| null/)
 })
 
 // ── Prelaunch-Polish: strukturierter Kraftstoff und Leistung ────────────────
@@ -289,8 +351,14 @@ test('T: aktuelle KaufCheck-Antworten nutzen Identität, Datenbasis und Risikoti
 })
 
 test('T: Rückrufdarstellung stuft series_only nicht als offenen Rückruf hoch', () => {
+  // L5b: der Literal selbst lebt seit dem Auslagern nach kaufcheckEvidence.ts dort
+  // (siehe Test G) -- hier bleibt nur die direkte Verhaltensprüfung über den
+  // tatsächlich importierten Pfad.
+  assert.equal(
+    applicabilityLabel({ applicability: 'series_only', rueckruf_baureihe_bekannt: true }),
+    'Für Teile der Baureihe gemeldet: FIN prüfen',
+  )
   const evidence = readFileSync(new URL('./EvidenceWhy.tsx', import.meta.url), 'utf8')
-  assert.match(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/)
   assert.doesNotMatch(ohneKommentare(evidence), /offene?r? Rückruf/i)
 })
 

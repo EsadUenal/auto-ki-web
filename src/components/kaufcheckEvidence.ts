@@ -1,4 +1,4 @@
-import type { VehicleIdentity } from '../types'
+import type { Insight, VehicleIdentity } from '../types'
 
 /**
  * Reine, isoliert testbare Logik für KaufCheckDetails.tsx (wie fahrzeugTitel.ts /
@@ -132,4 +132,60 @@ export function baueVehicleIdentityFelder(vehicleIdentity?: VehicleIdentity | nu
   push('drivetrain', FELD_LABEL.drivetrain, vehicleIdentity.drivetrain)
   push('horsepower', 'Leistung', vehicleIdentity.horsepower ? `${vehicleIdentity.horsepower} PS` : null)
   return felder
+}
+
+// ── Rückruf-Betroffenheit (EvidenceWhy.tsx) — hierher ausgelagert, aus demselben
+// Grund wie oben (der Test-Runner kann .tsx nicht importieren), damit L5b
+// (ENFAL-Recherchepfad-Folgeauftrag, 2026-11) direkt gegen den ECHTEN
+// Renderer-Pfad testbar ist, nicht nur gegen eine Quelltext-Kopie davon. ──
+
+// Reliability-Sprint 3 (§27/§28): OHNE echte VIN-Prüfung wird NIE "Betrifft dein
+// Fahrzeug" (definitiv) angezeigt — die stärkste tatsächlich erreichbare Stufe
+// ("variant_match") heißt "KANN betreffen, per FIN prüfen". "confirmed_by_vin" ist
+// aktuell backend-seitig nicht erreichbar (keine VIN-Erfassung), aber definiert, damit
+// eine spätere VIN-Prüfung ohne Frontend-Änderung sauber einhängen kann. Alte
+// gespeicherte Checks (§36) können noch die Vor-Sprint-3-Werte "exakt"/"wahrscheinlich"
+// enthalten — werden hier auf dieselbe, ehrlichere Formulierung abgebildet statt eine
+// zu sichere Alt-Aussage weiterzuzeigen.
+export const APPLICABILITY_LABEL: Record<string, string> = {
+  confirmed_by_vin: 'Für dieses Fahrzeug per FIN bestätigt',
+  variant_match: 'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
+  series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen',
+  unclear: 'Betroffenheit unklar: FIN prüfen',
+  // Alt-Werte (vor Reliability-Sprint 3) — nur für gespeicherte Alt-Checks.
+  exakt: 'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
+  wahrscheinlich: 'Für Teile der Baureihe gemeldet: FIN prüfen',
+  unklar: 'Betroffenheit unklar: FIN prüfen',
+}
+export const APPLICABILITY_CLS: Record<string, string> = {
+  confirmed_by_vin: 'bg-amber-100 text-amber-800',
+  variant_match: 'bg-amber-50 text-amber-700',
+  series_only: 'bg-gray-100 text-gray-600',
+  unclear: 'bg-gray-100 text-gray-600',
+  exakt: 'bg-amber-50 text-amber-700',
+  wahrscheinlich: 'bg-gray-100 text-gray-600',
+  unklar: 'bg-gray-100 text-gray-600',
+}
+// L5b (ENFAL-Recherchepfad-Folgeauftrag, 2026-11): die obige "Baureihe"-Formulierung
+// für series_only/wahrscheinlich gilt NUR, wenn das Backend einen echten ENFAL-
+// Baureihen-Katalogeintrag kennt (`rueckruf_baureihe_bekannt`, F6/app/models.py).
+// Canonical-only-Rückrufe (RC-W6: nur Marke+Nameplate, KEIN ENFAL-Katalogeintrag)
+// kennen keine Baureihe -- das Frontend behauptete das bisher trotzdem, weil es
+// dieses Backend-Feld schlicht nicht kannte (siehe Insight-Typ). Wortlaut hier
+// bewusst identisch zu `app/recall_filter.py::rueckruf_wortlaut()`, damit Bericht
+// und EvidenceWhy-Badge nie zwei verschiedene Aussagen zeigen. `false` ist die
+// einzige Bedingung für die Ersetzung -- `null`/`undefined` (Feld nicht gesetzt,
+// z.B. alte gespeicherte Checks) behält das bisherige Verhalten (Rückwärts-
+// kompatibilität); eine fehlende/unbekannte `applicability` bleibt `null`.
+const SERIES_ONLY_KEYS = new Set(['series_only', 'wahrscheinlich'])
+export const RUECKRUF_MODELL_STATT_BAUREIHE =
+  'Für Teile dieses Modells gemeldet (keine ENFAL-Baureihen-Zuordnung): per FIN prüfen'
+
+export function applicabilityLabel(insight: Pick<Insight, 'applicability' | 'rueckruf_baureihe_bekannt'>): string | null {
+  const appKey = insight.applicability?.toLowerCase()
+  if (!appKey) return null
+  if (SERIES_ONLY_KEYS.has(appKey) && insight.rueckruf_baureihe_bekannt === false) {
+    return RUECKRUF_MODELL_STATT_BAUREIHE
+  }
+  return APPLICABILITY_LABEL[appKey] ?? null
 }

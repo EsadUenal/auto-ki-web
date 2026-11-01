@@ -292,6 +292,11 @@ export interface Insight {
   // "series_only" | "unclear" | "incompatible" (wird backend-seitig ausgeblendet).
   // Alte gespeicherte Checks können noch "exakt"|"wahrscheinlich"|"unklar" enthalten.
   applicability?: string | null
+  // Nur Rückrufe (F6, Backend `app/models.py`): True = ENFAL-Baureihen-Katalogeintrag
+  // bekannt, False = canonical-only (nur Marke+Nameplate, keine ENFAL-Baureihe), null/
+  // fehlend = Feld nicht gesetzt (alte gespeicherte Checks). Steuert, ob ein
+  // "series_only"-Rückruf als "Baureihe" oder als "Modell" beschrieben werden darf.
+  rueckruf_baureihe_bekannt?: boolean | null
   einfluss?: string | null
   // Nur Marktvergleich-Insight: strukturierter deterministischer Marktvergleich.
   marktanalyse?: Marktanalyse | null

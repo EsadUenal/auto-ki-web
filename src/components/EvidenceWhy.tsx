@@ -3,6 +3,7 @@ import {
   HelpCircle, ChevronDown, AlertTriangle, ShieldAlert, Wrench, TrendingUp, Globe,
 } from 'lucide-react'
 import type { Insight, EvidenceQuelle } from '../types'
+import { APPLICABILITY_CLS, applicabilityLabel } from './kaufcheckEvidence'
 
 /**
  * Phase 1 — sichtbare Provenance. Dezenter "Warum?"-Toggle, der AUSSCHLIESSLICH
@@ -45,33 +46,10 @@ const QUELLE_LABEL: Record<string, string> = {
 const CONFIDENCE_LABEL: Record<string, string> = { hoch: 'Hoch', mittel: 'Mittel', niedrig: 'Niedrig' }
 const SCHWEREGRAD_LABEL: Record<string, string> = { hoch: 'Hoch', mittel: 'Mittel', gering: 'Gering' }
 // Rückruf-Betroffenheit — nutzerverständlich, getrennt von Datenqualität/Schweregrad.
-// Reliability-Sprint 3 (§27/§28): OHNE echte VIN-Prüfung wird NIE "Betrifft dein
-// Fahrzeug" (definitiv) angezeigt — die stärkste tatsächlich erreichbare Stufe
-// ("variant_match") heißt "KANN betreffen, per FIN prüfen". "confirmed_by_vin" ist
-// aktuell backend-seitig nicht erreichbar (keine VIN-Erfassung), aber definiert, damit
-// eine spätere VIN-Prüfung ohne Frontend-Änderung sauber einhängen kann. Alte
-// gespeicherte Checks (§36) können noch die Vor-Sprint-3-Werte "exakt"/"wahrscheinlich"
-// enthalten — werden hier auf dieselbe, ehrlichere Formulierung abgebildet statt eine
-// zu sichere Alt-Aussage weiterzuzeigen.
-const APPLICABILITY_LABEL: Record<string, string> = {
-  confirmed_by_vin: 'Für dieses Fahrzeug per FIN bestätigt',
-  variant_match: 'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
-  series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen',
-  unclear: 'Betroffenheit unklar: FIN prüfen',
-  // Alt-Werte (vor Reliability-Sprint 3) — nur für gespeicherte Alt-Checks.
-  exakt: 'Kann Fahrzeuge dieser Variante betreffen: FIN prüfen',
-  wahrscheinlich: 'Für Teile der Baureihe gemeldet: FIN prüfen',
-  unklar: 'Betroffenheit unklar: FIN prüfen',
-}
-const APPLICABILITY_CLS: Record<string, string> = {
-  confirmed_by_vin: 'bg-amber-100 text-amber-800',
-  variant_match: 'bg-amber-50 text-amber-700',
-  series_only: 'bg-gray-100 text-gray-600',
-  unclear: 'bg-gray-100 text-gray-600',
-  exakt: 'bg-amber-50 text-amber-700',
-  wahrscheinlich: 'bg-gray-100 text-gray-600',
-  unklar: 'bg-gray-100 text-gray-600',
-}
+// Label-Logik (inkl. L5b, ENFAL-Recherchepfad-Folgeauftrag 2026-11: "Baureihe"
+// vs. "Modell" je nach `rueckruf_baureihe_bekannt`) lebt in `kaufcheckEvidence.ts`
+// (`applicabilityLabel`) -- derselbe Grund wie dort dokumentiert: nur ein reines
+// .ts-Modul ist mit dem Test-Runner (ohne JSX-Transform) direkt ausführbar testbar.
 function fmtEur(n?: number | null): string {
   return n == null ? '—' : `${n.toLocaleString('de-DE')} €`
 }
@@ -168,7 +146,7 @@ function EvidenceCard({ insight }: { insight: Insight }) {
     ? (SCHWEREGRAD_LABEL[insight.schweregrad.toLowerCase()] ?? insight.schweregrad)
     : null
   const appKey = insight.applicability?.toLowerCase()
-  const appLabel = appKey ? APPLICABILITY_LABEL[appKey] : null
+  const appLabel = applicabilityLabel(insight)
 
   return (
     <div className="bg-white border border-[#e6e1da] rounded-xl p-3.5">
