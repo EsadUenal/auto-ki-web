@@ -658,3 +658,18 @@ test('N18: ohne Signal bleibt die bisherige Darstellung (Config nach empfehlung,
   assert.match(code, /result\.empfehlung_anzeige \|\| recStyle\.label/)
   assert.match(types, /technik_datenluecke\?: string\[\] \| null/)
 })
+
+// ── N20: graue N18-Box zeigt keine "Technische Einschätzung" in der Preiszeile ──
+
+test('N20: Preiszeile ohne "Technische Einschätzung", wenn technik_datenluecke gesetzt ist; Preisgrenze bleibt', () => {
+  const code = zeilenOhneKommentar(details)
+  const zeile = code.slice(code.indexOf('export function PreisDimensionZeile'), code.indexOf('export function EmpfehlungsGruende'))
+  assert.match(zeile, /istTechnikEingeschraenkt\(result\)/)
+  assert.match(zeile, /\{!technikEingeschraenkt && <>Technische Einschätzung · <\/>\}/)
+  // Preisgrenze samt Grund bleibt in beiden Zweigen sichtbar.
+  assert.match(zeile, /nicht bewertbar<\/span> \(keine belastbare Marktpreisbasis\)/)
+  assert.match(zeile, /Preis separat bewertet \(siehe Marktpreis\)/)
+  // Normalfall und ältere Ergebnisse (kein Feld): bisherige Darstellung bleibt.
+  assert.equal(istTechnikEingeschraenkt({}), false)
+  assert.equal(istTechnikEingeschraenkt({ technik_datenluecke: [] }), false)
+})
