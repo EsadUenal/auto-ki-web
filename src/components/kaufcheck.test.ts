@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import { fahrzeugTitel } from './fahrzeugTitel.ts'
+import { istTechnikEingeschraenkt, NEUTRALE_BOX } from './empfehlungsBox.ts'
 import { formatiereHuEingabe } from './huEingabe.ts'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder.ts'
 import {
@@ -619,4 +620,41 @@ test('UI-Fixture: Default "db" ohne explizite Web-Recherche behauptet keine Qual
   // app/technical_research.py::technical_coverage — "db" bedeutet nur "DB-Treffer
   // vorhanden, kein Web-Fallback nötig", NICHT "Felder vollständig/geprüft".
   assert.doesNotMatch(TECHNICAL_COVERAGE_LABEL.db, /vollständig|geprüft|verifiziert|ausreichend/i)
+})
+
+// ── N18: neutrale Hinweisbox bei fehlenden Schwachstellen- und Wartungsdaten ──
+
+/** Nur ganze Kommentarzeilen entfernen (der Blockkommentar-Filter pairt in dieser Datei falsch). */
+function zeilenOhneKommentar(quelle: string): string {
+  return quelle.split(/\r?\n/).filter((z) => !/^\s*(\/\/|\{\/\*)/.test(z)).join('\n')
+}
+
+test('N18: das strukturierte Feld technik_datenluecke steuert die Box (kein Wortlaut)', () => {
+  assert.equal(istTechnikEingeschraenkt({ technik_datenluecke: ['Schwachstellen', 'Wartung'] }), true)
+  assert.equal(istTechnikEingeschraenkt({ technik_datenluecke: [] }), false)
+  assert.equal(istTechnikEingeschraenkt({ technik_datenluecke: null }), false)
+  // Ältere gespeicherte Ergebnisse besitzen das Feld nicht: bisherige Darstellung.
+  assert.equal(istTechnikEingeschraenkt({}), false)
+  // Ein Wortlaut der Überschrift allein löst nichts aus.
+  const nurText = { empfehlung_anzeige: 'Analyse eingeschränkt: keine bestätigten Schwachstellen- und Wartungsdaten' }
+  assert.equal(istTechnikEingeschraenkt(nurText as unknown as KaufCheckResult), false)
+})
+
+test('N18: die neutrale Box hat weder grüne Farbe noch den Kaufhaken', () => {
+  assert.doesNotMatch(NEUTRALE_BOX.bg + NEUTRALE_BOX.label_cls, /green/)
+  const code = zeilenOhneKommentar(view)
+  const zweig = code.slice(code.indexOf('istTechnikEingeschraenkt(result)'), code.indexOf('const subtitle'))
+  assert.match(zweig, /NEUTRALE_BOX/)
+  assert.match(zweig, /<Info /)
+  assert.doesNotMatch(zweig, /CheckCircle|green/)
+  // Ableitung nur aus dem Signal, nicht aus der Überschrift.
+  assert.doesNotMatch(zweig, /empfehlung_anzeige|eingeschränkt/i)
+})
+
+test('N18: ohne Signal bleibt die bisherige Darstellung (Config nach empfehlung, Anzeige vom Backend)', () => {
+  const code = zeilenOhneKommentar(view)
+  assert.match(code, /EMPFEHLUNG_CONFIG\[empf\] \?\? EMPFEHLUNG_CONFIG\.unbekannt/)
+  assert.match(code, /: basisStyle/)
+  assert.match(code, /result\.empfehlung_anzeige \|\| recStyle\.label/)
+  assert.match(types, /technik_datenluecke\?: string\[\] \| null/)
 })
