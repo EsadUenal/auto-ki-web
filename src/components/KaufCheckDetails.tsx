@@ -4,6 +4,7 @@ import { Search, Car, MessageCircle, FileText, Gauge, Printer } from 'lucide-rea
 import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
 import { MarketMetrics } from './ResultSummary'
 import { fahrzeugTitel } from './fahrzeugTitel'
+import { istTechnikEingeschraenkt } from './empfehlungsBox'
 import { TECHNICAL_COVERAGE_LABEL, baueVehicleIdentityFelder } from './kaufcheckEvidence'
 import type {
   KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen, KaufCheckForm,
@@ -663,12 +664,15 @@ export function KaufLoadingStatus() {
 export function PreisDimensionZeile({ result }: { result: KaufCheckResult }) {
   const ohneMarkt = result.research_status === 'completed_no_market'
     || (result.preis_bewertung ?? 'unbekannt') === 'unbekannt'
+  // N20: bei technik_datenluecke (graue N18-Box) steht hier KEINE "Technische Einschätzung":
+  // zu Schwachstellen und Wartung liegt keine belegte Aussage vor. Die Preisgrenze bleibt sichtbar.
+  const technikEingeschraenkt = istTechnikEingeschraenkt(result)
   return (
     <p className="mt-1 text-xs text-gray-500">
-      Technische Einschätzung
+      {!technikEingeschraenkt && <>Technische Einschätzung · </>}
       {ohneMarkt
-        ? <> · Preis: <span className="font-medium">nicht bewertbar</span> (keine belastbare Marktpreisbasis)</>
-        : <> · Preis separat bewertet (siehe Marktpreis)</>}
+        ? <>Preis: <span className="font-medium">nicht bewertbar</span> (keine belastbare Marktpreisbasis)</>
+        : <>Preis separat bewertet (siehe Marktpreis)</>}
     </p>
   )
 }

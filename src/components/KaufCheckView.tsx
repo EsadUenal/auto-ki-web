@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, ImagePlus, X, Loader2, CheckCircle, MinusCircle, XCircle, AlertTriangle, Wrench, History, ChevronDown, Store, ArrowRight } from 'lucide-react'
+import { ShoppingCart, ImagePlus, X, Loader2, CheckCircle, MinusCircle, XCircle, AlertTriangle, Wrench, History, ChevronDown, Store, ArrowRight, Info } from 'lucide-react'
 import { runKaufCheck, apiSaveCheck, apiDealerFromCheck, PaymentRequiredError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import PurchaseGate, { PaymentReturnHinweis, usePaymentReturn } from './PurchaseGate'
@@ -14,6 +14,7 @@ import {
   PruefplanBereich, KaufLoadingStatus, EmpfehlungsGruende, PreisDimensionZeile,
 } from './KaufCheckDetails'
 import { formatiereHuEingabe } from './huEingabe'
+import { istTechnikEingeschraenkt, NEUTRALE_BOX } from './empfehlungsBox'
 import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo } from './autofinder/logic'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
@@ -577,7 +578,15 @@ function KaufCheckReport({
   form: KaufCheckForm
 }) {
   const empf = result.empfehlung?.toLowerCase() ?? 'unbekannt'
-  const recStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
+  const basisStyle = EMPFEHLUNG_CONFIG[empf] ?? EMPFEHLUNG_CONFIG.unbekannt
+  // N18: strukturiertes Backend-Signal (technik_datenluecke) -> neutrale Hinweisbox
+  // ohne grünen Kaufhaken. Der Text bleibt empfehlung_anzeige/-hinweis des Backends.
+  const recStyle = istTechnikEingeschraenkt(result)
+    ? {
+        ...basisStyle, ...NEUTRALE_BOX,
+        icon: <Info size={24} className="text-slate-500 shrink-0 mt-0.5" />,
+      }
+    : basisStyle
   const subtitle = fahrzeugTitel(result, form)
 
   // Phase 1: nur die je Entscheidung referenzierten Insights (Backend-validiert).

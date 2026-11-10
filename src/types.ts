@@ -495,6 +495,10 @@ export interface KaufCheckResult {
   recommendation_state?: 'NORMAL' | 'LIMITED_ANALYSIS' | 'INSUFFICIENT_IDENTITY' | string | null
   empfehlung_anzeige?: string | null
   empfehlung_hinweis?: string | null
+  /** N18 (optional; ältere Checks besitzen das Feld nicht): Datenarten ohne
+   *  belastbaren Befund trotz gelaufener Technikrecherche, z.B. ["Schwachstellen",
+   *  "Wartung"]. Nicht leer -> neutrale Hinweisbox statt Kauf-Optik. */
+  technik_datenluecke?: string[] | null
   anzeige_titel?: string | null
   risiko_titel?: string
   bericht: string
