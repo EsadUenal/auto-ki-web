@@ -156,6 +156,9 @@ const WARTUNG_STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   im_bereich: { text: 'Im Bereich', cls: 'bg-amber-100 text-amber-700' },
   // "darueber" heißt NICHT "überfällig" — nur, dass ein Nachweis sinnvoll ist.
   darueber: { text: 'Nachweis prüfen', cls: 'bg-amber-100 text-amber-700' },
+  // "entfernt" gibt es nur noch, wenn allein die ZEITFRAGE offen ist (Kilometerpunkt weit entfernt oder reine
+  // Zeitregel mit unbekanntem Alter / Altersgrenze) -- nie eine Aussage über den Kilometerstand allein.
+  entfernt: { text: 'Zeitfrage offen', cls: 'bg-gray-100 text-gray-600' },
 }
 
 export function LaufleistungKarte({ kontext }: { kontext?: Laufleistungskontext | null }) {

@@ -673,3 +673,14 @@ test('N20: Preiszeile ohne "Technische Einschätzung", wenn technik_datenluecke 
   assert.equal(istTechnikEingeschraenkt({}), false)
   assert.equal(istTechnikEingeschraenkt({ technik_datenluecke: [] }), false)
 })
+
+test('Z: Wartungshinweis -- reine Zeitregel hat null statt Kilometerfelder; "entfernt" wird als offene Zeitfrage gezeigt', () => {
+  const t = ohneKommentare(types)
+  assert.match(t, /punkt_km\?: number \| null/)
+  assert.match(t, /differenz_km\?: number \| null/)
+  const d = ohneKommentare(details)
+  // Die Karte liest keine Kilometerfelder: eine Zeitregel ohne Kilometerpunkt rendert ohne Sonderfall.
+  assert.ok(!/\.punkt_km|\.differenz_km|\.punkt_bis_km/.test(d))
+  assert.match(d, /entfernt:\s*\{\s*text:\s*'Zeitfrage offen'/)
+  assert.match(d, /darueber:\s*\{\s*text:\s*'Nachweis prüfen'/)
+})

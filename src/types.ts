@@ -215,10 +215,12 @@ export interface HuPruefung {
 // Backend fertig formulierte, P2-5-konforme Text (nie "fällig"/"überfällig").
 export interface Wartungshinweis {
   bauteil: string
-  status: 'naehert_sich' | 'im_bereich' | 'darueber' | string
-  punkt_km: number
+  status: 'naehert_sich' | 'im_bereich' | 'darueber' | 'entfernt' | string
+  // Reine ZEIT-Regel (die Quelle nennt keinen Kilometerpunkt): punkt_km/differenz_km sind null -- nie 0.
+  // Status dort: 'darueber' = Zeitgrenze nach dem Baujahr belegbar erreicht, 'entfernt' = nur die Zeitfrage ist offen.
+  punkt_km?: number | null
   punkt_bis_km?: number | null
-  differenz_km: number
+  differenz_km?: number | null
   intervall_text: string
   hinweis: string
   herkunft: 'db_wartung' | 'web_wartung' | string
