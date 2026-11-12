@@ -156,8 +156,8 @@ const WARTUNG_STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   im_bereich: { text: 'Im Bereich', cls: 'bg-amber-100 text-amber-700' },
   // "darueber" heißt NICHT "überfällig" — nur, dass ein Nachweis sinnvoll ist.
   darueber: { text: 'Nachweis prüfen', cls: 'bg-amber-100 text-amber-700' },
-  // "entfernt" gibt es nur noch, wenn allein die ZEITFRAGE offen ist (Kilometerpunkt weit entfernt oder reine
-  // Zeitregel mit unbekanntem Alter / Altersgrenze) -- nie eine Aussage über den Kilometerstand allein.
+  // Nur für eine reine ZEITregel mit unbekanntem Alter / Altersgrenze (siehe Auswahl unten); der Kilometer-Fall
+  // "entfernt" bekommt kein Badge.
   entfernt: { text: 'Zeitfrage offen', cls: 'bg-gray-100 text-gray-600' },
 }
 
@@ -188,7 +188,11 @@ export function LaufleistungKarte({ kontext }: { kontext?: Laufleistungskontext 
       {hinweise.length > 0 && (
         <div className={hatZahlen ? 'mt-4 pt-4 border-t border-black/5 space-y-2.5' : 'space-y-2.5'}>
           {hinweise.map((w, i) => {
-            const status = WARTUNG_STATUS_LABEL[w.status] ?? null
+            // "entfernt" ist zunächst ein KILOMETERstatus (der Riemen-Fall: Kilometerpunkt weit entfernt, Zeitgrenze aber
+            // sicher erreicht). "Zeitfrage offen" gilt nur für eine reine Zeitregel (punkt_km null); sonst kein Badge.
+            const status = w.status === 'entfernt'
+              ? (w.punkt_km == null ? WARTUNG_STATUS_LABEL.entfernt : null)
+              : (WARTUNG_STATUS_LABEL[w.status] ?? null)
             return (
               <div key={`${w.evidence_id}-${i}`} className="rounded-lg bg-[#faf8f5] border border-[#eee7dd] p-3">
                 <div className="flex items-center gap-2 flex-wrap">

@@ -679,8 +679,9 @@ test('Z: Wartungshinweis -- reine Zeitregel hat null statt Kilometerfelder; "ent
   assert.match(t, /punkt_km\?: number \| null/)
   assert.match(t, /differenz_km\?: number \| null/)
   const d = ohneKommentare(details)
-  // Die Karte liest keine Kilometerfelder: eine Zeitregel ohne Kilometerpunkt rendert ohne Sonderfall.
-  assert.ok(!/\.punkt_km|\.differenz_km|\.punkt_bis_km/.test(d))
+  // Die Karte liest nur punkt_km, um "entfernt" zu unterscheiden: Zeitfrage offen NUR bei reiner Zeitregel (punkt_km null).
+  assert.ok(!/\.differenz_km|\.punkt_bis_km/.test(d))
+  assert.match(d, /w\.status === 'entfernt'\s*\?\s*\(w\.punkt_km == null \? WARTUNG_STATUS_LABEL\.entfernt : null\)/)
   assert.match(d, /entfernt:\s*\{\s*text:\s*'Zeitfrage offen'/)
   assert.match(d, /darueber:\s*\{\s*text:\s*'Nachweis prüfen'/)
 })
