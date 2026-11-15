@@ -685,3 +685,34 @@ test('Z: Wartungshinweis -- reine Zeitregel hat null statt Kilometerfelder; "ent
   assert.match(d, /entfernt:\s*\{\s*text:\s*'Zeitfrage offen'/)
   assert.match(d, /darueber:\s*\{\s*text:\s*'Nachweis prüfen'/)
 })
+
+test('N21: Wartungskarte -- Kilometer und Zeit sind getrennte Chips, Details (Volltext, Regeln, Quellen) bleiben erreichbar', () => {
+  const t = ohneKommentare(types)
+  for (const feld of ['km_status', 'zeit_status', 'kurz', 'handlung', 'grenzen', 'regeln', 'folgeintervall', 'wortlaut']) {
+    assert.match(t, new RegExp(`${feld}[?]?:`))
+  }
+  // Alle neuen Felder sind optional: ältere Antworten bleiben darstellbar.
+  assert.ok(!/\n\s*(km_status|zeit_status|kurz|handlung|grenzen|regeln): /.test(t))
+  const d = ohneKommentare(details)
+  // zwei Dimensionen, je eigene Beschriftung -- kein alleinstehendes "Im Bereich"
+  assert.match(d, /Kilometer: \{kmChip\.text\}/)
+  assert.match(d, /Zeit: \{zeitChip\.text\}/)
+  assert.match(d, /erreicht:\s*\{\s*text:\s*'Schwelle rechnerisch erreicht'/)
+  assert.ok(!/Versäumnis|überfällig|fällig/.test(d.replace(/Zeitschwelle/g, '')))
+  // Details: voller Hinweis, Regel-Wortlaut (bedingte Regel gekennzeichnet), hinterlegtes Intervall, Quellen
+  assert.match(d, /<details/)
+  assert.match(d, /\{w\.hinweis\}/)
+  assert.match(d, /r\.wortlaut/)
+  assert.match(d, /Bedingte Regel \(Voraussetzung ungeklärt\)/)
+  assert.match(d, /Hinterlegtes Intervall: \{w\.intervall_text\}/)
+  assert.match(d, /<Quelle q=\{q\} \/>/)
+})
+
+test('N21: ältere Antwort ohne Kurzform -- bisherige Darstellung, kein erfundener Zeitstatus', () => {
+  const d = ohneKommentare(details)
+  // Die Kurzansicht hängt an `w.kurz`; ohne sie greift unverändert der alte Statuspfad.
+  assert.match(d, /if \(w\.kurz\) \{/)
+  assert.match(d, /\(WARTUNG_STATUS_LABEL\[w\.status\] \?\? null\)/)
+  // Ein Zeit-Chip entsteht nur aus einem vorhandenen zeit_status, nie aus status/Alter.
+  assert.match(d, /w\.zeit_status \? \(ZEIT_CHIP\[w\.zeit_status\] \?\? null\) : null/)
+})

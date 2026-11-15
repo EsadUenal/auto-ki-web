@@ -226,6 +226,30 @@ export interface Wartungshinweis {
   herkunft: 'db_wartung' | 'web_wartung' | string
   evidence_id: string
   quellen?: EvidenceQuelle[]
+  // N21 — strukturierte Kurzform. ALLE Felder optional: ältere Antworten tragen sie nicht; die Karte fällt dann auf
+  // `status` + `hinweis` zurück und erfindet keinen Zeitstatus. `hinweis`/`intervall_text` bleiben die Vollansicht.
+  km_status?: 'naehert_sich' | 'im_bereich' | 'darueber' | 'entfernt' | 'bedingt' | 'keine_kmregel' | string | null
+  km_text?: string | null
+  // 'erreicht' = Zeitschwelle nach dem Baujahr RECHNERISCH überschritten (kein Versäumnis, kein Rückstand).
+  zeit_status?: 'erreicht' | 'grenzwertig' | 'unbekannt' | 'nicht_erreicht' | 'bedingt' | 'uneindeutig'
+    | 'keine_zeitregel' | string | null
+  zeit_text?: string | null
+  intervall_kurz?: string | null
+  kurz?: string | null
+  handlung?: string | null
+  grenzen?: string[]
+  regeln?: WartungsRegelInfo[]
+}
+
+// N21 — EINE Fundstelle einer Wartungsaussage; Erst-/Folgeintervall und bedingte Regeln bleiben getrennt.
+export interface WartungsRegelInfo {
+  art: 'grund' | 'bedingt' | string
+  erstintervall?: string | null
+  folgeintervall?: string | null
+  folge_genannt?: boolean
+  verknuepfung?: 'oder' | 'und' | 'unklar' | string | null
+  einsatz?: string | null
+  wortlaut: string
 }
 
 // P2-5 — Kilometerstand/Alter eingeordnet, plus relevante Wartungspunkte. KEINE

@@ -68,7 +68,7 @@ function safeHostname(url: string): string {
   try { return new URL(url).hostname } catch { return url }
 }
 
-function Quelle({ q }: { q: EvidenceQuelle }) {
+export function Quelle({ q }: { q: EvidenceQuelle }) {
   // Echte URL -> klickbar. Sonst NIE einen Link erfinden.
   if (q.url && q.url.startsWith('http')) {
     return (

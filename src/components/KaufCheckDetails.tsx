@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, Car, MessageCircle, FileText, Gauge, Printer } from 'lucide-react'
-import EvidenceWhy, { insightsByIds } from './EvidenceWhy'
+import EvidenceWhy, { insightsByIds, Quelle } from './EvidenceWhy'
 import { MarketMetrics } from './ResultSummary'
 import { fahrzeugTitel } from './fahrzeugTitel'
 import { istTechnikEingeschraenkt } from './empfehlungsBox'
@@ -9,7 +9,7 @@ import { TECHNICAL_COVERAGE_LABEL, baueVehicleIdentityFelder } from './kaufcheck
 import type {
   KaufCheckResult, Kaufaktion, Pruefliste, Kaufaktionen, KaufCheckForm,
   Fahrzeugkontext, Laufleistungskontext, WebVehicleIdentity, VehicleIdentity, Marktanalyse, Insight,
-  TechnicalCoverage,
+  TechnicalCoverage, Wartungshinweis,
 } from '../types'
 
 /**
@@ -161,6 +161,102 @@ const WARTUNG_STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   entfernt: { text: 'Zeitfrage offen', cls: 'bg-gray-100 text-gray-600' },
 }
 
+// N21 — Kilometer und Zeit sind ZWEI Dimensionen mit eigener Grundlage. Die Chips benennen sie getrennt
+// ("Kilometer: im Bereich", "Zeit: Schwelle rechnerisch erreicht"); ein alleinstehendes "Im Bereich" kann so keinen
+// erreichten oder ungeklärten Zeitstatus verdecken. "erreicht" heißt NUR rechnerisch überschritten: kein Versäumnis.
+const KM_CHIP: Record<string, { text: string; cls: string }> = {
+  naehert_sich: { text: 'nähert sich', cls: 'bg-gray-100 text-gray-600' },
+  im_bereich: { text: 'im Bereich', cls: 'bg-amber-100 text-amber-700' },
+  darueber: { text: 'Erstpunkt rechnerisch erreicht', cls: 'bg-amber-100 text-amber-700' },
+  entfernt: { text: 'weit entfernt', cls: 'bg-gray-100 text-gray-600' },
+  bedingt: { text: 'nur bedingt, nicht bewertet', cls: 'bg-gray-100 text-gray-600' },
+}
+const ZEIT_CHIP: Record<string, { text: string; cls: string }> = {
+  erreicht: { text: 'Schwelle rechnerisch erreicht', cls: 'bg-amber-100 text-amber-700' },
+  grenzwertig: { text: 'an der Altersgrenze, offen', cls: 'bg-gray-100 text-gray-600' },
+  unbekannt: { text: 'ohne Baujahr nicht bestimmbar', cls: 'bg-gray-100 text-gray-600' },
+  nicht_erreicht: { text: 'noch nicht erreicht', cls: 'bg-gray-100 text-gray-600' },
+  bedingt: { text: 'nur bedingt, nicht bewertet', cls: 'bg-gray-100 text-gray-600' },
+  uneindeutig: { text: 'uneindeutig', cls: 'bg-gray-100 text-gray-600' },
+}
+
+function WartungsHinweisKarte({ w }: { w: Wartungshinweis }) {
+  // Neue Antwort: Kurzansicht + erreichbare Details. Ältere Antwort (ohne `kurz`): bisherige Darstellung, kein
+  // erfundener Zeitstatus.
+  if (w.kurz) {
+    const kmChip = w.km_status ? (KM_CHIP[w.km_status] ?? null) : null
+    const zeitChip = w.zeit_status ? (ZEIT_CHIP[w.zeit_status] ?? null) : null
+    return (
+      <div className="rounded-lg bg-[#faf8f5] border border-[#eee7dd] p-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-medium text-gray-800 mr-1">{w.bauteil}</span>
+          {kmChip && (
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${kmChip.cls}`}>Kilometer: {kmChip.text}</span>
+          )}
+          {zeitChip && (
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${zeitChip.cls}`}>Zeit: {zeitChip.text}</span>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-gray-700 leading-relaxed">{w.intervall_kurz || w.kurz}</p>
+        {w.handlung && <p className="mt-1 text-xs text-gray-600 leading-relaxed">{w.handlung}</p>}
+        {w.grenzen && w.grenzen.length > 0 && (
+          <ul className="mt-1 text-[11px] text-gray-500 leading-relaxed list-disc pl-4">
+            {w.grenzen.map((g, k) => <li key={k}>{g}</li>)}
+          </ul>
+        )}
+        <details className="mt-1.5 text-[11px] text-gray-500">
+          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">Details, Regeln und Quellen</summary>
+          {(w.km_text || w.zeit_text) && (
+            <ul className="mt-1 text-xs text-gray-600 leading-relaxed list-disc pl-4">
+              {w.km_text && <li>Kilometer: {w.km_text}</li>}
+              {w.zeit_text && <li>Zeit: {w.zeit_text}</li>}
+            </ul>
+          )}
+          <p className="mt-1 text-xs text-gray-600 leading-relaxed">{w.hinweis}</p>
+          {w.regeln && w.regeln.length > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {w.regeln.map((r, k) => (
+                <li key={k} className="leading-relaxed">
+                  <span className="font-medium text-gray-600">{r.art === 'bedingt' ? 'Bedingte Regel (Voraussetzung ungeklärt)' : 'Regel'}:</span>{' '}
+                  {r.erstintervall ? `Erstintervall ${r.erstintervall}` : 'kein auswertbares Erstintervall'}
+                  {r.folgeintervall ? `, danach ${r.folgeintervall}` : r.folge_genannt ? ', Folgeintervall genannt (siehe Wortlaut)' : ''}
+                  <span className="block text-gray-400">Wortlaut: {r.wortlaut}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1 text-gray-400">Hinterlegtes Intervall: {w.intervall_text}</p>
+          {w.quellen && w.quellen.length > 0 && (
+            <p className="mt-1">
+              <span className="text-gray-400">Quelle: </span>
+              {w.quellen.map((q, k) => (
+                <span key={k}>{k > 0 && ', '}<Quelle q={q} /></span>
+              ))}
+            </p>
+          )}
+        </details>
+      </div>
+    )
+  }
+  // "entfernt" ist zunächst ein KILOMETERstatus (der Riemen-Fall: Kilometerpunkt weit entfernt, Zeitgrenze aber
+  // sicher erreicht). "Zeitfrage offen" gilt nur für eine reine Zeitregel (punkt_km null); sonst kein Badge.
+  const status = w.status === 'entfernt'
+    ? (w.punkt_km == null ? WARTUNG_STATUS_LABEL.entfernt : null)
+    : (WARTUNG_STATUS_LABEL[w.status] ?? null)
+  return (
+    <div className="rounded-lg bg-[#faf8f5] border border-[#eee7dd] p-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-medium text-gray-800">{w.bauteil}</span>
+        {status && (
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${status.cls}`}>{status.text}</span>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-gray-600 leading-relaxed">{w.hinweis}</p>
+      <p className="mt-0.5 text-[11px] text-gray-400">Hinterlegtes Intervall: {w.intervall_text}</p>
+    </div>
+  )
+}
+
 export function LaufleistungKarte({ kontext }: { kontext?: Laufleistungskontext | null }) {
   if (!kontext) return null
   const hatZahlen = kontext.kilometerstand != null || kontext.fahrzeugalter_jahre != null || kontext.km_pro_jahr != null
@@ -187,25 +283,7 @@ export function LaufleistungKarte({ kontext }: { kontext?: Laufleistungskontext 
 
       {hinweise.length > 0 && (
         <div className={hatZahlen ? 'mt-4 pt-4 border-t border-black/5 space-y-2.5' : 'space-y-2.5'}>
-          {hinweise.map((w, i) => {
-            // "entfernt" ist zunächst ein KILOMETERstatus (der Riemen-Fall: Kilometerpunkt weit entfernt, Zeitgrenze aber
-            // sicher erreicht). "Zeitfrage offen" gilt nur für eine reine Zeitregel (punkt_km null); sonst kein Badge.
-            const status = w.status === 'entfernt'
-              ? (w.punkt_km == null ? WARTUNG_STATUS_LABEL.entfernt : null)
-              : (WARTUNG_STATUS_LABEL[w.status] ?? null)
-            return (
-              <div key={`${w.evidence_id}-${i}`} className="rounded-lg bg-[#faf8f5] border border-[#eee7dd] p-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-gray-800">{w.bauteil}</span>
-                  {status && (
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${status.cls}`}>{status.text}</span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-gray-600 leading-relaxed">{w.hinweis}</p>
-                <p className="mt-0.5 text-[11px] text-gray-400">Hinterlegtes Intervall: {w.intervall_text}</p>
-              </div>
-            )
-          })}
+          {hinweise.map((w, i) => <WartungsHinweisKarte key={`${w.evidence_id}-${i}`} w={w} />)}
         </div>
       )}
     </div>
