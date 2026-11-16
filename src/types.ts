@@ -239,6 +239,8 @@ export interface Wartungshinweis {
   handlung?: string | null
   grenzen?: string[]
   regeln?: WartungsRegelInfo[]
+  // N22 — die Kurzform beruht auf einer wiederkehrenden Regel ("alle ..."): kein "Erstpunkt". Fehlt bei älteren Antworten.
+  wiederkehrend?: boolean | null
 }
 
 // N21 — EINE Fundstelle einer Wartungsaussage; Erst-/Folgeintervall und bedingte Regeln bleiben getrennt.
@@ -250,6 +252,8 @@ export interface WartungsRegelInfo {
   verknuepfung?: 'oder' | 'und' | 'unklar' | string | null
   einsatz?: string | null
   wortlaut: string
+  // N22 — das Intervall ist laut Wortlaut eine Wiederholung ohne gesondertes Folgeintervall.
+  wiederkehrend?: boolean
 }
 
 // P2-5 — Kilometerstand/Alter eingeordnet, plus relevante Wartungspunkte. KEINE

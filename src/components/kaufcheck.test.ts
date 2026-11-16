@@ -686,6 +686,22 @@ test('Z: Wartungshinweis -- reine Zeitregel hat null statt Kilometerfelder; "ent
   assert.match(d, /darueber:\s*\{\s*text:\s*'Nachweis prüfen'/)
 })
 
+test('N22: Wartungskarte -- wiederkehrende Regel ohne "Erstpunkt"/"Erstintervall", Erst-/Folgeintervall unverändert', () => {
+  const t = ohneKommentare(types)
+  // optionales Feld an Hinweis und Regel: ältere Antworten (ohne Feld) bleiben bei der bisherigen Darstellung
+  assert.match(t, /wiederkehrend\?: boolean \| null/)
+  assert.match(t, /wiederkehrend\?: boolean\r?\n/)
+  const d = ohneKommentare(details)
+  // Chip: nur bei wiederkehrender Regel UND Status "darueber" der eigene Text; sonst die bisherige Tabelle
+  assert.match(d, /w\.km_status === 'darueber' && w\.wiederkehrend\s*\?\s*KM_CHIP_WIEDERKEHREND_DARUEBER/)
+  assert.match(d, /text: 'Intervall rechnerisch mindestens einmal erreicht'/)
+  assert.match(d, /darueber:\s*\{\s*text:\s*'Erstpunkt rechnerisch erreicht'/)
+  // Details: "alle ..." nur für die wiederkehrende Regel, sonst unverändert "Erstintervall ..." samt "danach ..."
+  assert.match(d, /r\.wiederkehrend \? `alle \$\{r\.erstintervall\}` : `Erstintervall \$\{r\.erstintervall\}`/)
+  assert.match(d, /r\.folgeintervall \? `, danach \$\{r\.folgeintervall\}`/)
+  assert.ok(!/fällig|überfällig|Versäumnis/.test(d.replace(/Zeitschwelle/g, '')))
+})
+
 test('N21: Wartungskarte -- Kilometer und Zeit sind getrennte Chips, Details (Volltext, Regeln, Quellen) bleiben erreichbar', () => {
   const t = ohneKommentare(types)
   for (const feld of ['km_status', 'zeit_status', 'kurz', 'handlung', 'grenzen', 'regeln', 'folgeintervall', 'wortlaut']) {

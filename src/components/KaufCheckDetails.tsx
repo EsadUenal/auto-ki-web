@@ -180,11 +180,16 @@ const ZEIT_CHIP: Record<string, { text: string; cls: string }> = {
   uneindeutig: { text: 'uneindeutig', cls: 'bg-gray-100 text-gray-600' },
 }
 
+// N22 — wiederkehrende Regel ("alle 60.000 km oder 4 Jahre"): kein "Erstpunkt", nur "mindestens einmal erreicht".
+const KM_CHIP_WIEDERKEHREND_DARUEBER = { text: 'Intervall rechnerisch mindestens einmal erreicht', cls: KM_CHIP.darueber.cls }
+
 function WartungsHinweisKarte({ w }: { w: Wartungshinweis }) {
   // Neue Antwort: Kurzansicht + erreichbare Details. Ältere Antwort (ohne `kurz`): bisherige Darstellung, kein
   // erfundener Zeitstatus.
   if (w.kurz) {
-    const kmChip = w.km_status ? (KM_CHIP[w.km_status] ?? null) : null
+    const kmChip = w.km_status === 'darueber' && w.wiederkehrend
+      ? KM_CHIP_WIEDERKEHREND_DARUEBER
+      : w.km_status ? (KM_CHIP[w.km_status] ?? null) : null
     const zeitChip = w.zeit_status ? (ZEIT_CHIP[w.zeit_status] ?? null) : null
     return (
       <div className="rounded-lg bg-[#faf8f5] border border-[#eee7dd] p-3">
@@ -218,7 +223,9 @@ function WartungsHinweisKarte({ w }: { w: Wartungshinweis }) {
               {w.regeln.map((r, k) => (
                 <li key={k} className="leading-relaxed">
                   <span className="font-medium text-gray-600">{r.art === 'bedingt' ? 'Bedingte Regel (Voraussetzung ungeklärt)' : 'Regel'}:</span>{' '}
-                  {r.erstintervall ? `Erstintervall ${r.erstintervall}` : 'kein auswertbares Erstintervall'}
+                  {r.erstintervall
+                    ? (r.wiederkehrend ? `alle ${r.erstintervall}` : `Erstintervall ${r.erstintervall}`)
+                    : 'kein auswertbares Erstintervall'}
                   {r.folgeintervall ? `, danach ${r.folgeintervall}` : r.folge_genannt ? ', Folgeintervall genannt (siehe Wortlaut)' : ''}
                   <span className="block text-gray-400">Wortlaut: {r.wortlaut}</span>
                 </li>
