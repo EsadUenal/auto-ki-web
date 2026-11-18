@@ -179,6 +179,10 @@ export interface VehicleIdentity {
     // tatsächlich gelieferte Eigenschaft ergänzt.
     verification_state?: 'user_only' | 'user_confirmed' | 'user_refined' | 'conflict'
       | 'reference_only' | 'web_only' | 'ambiguous' | 'unknown' | 'plausible' | string
+    // Teilbestätigung einer zusammengesetzten Nutzerangabe (z.B. "5.0 V8" innerhalb von "5.0 V8, Heckantrieb"):
+    // app/vehicle_identity.py setzt sie bei verification_state 'user_only'; das Feld bleibt user_only (KEINE
+    // Vollbestätigung). Optional - ältere Antworten tragen es nicht.
+    bestaetigte_teile?: string[]
   }>
 }
 

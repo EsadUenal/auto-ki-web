@@ -70,10 +70,18 @@ export function herkunftLabel(fe?: FieldEvidence): string {
       return 'widersprüchliche Angaben'
     case 'ambiguous':
       return 'mehrdeutig'
-    case 'user_only':
+    case 'user_only': {
+      // Teilbestätigung (Backend app/anzeige.py::herkunft, dieselbe Aussage): Webquellen haben nur einen TEIL der
+      // zusammengesetzten Angabe bestätigt - das Feld bleibt user_only, der bestätigte Teil wird ausdrücklich genannt,
+      // der Rest bleibt ungeprüft. Nur nicht-leere Textteile zählen; nichts wird aus dem Nutzertext abgeleitet.
+      const teile = (fe.bestaetigte_teile ?? []).filter((t) => typeof t === 'string' && t.trim() !== '')
+      if (teile.length) {
+        return `Nutzerangabe; „${teile.join(', ')}“ durch Webquellen bestätigt, übrige Angabe nicht unabhängig geprüft`
+      }
       // Nutzer-/Inseratangabe ohne unabhängige Bestätigung — bekommt NIE
       // dieselbe Kennzeichnung wie ein unabhängig verifizierter Fakt.
       return 'Nutzerangabe, unbestätigt'
+    }
     case 'user_confirmed':
     case 'user_refined': {
       // Folgeprüfung: "bestätigt durch X" las sich wie eine unabhängige

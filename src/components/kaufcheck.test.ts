@@ -558,6 +558,59 @@ test('UI-Fixture: Diesel, reine Nutzerangabe ohne unabhängige Bestätigung', ()
   assert.equal(felder.find((f) => f.label === 'Kraftstoff')?.herkunft, 'Nutzerangabe, unbestätigt')
 })
 
+// ── Teilbestätigung einer zusammengesetzten Motorangabe (bestaetigte_teile, Backend app/anzeige.py::herkunft) ───
+// Synthetische Feldzustände: sie belegen nur die Darstellung, keine Quellenlage eines echten Laufs.
+const BACKEND_WORTLAUT_TEILBESTAETIGUNG =
+  'laut Inserat/Nutzereingabe; „5.0 V8“ durch Webquellen bestätigt, übrige Angabe nicht unabhängig geprüft'
+
+test('Teilbestätigung: user_only mit bestaetigte_teile nennt den bestätigten Teil, nicht die ganze Angabe', () => {
+  const label = herkunftLabel({ status: 'provided', verification_state: 'user_only', provenance: ['user'], bestaetigte_teile: ['5.0 V8'] })
+  assert.equal(label, 'Nutzerangabe; „5.0 V8“ durch Webquellen bestätigt, übrige Angabe nicht unabhängig geprüft')
+  assert.doesNotMatch(label, /Heckantrieb|stimmt mit|unbestätigt$/)
+})
+
+test('Teilbestätigung: ohne Feld oder mit leerer/leerer-String-Liste bleibt es "Nutzerangabe, unbestätigt"', () => {
+  assert.equal(herkunftLabel({ status: 'provided', verification_state: 'user_only', provenance: ['user'] }), 'Nutzerangabe, unbestätigt')
+  assert.equal(herkunftLabel({ status: 'provided', verification_state: 'user_only', provenance: ['user'], bestaetigte_teile: [] }),
+    'Nutzerangabe, unbestätigt')
+  assert.equal(herkunftLabel({ status: 'provided', verification_state: 'user_only', provenance: ['user'], bestaetigte_teile: ['', '  '] }),
+    'Nutzerangabe, unbestätigt')
+})
+
+test('Teilbestätigung: andere Status behalten ihre Bedeutung (bestaetigte_teile wirkt nur bei user_only)', () => {
+  const teile = ['5.0 V8']
+  assert.equal(herkunftLabel({ verification_state: 'user_confirmed', provenance: ['user', 'web'], bestaetigte_teile: teile }),
+    'Nutzerangabe, stimmt mit Webrecherche überein (keine Fahrzeugprüfung)')
+  assert.match(herkunftLabel({ verification_state: 'web_only', provenance: ['web'], bestaetigte_teile: teile }), /nicht geprüft/)
+  assert.equal(herkunftLabel({ verification_state: 'conflict', bestaetigte_teile: teile }), 'widersprüchliche Angaben')
+  assert.equal(herkunftLabel({ verification_state: 'unknown', bestaetigte_teile: teile }), 'unbestätigt')
+})
+
+test('Teilbestätigung: der tatsächliche Kurzansicht-Aufrufer reicht sie durch; Heckantrieb bleibt in seinem eigenen Feld', () => {
+  const felder = baueVehicleIdentityFelder({
+    engine_name: '5.0 V8, Heckantrieb',
+    drivetrain: 'Heck',
+    field_evidence: {
+      engine_name: { status: 'provided', verification_state: 'user_only', provenance: ['user'], bestaetigte_teile: ['5.0 V8'] },
+      drivetrain: { status: 'confirmed', verification_state: 'user_confirmed', provenance: ['user', 'web'] },
+    },
+  })
+  const motor = felder.find((f) => f.label === 'Motor')
+  assert.equal(motor?.value, '5.0 V8, Heckantrieb')
+  assert.match(motor?.herkunft ?? '', /„5\.0 V8“ durch Webquellen bestätigt, übrige Angabe nicht unabhängig geprüft/)
+  assert.equal(felder.find((f) => f.label === FELD_LABEL.drivetrain)?.herkunft,
+    'Nutzerangabe, stimmt mit Webrecherche überein (keine Fahrzeugprüfung)')
+})
+
+test('Teilbestätigung: dieselbe fachliche Aussage wie der Backend-Vollbericht (Teil bestätigt, Rest ungeprüft)', () => {
+  const kurz = herkunftLabel({ verification_state: 'user_only', provenance: ['user'], bestaetigte_teile: ['5.0 V8'] })
+  const teilAus = (t: string) => t.match(/„([^“]+)“/)?.[1]
+  assert.equal(teilAus(kurz), teilAus(BACKEND_WORTLAUT_TEILBESTAETIGUNG))
+  for (const satz of ['durch Webquellen bestätigt', 'übrige Angabe nicht unabhängig geprüft']) {
+    assert.ok(kurz.includes(satz) && BACKEND_WORTLAUT_TEILBESTAETIGUNG.includes(satz), satz)
+  }
+})
+
 test('UI-Fixture: HEV (Hybrid) — nur durch Webrecherche plausibilisiert, am Fahrzeug nicht geprüft', () => {
   const felder = baueVehicleIdentityFelder({
     powertrain: 'Hybrid',
