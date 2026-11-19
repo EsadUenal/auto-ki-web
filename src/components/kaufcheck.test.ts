@@ -8,6 +8,7 @@ import { formatiereHuEingabe } from './huEingabe.ts'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder.ts'
 import {
   herkunftLabel, TECHNICAL_COVERAGE_LABEL, FELD_LABEL, baueVehicleIdentityFelder, applicabilityLabel,
+  evidenzSymbol, kurzbegruendungText,
 } from './kaufcheckEvidence.ts'
 import type { KaufCheckForm, KaufCheckResult } from '../types.ts'
 
@@ -84,7 +85,7 @@ test('G: sichtbare KaufCheck-Texte ohne Gedankenstrich (Kommentare ausgenommen)'
   // direkt ausführbar testbar ist -- der Literal lebt seitdem dort, nicht mehr hier.
   assert.doesNotMatch(evidence, /series_only: 'Für Teile der Baureihe gemeldet: FIN prüfen'/,
     'die Applicability-Labels sollten nur noch in kaufcheckEvidence.ts stehen (eine Quelle)')
-  assert.match(evidence, /import \{ APPLICABILITY_CLS, applicabilityLabel \} from '\.\/kaufcheckEvidence'/)
+  assert.match(evidence, /import \{ APPLICABILITY_CLS, applicabilityLabel(?:, \w+)* \} from '\.\/kaufcheckEvidence'/)
 })
 
 // ── L5b: Rückruf-Sublabel kennt rueckruf_baureihe_bekannt (ENFAL-Recherchepfad- ──
@@ -609,6 +610,76 @@ test('Teilbestätigung: dieselbe fachliche Aussage wie der Backend-Vollbericht (
   for (const satz of ['durch Webquellen bestätigt', 'übrige Angabe nicht unabhängig geprüft']) {
     assert.ok(kurz.includes(satz) && BACKEND_WORTLAUT_TEILBESTAETIGUNG.includes(satz), satz)
   }
+})
+
+// ── Warum-Karte Wartung (N21-T Kurzbegründung, N21-I Symbole) ───────────────────────────────────────────────────
+// Reine Funktionen aus kaufcheckEvidence.ts; EvidenceWhy.tsx rendert nur. Synthetische Eingaben (keine Live-Daten).
+const evidenceWhy = readFileSync(new URL('./EvidenceWhy.tsx', import.meta.url), 'utf8')
+
+test('Symbole: Rückruf Warnschild, Wartung Wartungssymbol, Fragezeichen nur für Unbekanntes (alle Kategorie-Aliase)', () => {
+  assert.equal(evidenzSymbol('rueckruf'), 'warnschild')
+  assert.equal(evidenzSymbol('web_rueckruf'), 'warnschild')
+  assert.equal(evidenzSymbol('wartung'), 'wartung')
+  assert.equal(evidenzSymbol('web_wartung'), 'wartung')
+  assert.equal(evidenzSymbol('schwachstelle'), 'schwachstelle')
+  assert.equal(evidenzSymbol('web_schwachstelle'), 'schwachstelle')
+  assert.equal(evidenzSymbol('motorproblem'), 'motorproblem')
+  assert.equal(evidenzSymbol('marktvergleich'), 'marktvergleich')
+  assert.equal(evidenzSymbol('etwas_unbekanntes'), 'hilfe')
+  assert.equal(evidenzSymbol(undefined), 'hilfe')
+  assert.equal(evidenzSymbol(null), 'hilfe')
+})
+
+test('Symbole: Wartung grau-neutral und Wrench, motorproblem bleibt orange, Rückruf bleibt das Warnschild (Code-Prüfung)', () => {
+  const code = ohneKommentare(evidenceWhy)
+  assert.match(code, /case 'wartung':\s+return <Wrench size=\{15\} className="text-gray-500" \/>/)
+  assert.match(code, /case 'motorproblem':\s+return <Wrench size=\{15\} className="text-orange-600" \/>/)
+  assert.match(code, /case 'warnschild':\s+return <ShieldAlert size=\{15\} className="text-amber-600" \/>/)
+  assert.match(code, /case 'schwachstelle':\s+return <AlertTriangle size=\{15\} className="text-amber-600" \/>/)
+  // Das Fragezeichen bleibt Hilfeknopf und Fallback, nicht die Wartungszuordnung.
+  assert.match(code, /default:\s+return <HelpCircle size=\{15\} className="text-gray-500" \/>/)
+})
+
+test('Symbole: gemeinsame Verwendung -- Risiken, Verkäuferfragen und Dokumente nutzen dieselbe EvidenceWhy-Karte', () => {
+  const code = ohneKommentare(evidenceWhy)
+  assert.equal((code.match(/function kategorieIcon\(/g) ?? []).length, 1)
+  assert.match(code, /kategorieIcon\(insight\.kategorie\)/)
+  // Risiken (KaufCheckView) sowie Verkäuferfragen UND Dokumente (beide über PruefpunktItem in KaufCheckDetails).
+  assert.match(ohneKommentare(view), /<EvidenceWhy label="Warum diese Risiken\?"/)
+  assert.match(ohneKommentare(details), /function PruefpunktItem/)
+  assert.match(ohneKommentare(details), /<EvidenceWhy label="Warum\?" insights=\{evidenceInsights\}/)
+  // keine zweite, abweichende Iconzuordnung in den Ansichten
+  assert.doesNotMatch(ohneKommentare(view), /kategorieIcon|HelpCircle/)
+  assert.doesNotMatch(ohneKommentare(details), /kategorieIcon/)
+})
+
+test('Kurzbegründung: nichtleer wird genutzt; fehlend, null, leer und Leerzeichen -> null (bisherige Darstellung)', () => {
+  assert.equal(kurzbegruendungText({ kurzbegruendung: 'Wechsel: alle 15.000 km oder 1 Jahr.' }), 'Wechsel: alle 15.000 km oder 1 Jahr.')
+  assert.equal(kurzbegruendungText({ kurzbegruendung: '  Prüfung: alle 90.000 km.  ' }), 'Prüfung: alle 90.000 km.')
+  assert.equal(kurzbegruendungText({}), null)
+  assert.equal(kurzbegruendungText({ kurzbegruendung: null }), null)
+  assert.equal(kurzbegruendungText({ kurzbegruendung: '' }), null)
+  assert.equal(kurzbegruendungText({ kurzbegruendung: '   ' }), null)
+})
+
+test('Warum-Karte: Kurzbegründung zuerst, voller Wortlaut unverändert unter "Quellenwortlaut und Regeln", Quellen/Status bleiben direkt sichtbar', () => {
+  const code = ohneKommentare(evidenceWhy)
+  const kurzPos = code.indexOf('{kurz}')
+  const detailsPos = code.indexOf('Quellenwortlaut und Regeln')
+  const wortlautPos = code.indexOf('{insight.beschreibung}', detailsPos)
+  const quellePos = code.indexOf('Quelle: ')
+  const qualPos = code.indexOf('Datenqualität: ')
+  assert.ok(kurzPos > 0 && detailsPos > kurzPos && wortlautPos > detailsPos, 'Reihenfolge Kurzform -> Details -> Wortlaut')
+  assert.match(code, /<details className="mt-1\.5">\s*<summary[^>]*>\s*Quellenwortlaut und Regeln/)
+  // Quellenlinks, Schweregrad und Datenqualität stehen NACH dem Detailbereich, aber außerhalb davon (ohne Aufklappen sichtbar).
+  assert.ok(quellePos > wortlautPos && qualPos > quellePos)
+  const detailsEnde = code.indexOf('</details>')
+  assert.ok(detailsEnde > wortlautPos && detailsEnde < quellePos, 'Quellen liegen außerhalb des <details>')
+  assert.match(code, /\) : insight\.beschreibung && \(\s*<p className="text-xs text-gray-600 mt-0\.5 leading-relaxed">\{insight\.beschreibung\}<\/p>/)
+})
+
+test('Warum-Karte: Insight-Vertrag trägt optionales kurzbegruendung; Backendfeld gleichen Namens', () => {
+  assert.match(ohneKommentare(types), /kurzbegruendung\?: string \| null/)
 })
 
 test('UI-Fixture: HEV (Hybrid) — nur durch Webrecherche plausibilisiert, am Fahrzeug nicht geprüft', () => {

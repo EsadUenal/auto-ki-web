@@ -111,6 +111,38 @@ export function herkunftLabel(fe?: FieldEvidence): string {
   }
 }
 
+// ── Warum-Karte: Symbolzuordnung und Kurzbegründung (rein, testbar; EvidenceWhy.tsx rendert nur) ───────────────────
+// EINE Zuordnung für alle Orte, an denen EvidenceWhy genutzt wird (Risiken, Verkäuferfragen, Dokumente): Rückruf Warnschild,
+// Wartung Wartungssymbol (neutral), Fragezeichen nur für Hilfe und unbekannte Kategorien. Das Symbol folgt der BEFUNDART,
+// nie der Evidenzqualität; es ändert weder Status noch Confidence noch Betroffenheit.
+export type EvidenzSymbol = 'warnschild' | 'schwachstelle' | 'wartung' | 'motorproblem' | 'marktvergleich' | 'hilfe'
+
+export function evidenzSymbol(kategorie?: string | null): EvidenzSymbol {
+  switch ((kategorie ?? '').toLowerCase()) {
+    case 'rueckruf':
+    case 'web_rueckruf':
+      return 'warnschild'
+    case 'schwachstelle':
+    case 'web_schwachstelle':
+      return 'schwachstelle'
+    case 'wartung':
+    case 'web_wartung':
+      return 'wartung'
+    case 'motorproblem':
+      return 'motorproblem'
+    case 'marktvergleich':
+      return 'marktvergleich'
+    default:
+      return 'hilfe'
+  }
+}
+
+/** Nichtleere Kurzbegründung eines Insights, sonst null (dann gilt die bisherige Darstellung). */
+export function kurzbegruendungText(insight: { kurzbegruendung?: string | null }): string | null {
+  const t = typeof insight.kurzbegruendung === 'string' ? insight.kurzbegruendung.trim() : ''
+  return t ? t : null
+}
+
 export interface IdentityFeld {
   label: string
   value: string

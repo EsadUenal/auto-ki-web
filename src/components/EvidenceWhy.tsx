@@ -3,7 +3,7 @@ import {
   HelpCircle, ChevronDown, AlertTriangle, ShieldAlert, Wrench, TrendingUp, Globe,
 } from 'lucide-react'
 import type { Insight, EvidenceQuelle } from '../types'
-import { APPLICABILITY_CLS, applicabilityLabel } from './kaufcheckEvidence'
+import { APPLICABILITY_CLS, applicabilityLabel, evidenzSymbol, kurzbegruendungText } from './kaufcheckEvidence'
 
 /**
  * Phase 1 — sichtbare Provenance. Dezenter "Warum?"-Toggle, der AUSSCHLIESSLICH
@@ -55,12 +55,14 @@ function fmtEur(n?: number | null): string {
 }
 
 function kategorieIcon(kategorie: string) {
-  switch (kategorie) {
-    case 'rueckruf':      return <ShieldAlert size={15} className="text-amber-600" />
-    case 'schwachstelle': return <AlertTriangle size={15} className="text-amber-600" />
-    case 'motorproblem':  return <Wrench size={15} className="text-orange-600" />
-    case 'marktvergleich': return <TrendingUp size={15} className="text-blue-600" />
-    default:              return <HelpCircle size={15} className="text-gray-500" />
+  // Zuordnung in kaufcheckEvidence.ts (`evidenzSymbol`): gleiche Symbole in Risiken, Verkäuferfragen und Dokumenten.
+  switch (evidenzSymbol(kategorie)) {
+    case 'warnschild':      return <ShieldAlert size={15} className="text-amber-600" />
+    case 'schwachstelle':   return <AlertTriangle size={15} className="text-amber-600" />
+    case 'wartung':         return <Wrench size={15} className="text-gray-500" />
+    case 'motorproblem':    return <Wrench size={15} className="text-orange-600" />
+    case 'marktvergleich':  return <TrendingUp size={15} className="text-blue-600" />
+    default:                return <HelpCircle size={15} className="text-gray-500" />
   }
 }
 
@@ -147,6 +149,7 @@ function EvidenceCard({ insight }: { insight: Insight }) {
     : null
   const appKey = insight.applicability?.toLowerCase()
   const appLabel = applicabilityLabel(insight)
+  const kurz = kurzbegruendungText(insight)
 
   return (
     <div className="bg-white border border-[#e6e1da] rounded-xl p-3.5">
@@ -159,7 +162,19 @@ function EvidenceCard({ insight }: { insight: Insight }) {
               {appLabel}
             </span>
           )}
-          {insight.beschreibung && (
+          {kurz ? (
+            <>
+              <p className="text-xs text-gray-700 mt-0.5 leading-relaxed">{kurz}</p>
+              {insight.beschreibung && (
+                <details className="mt-1.5">
+                  <summary className="cursor-pointer text-[11px] text-gray-500 hover:text-gray-800">
+                    Quellenwortlaut und Regeln
+                  </summary>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{insight.beschreibung}</p>
+                </details>
+              )}
+            </>
+          ) : insight.beschreibung && (
             <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{insight.beschreibung}</p>
           )}
           {insight.marktanalyse && <MarktanalysePanel m={insight.marktanalyse} />}

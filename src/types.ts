@@ -332,6 +332,10 @@ export interface Insight {
   // "series_only"-Rückruf als "Baureihe" oder als "Modell" beschrieben werden darf.
   rueckruf_baureihe_bekannt?: boolean | null
   einfluss?: string | null
+  // N21-T: kurze, verständliche Begründung (nur Wartungs-Insights; Backend `Insight.kurzbegruendung`, aus der strukturierten
+  // Kurzform des zugehörigen Wartungshinweises). Der volle Quellenwortlaut bleibt in `beschreibung`. null/fehlend/leer =
+  // ältere Antwort oder keine eindeutige Zuordnung -> bisherige Darstellung.
+  kurzbegruendung?: string | null
   // Nur Marktvergleich-Insight: strukturierter deterministischer Marktvergleich.
   marktanalyse?: Marktanalyse | null
 }
