@@ -682,6 +682,12 @@ test('Warum-Karte: Insight-Vertrag trägt optionales kurzbegruendung; Backendfel
   assert.match(ohneKommentare(types), /kurzbegruendung\?: string \| null/)
 })
 
+test('Wartungs-Sammelpunkt: Zeilenumbrüche der Aktion bleiben auf dem Bildschirm und im Druck erhalten', () => {
+  const code = ohneKommentare(details)
+  assert.match(code, /<p className=\{`mt-0\.5 text-xs leading-relaxed whitespace-pre-line /)
+  assert.match(code, /kc-print-item-note" style=\{\{ whiteSpace: 'pre-line' \}\}>\{a\.aktion\}/)
+})
+
 test('UI-Fixture: HEV (Hybrid) — nur durch Webrecherche plausibilisiert, am Fahrzeug nicht geprüft', () => {
   const felder = baueVehicleIdentityFelder({
     powertrain: 'Hybrid',

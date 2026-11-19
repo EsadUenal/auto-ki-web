@@ -516,7 +516,7 @@ function PrintChecklist({
               <input type="checkbox" checked={checked.has(`${liste.bereich}:${a.id}`)} readOnly aria-hidden="true" />
               <div>
                 <p className="kc-print-item-title">{a.titel}</p>
-                {a.aktion && <p className="kc-print-item-note">{a.aktion}</p>}
+                {a.aktion && <p className="kc-print-item-note" style={{ whiteSpace: 'pre-line' }}>{a.aktion}</p>}
                 {a.hinweis && <p className="kc-print-item-hint">{a.hinweis}</p>}
               </div>
             </li>
@@ -564,7 +564,7 @@ function PruefpunktItem({
           </span>
           <PrioritaetBadge prioritaet={aktion.prioritaet} />
         </div>
-        <p className={`mt-0.5 text-xs leading-relaxed ${checked ? 'text-gray-300' : 'text-gray-600'}`}>
+        <p className={`mt-0.5 text-xs leading-relaxed whitespace-pre-line ${checked ? 'text-gray-300' : 'text-gray-600'}`}>
           {aktion.aktion}
         </p>
         {aktion.hinweis && (
