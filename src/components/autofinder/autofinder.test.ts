@@ -28,6 +28,9 @@ import {
   sucheLabel,
   MAX_CARDS,
   KAUFCHECK_ROUTE,
+  budgetChipText,
+  kiKennzeichnung,
+  kartenZusammenfassung,
   type AutoFinderForm,
   type AutoFinderKandidat,
   type AutoFinderResponse,
@@ -396,7 +399,10 @@ test('Preis: die Karte behauptet nirgends einen echten Marktpreis/Marktwert', ()
 
 test('Content: die Karte rendert why_fits, trade_offs und known_points', () => {
   assert.match(cardTsx, /k\.why_fits\.map/)
-  assert.match(cardTsx, /k\.trade_offs\.map/)
+  // trade_offs werden seit AF-02 nach Herkunft getrennt gerendert; kein Eintrag geht verloren
+  // (Vollstaendigkeit der Aufteilung: Test 'AF-02: Aufteilung verliert keinen Trade-off').
+  assert.match(cardTsx, /ki\.tradeOffsOhneKi\.map/)
+  assert.match(cardTsx, /ki\.tradeOffsKi\.map/)
   assert.match(cardTsx, /k\.known_points\.map/)
 })
 
@@ -746,4 +752,86 @@ test('Demo: das Limit ist serverseitig — kein localStorage als Autoritaet', ()
   const zaehlerVerdacht = /(localStorage|sessionStorage)[^\n]*(demo|limit|kontingent|counter|verbrauch)/i
   assert.doesNotMatch(viewTsx, zaehlerVerdacht)
   assert.doesNotMatch(read('logic.ts'), zaehlerVerdacht)
+})
+
+// ── AF-02: Herkunft sichtbar machen (KI-Einschätzung vs. deterministisch) ────
+const OHNE_KI = { ...KAND, enrichment_status: 'fallback' as const,
+  why_fits: ['Nutzung: langstrecke', 'Sparsam'], trade_offs: ['1 verifizierter KBA-Rückruf bekannt'] }
+
+test('AF-02: Budget-Chip nennt Herkunft; ohne Budgeturteil kein Chip', () => {
+  assert.equal(budgetChipText({ budget_status: 'IN_BUDGET' }), 'Im Budget · grobe KI-Einschätzung')
+  assert.equal(budgetChipText({ budget_status: 'NEAR_BUDGET' }), 'Nahe am Budget · grobe KI-Einschätzung')
+  assert.equal(budgetChipText({ budget_status: 'OUT_OF_BUDGET' }), 'Über Budget · grobe KI-Einschätzung')
+  assert.equal(budgetChipText({ budget_status: 'UNKNOWN' }), null)
+  assert.equal(budgetChipText(KAND), null)   // Fixture ohne Budget
+})
+
+test('AF-02: Modelltexte (enrichment ok) werden gekennzeichnet', () => {
+  const m = kiKennzeichnung({ ...KAND, trade_offs: ['Verbrauch', 'Unterhalt'] })
+  assert.equal(m.whyFitsKi, true)
+  assert.deepEqual(m.tradeOffsKi, ['Verbrauch', 'Unterhalt'])
+  assert.deepEqual(m.tradeOffsOhneKi, [])
+})
+
+test('AF-02: Fallback-Texte (deterministisch/DB) werden NICHT als KI gekennzeichnet', () => {
+  for (const status of ['fallback', 'unavailable'] as const) {
+    const m = kiKennzeichnung({ ...OHNE_KI, enrichment_status: status })
+    assert.equal(m.whyFitsKi, false)
+    assert.deepEqual(m.tradeOffsKi, [])
+    assert.deepEqual(m.tradeOffsOhneKi, ['1 verifizierter KBA-Rückruf bekannt'])
+  }
+})
+
+test('AF-02: leere Modellliste ergibt keine leere Kennzeichnung', () => {
+  const m = kiKennzeichnung({ ...KAND, why_fits: [], trade_offs: [] })
+  assert.equal(m.whyFitsKi, false)
+  assert.deepEqual(m.tradeOffsKi, [])
+  assert.deepEqual(m.tradeOffsOhneKi, [])
+})
+
+test('AF-02: regelbasierter Trade-off (Einsteiger-Hinweis) bleibt neben KI-Texten unmarkiert', () => {
+  const regel = '190 PS sind für den Einstieg viel Leistung: Versicherung.'
+  const m = kiKennzeichnung({ ...KAND, trade_offs: [regel, 'Verbrauch'], trade_offs_regelbasiert: [regel] })
+  assert.deepEqual(m.tradeOffsOhneKi, [regel])
+  assert.deepEqual(m.tradeOffsKi, ['Verbrauch'])
+})
+
+test('AF-02: Kurzzeile — KI nur bei Modelltext, sonst deterministischer Grund ohne Marke', () => {
+  assert.deepEqual(kartenZusammenfassung(KAND), { text: KAND.why_fits[0], ki: true })
+  assert.deepEqual(kartenZusammenfassung(OHNE_KI), { text: 'Nutzung: langstrecke', ki: false })
+  assert.deepEqual(kartenZusammenfassung({ ...OHNE_KI, why_fits: [] }), { text: 'Nutzung: langstrecke', ki: false })
+  assert.equal(kartenZusammenfassung({ ...OHNE_KI, why_fits: [], user_fit_gruende: [], match_gruende: [] }), null)
+})
+
+test('AF-02: Karte nutzt die Kennzeichnungslogik, DB-Hinweise ("Bekannte Punkte") bleiben unmarkiert', () => {
+  assert.match(cardTsx, /budgetChipText\(k\)/)
+  assert.match(cardTsx, /kiKennzeichnung\(k\)/)
+  assert.match(cardTsx, /kartenZusammenfassung\(k\)/)
+  const bekannt = cardTsx.slice(cardTsx.indexOf('Bekannte Punkte') - 200, cardTsx.indexOf('Bekannte Punkte') + 60)
+  assert.doesNotMatch(bekannt, /KiMarke/)
+})
+
+test('AF-02: Budget-Hinweis im Formular — KI-Einschätzung, beeinflusst Reihenfolge und Passung, keine Marktpreisprüfung', () => {
+  assert.match(viewTsx, /per KI grob ein/)
+  assert.match(viewTsx, /Reihenfolge und angezeigte Passung/)
+  assert.match(viewTsx, /keine Live-Marktpreisprüfung/)
+})
+
+test('AF-02: Markenfeld heißt "Nur diese Marken"; Verhalten unverändert (leer = keine Beschränkung)', () => {
+  assert.match(viewTsx, /Nur diese Marken/)
+  assert.doesNotMatch(viewTsx, /Bevorzugte Marken/)
+  assert.match(viewTsx, /Leer lassen: keine Markenbeschränkung/)
+  const leer = buildPayload(form({ budget_max: '25000' })) as Record<string, unknown>
+  assert.equal('marken_bevorzugt' in leer, false)
+  const mit = buildPayload(form({ marken_bevorzugt: 'BMW, Audi' })) as Record<string, unknown>
+  assert.deepEqual(mit.marken_bevorzugt, ['BMW', 'Audi'])
+})
+
+test('AF-02: Aufteilung verliert keinen Trade-off (alle Status)', () => {
+  const regel = 'Einsteiger-Hinweis'
+  for (const status of ['ok', 'fallback', 'unavailable'] as const) {
+    const k = { ...KAND, enrichment_status: status, trade_offs: [regel, 'A', 'B'], trade_offs_regelbasiert: [regel] }
+    const m = kiKennzeichnung(k)
+    assert.deepEqual([...m.tradeOffsKi, ...m.tradeOffsOhneKi].sort(), [...k.trade_offs].sort())
+  }
 })

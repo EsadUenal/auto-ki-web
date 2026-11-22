@@ -273,6 +273,8 @@ export interface AutoFinderKandidat {
   why_fits: string[]
   known_points: string[]
   enrichment_status: 'ok' | 'fallback' | 'unavailable'
+  /** Teil von `trade_offs`, der regelbasiert (nicht vom Modell) stammt. Fehlt bei alten Antworten. */
+  trade_offs_regelbasiert?: string[]
   estimated_price_min: number | null
   estimated_price_max: number | null
   price_confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
@@ -404,6 +406,60 @@ export function formatPriceRange(k: Pick<AutoFinderKandidat, 'estimated_price_mi
     range: `ca. ${fmt(k.estimated_price_min)}–${fmt(k.estimated_price_max)} €`,
     hint: `KI-Schätzung · keine Live-Marktdaten${conf ? ` · ${conf}` : ''}`,
   }
+}
+
+// ── Kennzeichnung: was ist KI-Einschätzung, was nicht ──────────────────────
+// Reine Darstellung. Das Budgeturteil und die Texte `why_fits` / `trade_offs`
+// stammen bei `enrichment_status === 'ok'` aus Sprachmodell-Aufrufen. Beim
+// Fallback (kein Modelltext) sind `why_fits` die deterministischen Passungsgründe und
+// `trade_offs` geprüfte Datenbankhinweise: sie werden dann NICHT als KI gekennzeichnet.
+// Die Kennzeichnung sagt, woher ein Text kommt, nicht, dass er stimmt.
+
+export const BUDGET_LABEL: Record<AutoFinderKandidat['budget_status'], string | null> = {
+  IN_BUDGET: 'Im Budget',
+  NEAR_BUDGET: 'Nahe am Budget',
+  OUT_OF_BUDGET: 'Über Budget',
+  UNKNOWN: null,
+}
+
+export const KI_EINSCHAETZUNG = 'KI-Einschätzung'
+
+/** Budget-Chip inkl. Herkunft; null ohne Budgeturteil (UNKNOWN). */
+export function budgetChipText(k: Pick<AutoFinderKandidat, 'budget_status'>): string | null {
+  const label = BUDGET_LABEL[k.budget_status]
+  return label ? `${label} · grobe ${KI_EINSCHAETZUNG}` : null
+}
+
+export interface KiKennzeichnung {
+  /** why_fits stammen vom Modell (nicht leer UND Enrichment ok). */
+  whyFitsKi: boolean
+  /** trade_offs, die vom Modell stammen. */
+  tradeOffsKi: string[]
+  /** trade_offs ohne Modellherkunft (regelbasiert oder geprüfter DB-Hinweis). */
+  tradeOffsOhneKi: string[]
+}
+
+export function kiKennzeichnung(
+  k: Pick<AutoFinderKandidat, 'enrichment_status' | 'why_fits' | 'trade_offs' | 'trade_offs_regelbasiert'>,
+): KiKennzeichnung {
+  const modell = k.enrichment_status === 'ok'
+  const regel = new Set(k.trade_offs_regelbasiert ?? [])
+  return {
+    whyFitsKi: modell && k.why_fits.length > 0,
+    tradeOffsKi: modell ? k.trade_offs.filter((t) => !regel.has(t)) : [],
+    tradeOffsOhneKi: modell ? k.trade_offs.filter((t) => regel.has(t)) : [...k.trade_offs],
+  }
+}
+
+/** Kurzzeile der Karte: erster Modellgrund, sonst deterministischer Fit-Grund.
+ *  `ki` nur, wenn die Zeile tatsächlich ein Modelltext ist. */
+export function kartenZusammenfassung(
+  k: Pick<AutoFinderKandidat, 'enrichment_status' | 'why_fits' | 'user_fit_gruende' | 'match_gruende'>,
+): { text: string; ki: boolean } | null {
+  const kiText = k.enrichment_status === 'ok' ? k.why_fits[0] : undefined
+  if (kiText) return { text: kiText, ki: true }
+  const text = k.why_fits[0] ?? k.user_fit_gruende[0] ?? k.match_gruende[0]
+  return text ? { text, ki: false } : null
 }
 
 // ── Suchhistorie (§Punkt 5) — nur localStorage, max 20, kein Account ───────

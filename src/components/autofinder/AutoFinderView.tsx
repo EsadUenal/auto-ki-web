@@ -339,8 +339,8 @@ export default function AutoFinderView() {
                 </Field>
               </div>
               <p className="text-xs text-gray-400">
-                Das Budget steuert die Reihenfolge und die Preisorientierung. ENFAL nennt bewusst
-                keinen Live-Marktpreis.
+                ENFAL schätzt per KI grob ein, wie ein Vorschlag zu deinem Budget passt. Das beeinflusst
+                Reihenfolge und angezeigte Passung. Es ist keine Live-Marktpreisprüfung.
               </p>
             </section>
 
@@ -450,9 +450,12 @@ export default function AutoFinderView() {
                     </div>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="Bevorzugte Marken (Komma-getrennt)">
+                    <Field label="Nur diese Marken (Komma-getrennt)">
                       <input className={inputCls} value={form.marken_bevorzugt}
                         onChange={(e) => set('marken_bevorzugt', e.target.value)} placeholder="BMW, Audi" />
+                      <span className="mt-1 block text-[11px] text-gray-400">
+                        Leer lassen: keine Markenbeschränkung.
+                      </span>
                     </Field>
                     <Field label="Marken ausschließen">
                       <input className={inputCls} value={form.marken_ausschliessen}

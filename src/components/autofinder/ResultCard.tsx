@@ -9,21 +9,21 @@ import {
   formatPriceRange,
   stageKaufCheckPrefill,
   KAUFCHECK_ROUTE,
+  budgetChipText,
+  kiKennzeichnung,
+  kartenZusammenfassung,
+  KI_EINSCHAETZUNG,
   type AutoFinderKandidat,
 } from './logic'
 import VehicleIdentityPanel from './VehicleIdentityPanel'
 
-const BUDGET_LABEL: Record<AutoFinderKandidat['budget_status'], string | null> = {
-  IN_BUDGET: 'Im Budget',
-  NEAR_BUDGET: 'Nahe am Budget',
-  OUT_OF_BUDGET: 'Über Budget',
-  UNKNOWN: null,
-}
-
-/** Eine kurze 1-Zeilen-Zusammenfassung (§Punkt 6): stärkster why_fit, sonst
- *  stärkster deterministischer Fit-Grund. */
-function summary(k: AutoFinderKandidat): string | null {
-  return k.why_fits[0] ?? k.user_fit_gruende[0] ?? k.match_gruende[0] ?? null
+/** Kleine Herkunftsmarke für Modelltexte. Sagt, woher der Text kommt, nicht, dass er stimmt. */
+function KiMarke() {
+  return (
+    <span className="ml-1.5 align-middle rounded-full bg-[#f4f0ea] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-gray-500">
+      {KI_EINSCHAETZUNG}
+    </span>
+  )
 }
 
 const KAROSSERIE_LABEL: Record<string, string> = {
@@ -83,7 +83,9 @@ export default function ResultCard({ k, rank }: Props) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
 
-  const budgetLabel = BUDGET_LABEL[k.budget_status]
+  const budgetLabel = budgetChipText(k)
+  const ki = kiKennzeichnung(k)
+  const kurz = kartenZusammenfassung(k)
   const filters = marketplaceFilters(k)
   const preis = formatPriceRange(k)
   const titel = [k.marke, k.modell].filter(Boolean).join(' ')
@@ -154,9 +156,10 @@ export default function ResultCard({ k, rank }: Props) {
             </p>
           )}
 
-          {summary(k) && (
+          {kurz && (
             <p className="mt-2.5 pl-3 border-l-2 border-orange-200 text-sm text-gray-600 italic leading-snug line-clamp-2">
-              {summary(k)}
+              {kurz.text}
+              {kurz.ki && <KiMarke />}
             </p>
           )}
 
@@ -192,6 +195,7 @@ export default function ResultCard({ k, rank }: Props) {
             <section>
               <h4 className="text-[11px] font-bold tracking-[0.15em] uppercase text-gray-500 flex items-center gap-1.5">
                 <CheckCircle size={13} className="text-emerald-600" /> Warum passt es?
+                {ki.whyFitsKi && <KiMarke />}
               </h4>
               <ul className="mt-2 space-y-1.5 text-gray-700">
                 {k.why_fits.map((g, i) => (
@@ -205,12 +209,27 @@ export default function ResultCard({ k, rank }: Props) {
             <section>
               <h4 className="text-[11px] font-bold tracking-[0.15em] uppercase text-gray-500 flex items-center gap-1.5">
                 <AlertTriangle size={13} className="text-amber-600" /> Trade-offs
+                {ki.tradeOffsKi.length > 0 && ki.tradeOffsOhneKi.length === 0 && <KiMarke />}
               </h4>
-              <ul className="mt-2 space-y-1.5 text-gray-700">
-                {k.trade_offs.map((t, i) => (
-                  <li key={i} className="flex gap-2"><span className="text-amber-500 mt-0.5">●</span><span>{t}</span></li>
-                ))}
-              </ul>
+              {ki.tradeOffsOhneKi.length > 0 && (
+                <ul className="mt-2 space-y-1.5 text-gray-700">
+                  {ki.tradeOffsOhneKi.map((t, i) => (
+                    <li key={i} className="flex gap-2"><span className="text-amber-500 mt-0.5">●</span><span>{t}</span></li>
+                  ))}
+                </ul>
+              )}
+              {ki.tradeOffsKi.length > 0 && (
+                <>
+                  {ki.tradeOffsOhneKi.length > 0 && (
+                    <p className="mt-2.5 text-[11px] font-semibold text-gray-500">{KI_EINSCHAETZUNG}</p>
+                  )}
+                  <ul className="mt-2 space-y-1.5 text-gray-700">
+                    {ki.tradeOffsKi.map((t, i) => (
+                      <li key={i} className="flex gap-2"><span className="text-amber-500 mt-0.5">●</span><span>{t}</span></li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </section>
           )}
 
