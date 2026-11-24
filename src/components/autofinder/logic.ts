@@ -275,6 +275,11 @@ export interface AutoFinderKandidat {
   enrichment_status: 'ok' | 'fallback' | 'unavailable'
   /** Teil von `trade_offs`, der regelbasiert (nicht vom Modell) stammt. Fehlt bei alten Antworten. */
   trade_offs_regelbasiert?: string[]
+  /** Belegte Grenzen der MOTORbauzeit (motorvariante_geltung); null/fehlt = nicht hinterlegt. */
+  motor_bauzeit_von?: number | null
+  motor_bauzeit_bis?: number | null
+  /** Getriebeklassen, die der Datensatz führt, die für diese Motorisierung aber NICHT bestätigt sind. */
+  getriebe_unbestaetigt?: string[]
   estimated_price_min: number | null
   estimated_price_max: number | null
   price_confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
@@ -333,8 +338,20 @@ export function marketplaceFilters(k: AutoFinderKandidat): SuchWert[] {
   // Baujahr-Spanne: der für die Suche relevante Ausschnitt, nicht die
   // komplette Generationsbauzeit — sonst tippt der Nutzer beim Portal eine
   // Spanne ein, die er gar nicht gesucht hat.
-  if (k.baujahr_von && k.baujahr_bis) out.push({ label: 'Erstzulassung', value: `${k.baujahr_von}–${k.baujahr_bis}` })
-  else if (k.baujahr_von) out.push({ label: 'Erstzulassung ab', value: String(k.baujahr_von) })
+  // Nur das SUCHFENSTER des Nutzers ist sein Zeitraum; ohne Fenster steht hier die
+  // Bauzeit der Baureihe, nie eine Motorbauzeit (siehe MOTORZEITRAUM_HINWEIS).
+  const bj = baujahrAnzeige(k)
+  if (!bj.nurGeneration) {
+    if (k.baujahr_von && k.baujahr_bis) out.push({ label: 'Erstzulassung', value: `${k.baujahr_von}–${k.baujahr_bis}` })
+    else if (k.baujahr_von) out.push({ label: 'Erstzulassung ab', value: String(k.baujahr_von) })
+  } else if (bj.suchfenster) {
+    out.push({ label: 'Erstzulassung (dein Zeitraum)', value: bj.suchfenster })
+  } else if (bj.zeitraum) {
+    out.push({
+      label: bj.motorzeitraum ? `Baureihe gebaut (Motor: ${bj.motorzeitraum})` : 'Baureihe gebaut (Motorzeitraum unbekannt)',
+      value: bj.zeitraum,
+    })
+  }
 
   if (k.motor) out.push({ label: 'Motor / Ausführung', value: k.motor })
   if (k.leistung_ps) out.push({ label: 'Leistung ab', value: `${k.leistung_ps} PS` })
@@ -407,6 +424,73 @@ export function formatPriceRange(k: Pick<AutoFinderKandidat, 'estimated_price_mi
     hint: `KI-Schätzung · keine Live-Marktdaten${conf ? ` · ${conf}` : ''}`,
   }
 }
+
+// ── Baujahre: Generation, Motorzeitraum und Suchfenster auseinanderhalten ───
+// Die Datenbank kennt nur die Bauzeit der GENERATION. Die Bauzeit der einzelnen
+// Motorisierung ist nicht hinterlegt, und das Jahresfenster der Suche ist ein
+// Wunsch des Nutzers, keine Eigenschaft des Fahrzeugs. Web-Kandidaten tragen
+// dagegen eine belegte Bauzeit (kein Generationsbezug).
+
+export interface BaujahrAnzeige {
+  /** true = ENFAL-Datensatz: Generationsjahre, Motorzeitraum nicht hinterlegt. */
+  nurGeneration: boolean
+  /** Bauzeit der Generation bzw. (Web) die belegte Bauzeit, als Text. */
+  zeitraum: string | null
+  /** Belegte Motorgrenze(n) als Text ("bis 2015", "ab 2015", "2015–2017"); null = nicht hinterlegt. */
+  motorzeitraum: string | null
+  /** Suchfenster des Nutzers, nur wenn es vom (durch Motorgrenzen eingeengten) Zeitraum abweicht. */
+  suchfenster: string | null
+}
+
+function jahre(von: number | null, bis: number | null): string | null {
+  if (von == null) return null
+  return `${von}${bis != null ? `–${bis}` : ' →'}`
+}
+
+function motorgrenzen(von: number | null | undefined, bis: number | null | undefined): string | null {
+  if (von != null && bis != null) return `${von}–${bis}`
+  if (von != null) return `ab ${von}`
+  if (bis != null) return `bis ${bis}`
+  return null
+}
+
+export function baujahrAnzeige(
+  k: Pick<AutoFinderKandidat, 'baujahr_von' | 'baujahr_bis' | 'generation_baujahr_von' | 'generation_baujahr_bis'>
+    & Partial<Pick<AutoFinderKandidat, 'motor_bauzeit_von' | 'motor_bauzeit_bis'>>,
+): BaujahrAnzeige {
+  const nurGeneration = k.generation_baujahr_von != null
+  if (!nurGeneration) {
+    return { nurGeneration: false, zeitraum: jahre(k.baujahr_von, k.baujahr_bis), motorzeitraum: null, suchfenster: null }
+  }
+  // Zeitraum, den Generation und belegte Motorgrenzen zusammen ergeben (nur einengend).
+  const mv = k.motor_bauzeit_von ?? null
+  const mb = k.motor_bauzeit_bis ?? null
+  const effVon = mv != null ? Math.max(k.generation_baujahr_von as number, mv) : k.generation_baujahr_von
+  const effBis = mb != null
+    ? (k.generation_baujahr_bis != null ? Math.min(k.generation_baujahr_bis, mb) : mb)
+    : k.generation_baujahr_bis
+  const weicht = k.baujahr_von !== effVon || k.baujahr_bis !== effBis
+  return {
+    nurGeneration: true,
+    zeitraum: jahre(k.generation_baujahr_von, k.generation_baujahr_bis),
+    motorzeitraum: motorgrenzen(mv, mb),
+    suchfenster: weicht ? jahre(k.baujahr_von, k.baujahr_bis) : null,
+  }
+}
+
+/** Erklärt die Aussage des Jahresfilters; mit belegter Motorgrenze nennt sie diese ausdrücklich. */
+export function motorzeitraumHinweis(bj: BaujahrAnzeige): string {
+  if (!bj.motorzeitraum) return MOTORZEITRAUM_HINWEIS
+  return 'Für diese Motorisierung kennt ENFAL nur die genannte Grenze, keinen vollständigen Zeitraum. '
+    + 'Der Jahresfilter prüft die Bauzeit der Baureihe, soweit eingeengt durch diese Grenze. '
+    + 'Welche Leistung und welches Getriebe sie in welchem Baujahr hatte, steht nicht im ENFAL-Datensatz. '
+    + 'Bitte beim Angebot prüfen.'
+}
+
+export const MOTORZEITRAUM_HINWEIS =
+  'Der Jahresfilter prüft die Bauzeit der Baureihe, nicht die der einzelnen Motorisierung. '
+  + 'Welche Motorisierung in welchem Baujahr gebaut wurde und welche Leistung oder welches '
+  + 'Getriebe sie dabei hatte, steht nicht im ENFAL-Datensatz. Bitte beim Angebot prüfen.'
 
 // ── Kennzeichnung: was ist KI-Einschätzung, was nicht ──────────────────────
 // Reine Darstellung. Das Budgeturteil und die Texte `why_fits` / `trade_offs`
@@ -651,7 +735,9 @@ export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
     marke: k.marke,
     modell: k.modell,
     motor: k.motor,
-    baujahr: k.baujahr_von,
+    // Der Beginn eines Suchfensters oder einer Bauzeit ist KEIN bekanntes Baujahr dieses
+    // Fahrzeugs. Das tatsächliche Jahr muss der Nutzer im KaufCheck selbst eintragen.
+    baujahr: null,
     quelle: 'autofinder',
     generation: k.generation,
     kraftstoff: k.kraftstoff,

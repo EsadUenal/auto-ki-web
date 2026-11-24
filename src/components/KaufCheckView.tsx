@@ -108,7 +108,9 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           marke: pf.marke || EMPTY.marke,
           modell: pf.modell || EMPTY.modell,
           motor: pf.motor || EMPTY.motor,
-          baujahr: pf.baujahr ?? EMPTY.baujahr,
+          // Aus dem AutoFinder kommt kein bekanntes Baujahr: Feld bleibt leer (Pflichtfeld),
+          // der Nutzer trägt das Jahr des konkreten Angebots selbst ein.
+          baujahr: pf.baujahr ?? Number.NaN,
           // Die Getriebeart des AutoFinder-Kandidaten steht jetzt im Auswahlfeld
           // statt nur im Kontexttext. Sie war ohnehin schon wirksam (die
           // Getriebeerkennung liest den Beschreibungstext mit) — sichtbar und
@@ -242,7 +244,13 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Baujahr" required>
                 <input className={inputCls} type="number" min={1980} max={new Date().getFullYear() + 1}
-                  value={form.baujahr} onChange={(e) => set('baujahr', parseInt(e.target.value))} required />
+                  value={Number.isNaN(form.baujahr) ? '' : form.baujahr}
+                  onChange={(e) => set('baujahr', parseInt(e.target.value))} required />
+                {Number.isNaN(form.baujahr) && (
+                  <span className="mt-1 block text-[11px] text-gray-500">
+                    Bitte das Baujahr des konkreten Angebots eintragen. Aus dem AutoFinder übernimmt ENFAL kein Baujahr.
+                  </span>
+                )}
               </Field>
               <Field label="Kilometerstand" required>
                 <div className="relative">

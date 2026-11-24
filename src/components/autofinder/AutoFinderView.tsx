@@ -434,6 +434,10 @@ export default function AutoFinderView() {
                         onChange={(e) => set('leistung_max_ps', e.target.value)} placeholder="250" />
                     </Field>
                   </div>
+                  <p className="text-[11px] text-gray-400 -mt-2">
+                    Der Jahresfilter prüft die Bauzeit der Baureihe, nicht die der einzelnen Motorisierung.
+                    Welche Motorisierung in welchem Baujahr gebaut wurde, ist nicht hinterlegt.
+                  </p>
                   {/* Kein Feld für den maximalen Gesamtkilometerstand mehr:
                       ENFAL hat dafür keine Datenquelle, und der Filter hat die
                       Auswahl nie eingeschränkt. Ein Feld, das nur wie ein

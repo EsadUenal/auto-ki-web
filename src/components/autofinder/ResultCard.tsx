@@ -10,6 +10,8 @@ import {
   stageKaufCheckPrefill,
   KAUFCHECK_ROUTE,
   budgetChipText,
+  baujahrAnzeige,
+  motorzeitraumHinweis,
   kiKennzeichnung,
   kartenZusammenfassung,
   KI_EINSCHAETZUNG,
@@ -20,7 +22,7 @@ import VehicleIdentityPanel from './VehicleIdentityPanel'
 /** Kleine Herkunftsmarke für Modelltexte. Sagt, woher der Text kommt, nicht, dass er stimmt. */
 function KiMarke() {
   return (
-    <span className="ml-1.5 align-middle rounded-full bg-[#f4f0ea] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-gray-500">
+    <span className="ml-1.5 align-middle whitespace-nowrap rounded-full bg-[#f4f0ea] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-gray-500">
       {KI_EINSCHAETZUNG}
     </span>
   )
@@ -42,14 +44,6 @@ function getriebeText(werte: string[]): string {
 
 function karosserieText(werte: string[]): string {
   return werte.map((c) => KAROSSERIE_LABEL[c] ?? c).join(' / ')
-}
-
-/** Wurde die angezeigte Bauzeit durch die Suche eingegrenzt? Dann ist sie der
- *  für die Anfrage relevante Ausschnitt, nicht die Bauzeit der Generation. */
-function eingegrenzteBaujahre(k: AutoFinderKandidat): boolean {
-  return k.generation_baujahr_von != null
-    && (k.baujahr_von !== k.generation_baujahr_von
-        || k.baujahr_bis !== k.generation_baujahr_bis)
 }
 
 /** Worauf die gezeigte Karosserie beruht — die Datenbank führt sie an der
@@ -86,6 +80,8 @@ export default function ResultCard({ k, rank }: Props) {
   const budgetLabel = budgetChipText(k)
   const ki = kiKennzeichnung(k)
   const kurz = kartenZusammenfassung(k)
+  const bj = baujahrAnzeige(k)
+  const getriebeWaehlbar = k.getriebe_verfuegbar.length > k.getriebe.length
   const filters = marketplaceFilters(k)
   const preis = formatPriceRange(k)
   const titel = [k.marke, k.modell].filter(Boolean).join(' ')
@@ -111,10 +107,11 @@ export default function ResultCard({ k, rank }: Props) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-lg font-bold text-gray-900 tracking-tight truncate">{titel}</h3>
-              {k.baujahr_von && (
-                <p className="mt-0.5 text-xs font-medium text-gray-400 truncate">
-                  {eingegrenzteBaujahre(k) ? 'Passende Baujahre' : 'Baujahre'}{' '}
-                  {k.baujahr_von}{k.baujahr_bis ? `–${k.baujahr_bis}` : ' →'}
+              {bj.zeitraum && (
+                <p className="mt-0.5 text-xs font-medium text-gray-400">
+                  {bj.nurGeneration
+                    ? `Baureihe ${bj.zeitraum} · Motorzeitraum ${bj.motorzeitraum ? `${bj.motorzeitraum} (laut Datensatz)` : 'nicht hinterlegt'}`
+                    : `Baujahre ${bj.zeitraum}`}
                 </p>
               )}
             </div>
@@ -138,7 +135,7 @@ export default function ResultCard({ k, rank }: Props) {
             {k.getriebe.length > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#f4f0ea] px-2.5 py-1 text-xs font-medium text-gray-600">
                 <Cog size={12} className="text-gray-400" />
-                {getriebeText(k.getriebe)}
+                {getriebeText(k.getriebe)}{getriebeWaehlbar ? ' · laut Datensatz wählbar' : ''}
               </span>
             )}
             {budgetLabel && (
@@ -262,14 +259,17 @@ export default function ResultCard({ k, rank }: Props) {
               {k.generation && <div><dt className="text-gray-400 text-[11px]">Generation</dt><dd className="font-medium">{k.generation}</dd></div>}
               {k.motor && <div><dt className="text-gray-400 text-[11px]">Motor</dt>
                 <dd className="font-medium">{k.motor}</dd></div>}
-              {(k.baujahr_von || k.baujahr_bis) && (
-                <div><dt className="text-gray-400 text-[11px]">
-                  {eingegrenzteBaujahre(k) ? 'Passende Baujahre' : 'Baujahre'}</dt>
-                  <dd className="font-medium">{k.baujahr_von ?? '?'}{k.baujahr_bis ? `–${k.baujahr_bis}` : ' →'}</dd></div>
+              {bj.zeitraum && (
+                <div><dt className="text-gray-400 text-[11px]">{bj.nurGeneration ? 'Baureihe gebaut' : 'Baujahre'}</dt>
+                  <dd className="font-medium">{bj.zeitraum}</dd></div>
               )}
-              {eingegrenzteBaujahre(k) && (
-                <div><dt className="text-gray-400 text-[11px]">Generation gebaut</dt>
-                  <dd className="font-medium">{k.generation_baujahr_von ?? '?'}{k.generation_baujahr_bis ? `–${k.generation_baujahr_bis}` : ' →'}</dd></div>
+              {bj.nurGeneration && (
+                <div><dt className="text-gray-400 text-[11px]">Motorzeitraum</dt>
+                  <dd className="font-medium">{bj.motorzeitraum ?? 'nicht hinterlegt'}</dd></div>
+              )}
+              {bj.suchfenster && (
+                <div><dt className="text-gray-400 text-[11px]">Dein Suchfenster</dt>
+                  <dd className="font-medium">{bj.suchfenster}</dd></div>
               )}
               {k.leistung_ps != null && <div><dt className="text-gray-400 text-[11px]">Leistung</dt><dd className="font-medium">{k.leistung_ps} PS</dd></div>}
               {k.kraftstoff && <div><dt className="text-gray-400 text-[11px]">Kraftstoff</dt><dd className="font-medium">{k.kraftstoff}</dd></div>}
@@ -279,11 +279,21 @@ export default function ResultCard({ k, rank }: Props) {
               {k.karosserie.length > 0 && <div><dt className="text-gray-400 text-[11px]">Karosserie</dt>
                 <dd className="font-medium">{karosserieText(k.karosserie)}</dd></div>}
             </dl>
-            {k.getriebe_verfuegbar.length > k.getriebe.length && (
+            {bj.nurGeneration && (
+              <p className="mt-2 text-[11px] text-gray-400">{motorzeitraumHinweis(bj)}</p>
+            )}
+            {(k.getriebe_unbestaetigt ?? []).length > 0 && (
               <p className="mt-2 text-[11px] text-gray-400">
-                Diese Motorisierung gab es auch mit: {getriebeText(
-                  k.getriebe_verfuegbar.filter((g) => !k.getriebe.includes(g)))}.
-                Empfohlen ist oben die Ausführung, die zu deiner Suche passt.
+                Der Datensatz führt für diese Motorisierung auch {getriebeText(k.getriebe_unbestaetigt ?? [])}.
+                Das ist nicht bestätigt und zählt deshalb nicht für deine Suche.
+              </p>
+            )}
+            {getriebeWaehlbar && (
+              <p className="mt-2 text-[11px] text-gray-400">
+                Laut ENFAL-Datensatz wird diese Motorisierung mit mehreren Getrieben geführt (auch: {getriebeText(
+                  k.getriebe_verfuegbar.filter((g) => !k.getriebe.includes(g)))}).
+                Oben steht das Getriebe, das du gesucht hast. Ob es in jedem Baujahr und jeder
+                Ausstattung lieferbar war, ist nicht je Ausführung geprüft.
               </p>
             )}
             {karosserieHinweis(k) && (
@@ -317,7 +327,8 @@ export default function ResultCard({ k, rank }: Props) {
             </h4>
             <p className="mt-1.5 text-gray-500 text-xs">
               Werte zum direkten Eintippen bei mobile.de oder AutoScout24. ENFAL ruft keine
-              Portaldaten ab und nennt keinen Marktpreis.
+              Portaldaten ab und nennt keinen Marktpreis. Leistung und Getriebe bitte im Angebot
+              gegenprüfen: ENFAL kennt die Motorzeiträume nicht.
             </p>
             <div className="mt-2.5 rounded-xl border border-[#efe9df] bg-white overflow-hidden">
               {filters.map((f, i) => (
