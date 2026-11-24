@@ -30,6 +30,11 @@ import {
   KAUFCHECK_ROUTE,
   budgetChipText,
   baujahrAnzeige,
+  kraftstoffAnzeige,
+  kraftstoffKurz,
+  kaufcheckUebergabeMoeglich,
+  stageKaufCheckPrefill,
+  KAUFCHECK_GAS_HINWEIS,
   motorzeitraumHinweis,
   MOTORZEITRAUM_HINWEIS,
   kiKennzeichnung,
@@ -621,7 +626,7 @@ test('C-G: das Identity Panel zeigt Marke, Modell, Generation, Motor und Leistun
 
 test('H: das Panel zeigt Karosserie-, Kraftstoff- und Getriebe-Chips', () => {
   assert.match(panelTsx, /k\.karosserie/)
-  assert.match(panelTsx, /k\.kraftstoff/)
+  assert.match(panelTsx, /kraftstoffKurz\(k\)/)   // Kraftstoff-Chip (bei Gas: Gasantrieb statt "Benzin")
   assert.match(panelTsx, /k\.getriebe/)
   assert.match(panelTsx, /KAROSSERIE_LABEL/)
   assert.match(panelTsx, /GETRIEBE_LABEL/)
@@ -927,4 +932,63 @@ test('AF-03: KaufCheck-Übergabe trägt kein Baujahr; das Feld bleibt leer und d
   assert.match(kc, /Number\.isNaN\(form\.baujahr\) \? '' : form\.baujahr/)
   assert.match(kc, /Bitte das Baujahr des konkreten Angebots eintragen/)
   assert.match(kc, /required/)
+})
+
+// ── AF-10: Gasantrieb wird als solcher angezeigt, nicht als gewöhnlicher Benziner ──
+test('AF-10: Kraftstoffanzeige nennt bei Gasfahrzeugen den Hinweis, sonst die Datensatzklasse', () => {
+  assert.equal(kraftstoffAnzeige({ kraftstoff: 'Benzin', kraftstoff_hinweis: 'primär Erdgas (CNG), Benzin nur als Reserve' }),
+    'primär Erdgas (CNG), Benzin nur als Reserve')
+  assert.equal(kraftstoffAnzeige({ kraftstoff: 'Benzin' }), 'Benzin')
+  assert.equal(kraftstoffAnzeige({ kraftstoff: 'Diesel', kraftstoff_hinweis: null }), 'Diesel')
+})
+
+test('AF-10: Suchhilfe führt für Gasfahrzeuge den Hinweis statt "Benzin"; reguläre Benziner unverändert', () => {
+  const gas = marketplaceFilters({ ...KAND, kraftstoff: 'Benzin', kraftstoff_hinweis: 'primär Erdgas (CNG), Benzin nur als Reserve' })
+  assert.equal(gas.find((x) => x.label === 'Kraftstoff')?.value, 'primär Erdgas (CNG), Benzin nur als Reserve')
+  const benzin = marketplaceFilters({ ...KAND, kraftstoff: 'Benzin' })
+  assert.equal(benzin.find((x) => x.label === 'Kraftstoff')?.value, 'Benzin')
+})
+
+test('AF-10: Karte zeigt den Kraftstoff über kraftstoffAnzeige (Chip und Details)', () => {
+  assert.equal((cardTsx.match(/kraftstoffAnzeige\(k\)/g) ?? []).length, 2)
+  assert.doesNotMatch(cardTsx, /\{k\.kraftstoff\}/)
+})
+
+// ── AF-11: die Überschrift stimmt, wenn die Karten nach der angezeigten Passung kommen ──
+test('AF-11: die Überschrift "sortiert nach Passung" bleibt; das Frontend sortiert nicht um (das tut das Backend nach user_fit)', () => {
+  assert.match(viewTsx, /sortiert nach Passung/)
+  assert.doesNotMatch(viewTsx, /\.sort\(/)
+})
+
+// ── AF-10: keine KaufCheck-Übergabe für Gasfahrzeuge (der KaufCheck kennt keinen Gasantrieb) ──
+test('AF-10: Gasfahrzeug: keine Übergabe, kein Vorbelegen; normaler Benziner und Gas mit unbekannter Art wie definiert', () => {
+  const store: Record<string, string> = {}
+  ;(globalThis as any).sessionStorage = {
+    setItem: (k: string, v: string) => { store[k] = v }, getItem: (k: string) => store[k] ?? null,
+    removeItem: (k: string) => { delete store[k] },
+  }
+  assert.equal(kaufcheckUebergabeMoeglich({ antriebsgas: 'CNG' }), false)
+  assert.equal(kaufcheckUebergabeMoeglich({ antriebsgas: 'Gas' }), false)
+  assert.equal(kaufcheckUebergabeMoeglich({ antriebsgas: null }), true)
+  assert.equal(kaufcheckUebergabeMoeglich({}), true)
+  stageKaufCheckPrefill({ ...KAND, antriebsgas: 'CNG', kraftstoff: 'Benzin' })
+  assert.equal(Object.keys(store).length, 0)          // nichts staged: keine falsche Benzinvorbelegung
+  stageKaufCheckPrefill({ ...KAND, antriebsgas: 'Gas', kraftstoff: 'Benzin' })
+  assert.equal(Object.keys(store).length, 0)
+  stageKaufCheckPrefill(KAND)
+  assert.ok(Object.keys(store).length > 0)             // normaler Fall unverändert
+  assert.match(KAUFCHECK_GAS_HINWEIS, /kennt noch keinen Gasantrieb/)
+})
+
+test('AF-10: Karte bietet beide KaufCheck-Schaltflächen nur ohne Gasantrieb an und zeigt sonst den Hinweis', () => {
+  assert.equal(cardTsx.split('{kaufcheckMoeglich && (').length - 1, 2)
+  assert.equal(cardTsx.split('{!kaufcheckMoeglich && (').length - 1, 1)
+  assert.match(cardTsx, /\{KAUFCHECK_GAS_HINWEIS\}/)
+})
+
+test('AF-10: Kurzform für das Kennungs-Panel: Gas nie als "Benzin", normaler Benziner unverändert', () => {
+  assert.equal(kraftstoffKurz({ kraftstoff: 'Benzin', antriebsgas: 'CNG' }), 'Erdgas (CNG)')
+  assert.equal(kraftstoffKurz({ kraftstoff: 'Benzin', antriebsgas: 'Gas' }), 'Gasfahrzeug')
+  assert.equal(kraftstoffKurz({ kraftstoff: 'Benzin', antriebsgas: null }), 'Benzin')
+  assert.match(readFileSync(join(here, 'VehicleIdentityPanel.tsx'), 'utf8'), /kraftstoffKurz\(k\)/)
 })

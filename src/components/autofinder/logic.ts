@@ -280,6 +280,11 @@ export interface AutoFinderKandidat {
   motor_bauzeit_bis?: number | null
   /** Getriebeklassen, die der Datensatz führt, die für diese Motorisierung aber NICHT bestätigt sind. */
   getriebe_unbestaetigt?: string[]
+  /** Gasantrieb (AF-10): `kraftstoff` bleibt die Datensatzklasse (z. B. "Benzin"), der Hinweis sagt, was antreibt. */
+  antriebsgas?: string | null
+  kraftstoff_hinweis?: string | null
+  verbrauch_einheit?: 'l' | 'kg' | 'unbekannt'
+  verbrauch_zyklus?: string | null
   estimated_price_min: number | null
   estimated_price_max: number | null
   price_confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
@@ -355,7 +360,7 @@ export function marketplaceFilters(k: AutoFinderKandidat): SuchWert[] {
 
   if (k.motor) out.push({ label: 'Motor / Ausführung', value: k.motor })
   if (k.leistung_ps) out.push({ label: 'Leistung ab', value: `${k.leistung_ps} PS` })
-  if (k.kraftstoff) out.push({ label: 'Kraftstoff', value: k.kraftstoff })
+  if (k.kraftstoff) out.push({ label: 'Kraftstoff', value: kraftstoffAnzeige(k) })
   if (k.getriebe.length) {
     out.push({
       label: 'Getriebe',
@@ -504,6 +509,18 @@ export const BUDGET_LABEL: Record<AutoFinderKandidat['budget_status'], string | 
   NEAR_BUDGET: 'Nahe am Budget',
   OUT_OF_BUDGET: 'Über Budget',
   UNKNOWN: null,
+}
+
+/** Kraftstoff, wie er angezeigt wird: bei Gasfahrzeugen der Hinweis ("primär Erdgas (CNG), Benzin nur als
+ *  Reserve"), nie nur die Datensatzklasse "Benzin". */
+export function kraftstoffAnzeige(k: Pick<AutoFinderKandidat, 'kraftstoff'> & Partial<Pick<AutoFinderKandidat, 'kraftstoff_hinweis'>>): string {
+  return k.kraftstoff_hinweis ? k.kraftstoff_hinweis : k.kraftstoff
+}
+
+/** Kurzform für enge Chips: Gasfahrzeuge nie als "Benzin". */
+export function kraftstoffKurz(k: Pick<AutoFinderKandidat, 'kraftstoff'> & Partial<Pick<AutoFinderKandidat, 'antriebsgas'>>): string {
+  if (!k.antriebsgas) return k.kraftstoff
+  return k.antriebsgas === 'CNG' ? 'Erdgas (CNG)' : 'Gasfahrzeug'
 }
 
 export const KI_EINSCHAETZUNG = 'KI-Einschätzung'
@@ -751,7 +768,19 @@ export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
 
 /** Vom AutoFinder-CTA aufgerufen: Prefill + Rücksprungziel merken, DANN erst
  *  navigieren (der Aufrufer macht die Navigation). */
+/** Der KaufCheck kennt keinen Gasantrieb. Eine Übergabe würde das Fahrzeug als gewöhnlichen Benziner
+ *  vorbelegen (Datensatzklasse "Benzin") und den Gaskontext verlieren, deshalb gibt es sie für
+ *  Gasfahrzeuge vorerst nicht (kein Eingriff in das KaufCheck-Kraftstoffmodell). */
+export const KAUFCHECK_GAS_HINWEIS =
+  'Der KaufCheck kennt noch keinen Gasantrieb, deshalb gibt es für dieses Gasfahrzeug keine direkte '
+  + 'Übergabe. Eine Prüfung als Benziner wäre irreführend.'
+
+export function kaufcheckUebergabeMoeglich(k: Pick<AutoFinderKandidat, 'antriebsgas'>): boolean {
+  return !k.antriebsgas
+}
+
 export function stageKaufCheckPrefill(k: AutoFinderKandidat): void {
+  if (!kaufcheckUebergabeMoeglich(k)) return   // Gasfahrzeug: nichts vorbelegen
   try {
     sessionStorage.setItem(KAUFCHECK_PREFILL_KEY, JSON.stringify(buildKaufCheckPrefill(k)))
     sessionStorage.setItem(RETURN_TO_KEY, KAUFCHECK_ROUTE)

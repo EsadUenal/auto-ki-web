@@ -1,5 +1,5 @@
 import { Car } from 'lucide-react'
-import type { AutoFinderKandidat } from './logic'
+import { kraftstoffKurz, type AutoFinderKandidat } from './logic'
 
 /**
  * ENFAL Vehicle Identity Panel — die finale visuelle Darstellung eines
@@ -45,7 +45,7 @@ export default function VehicleIdentityPanel({ k, rank }: Props) {
   const wasserzeichen = wasserzeichenText(k)
   const chips = [
     ...k.karosserie.slice(0, 1).map((c) => KAROSSERIE_LABEL[c] ?? c),
-    k.kraftstoff,
+    kraftstoffKurz(k),
     ...k.getriebe.slice(0, 1).map((g) => GETRIEBE_LABEL[g] ?? g),
   ].filter(Boolean)
 

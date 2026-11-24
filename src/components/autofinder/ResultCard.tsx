@@ -11,6 +11,9 @@ import {
   KAUFCHECK_ROUTE,
   budgetChipText,
   baujahrAnzeige,
+  kraftstoffAnzeige,
+  kaufcheckUebergabeMoeglich,
+  KAUFCHECK_GAS_HINWEIS,
   motorzeitraumHinweis,
   kiKennzeichnung,
   kartenZusammenfassung,
@@ -80,6 +83,7 @@ export default function ResultCard({ k, rank }: Props) {
   const budgetLabel = budgetChipText(k)
   const ki = kiKennzeichnung(k)
   const kurz = kartenZusammenfassung(k)
+  const kaufcheckMoeglich = kaufcheckUebergabeMoeglich(k)
   const bj = baujahrAnzeige(k)
   const getriebeWaehlbar = k.getriebe_verfuegbar.length > k.getriebe.length
   const filters = marketplaceFilters(k)
@@ -129,7 +133,7 @@ export default function ResultCard({ k, rank }: Props) {
             )}
             {k.kraftstoff && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#f4f0ea] px-2.5 py-1 text-xs font-medium text-gray-600">
-                <Fuel size={12} className="text-gray-400" />{k.kraftstoff}
+                <Fuel size={12} className="text-gray-400" />{kraftstoffAnzeige(k)}
               </span>
             )}
             {k.getriebe.length > 0 && (
@@ -175,13 +179,18 @@ export default function ResultCard({ k, rank }: Props) {
               {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {open ? 'Weniger' : 'Details & Suchhilfe'}
             </button>
-            <button
-              onClick={toKaufCheck}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
-            >
-              <ShoppingCart size={14} /> Mit KaufCheck prüfen
-            </button>
+            {kaufcheckMoeglich && (
+              <button
+                onClick={toKaufCheck}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
+              >
+                <ShoppingCart size={14} /> Mit KaufCheck prüfen
+              </button>
+            )}
           </div>
+          {!kaufcheckMoeglich && (
+            <p className="mt-2 text-[11px] text-gray-500">{KAUFCHECK_GAS_HINWEIS}</p>
+          )}
         </div>
       </div>
 
@@ -272,7 +281,7 @@ export default function ResultCard({ k, rank }: Props) {
                   <dd className="font-medium">{bj.suchfenster}</dd></div>
               )}
               {k.leistung_ps != null && <div><dt className="text-gray-400 text-[11px]">Leistung</dt><dd className="font-medium">{k.leistung_ps} PS</dd></div>}
-              {k.kraftstoff && <div><dt className="text-gray-400 text-[11px]">Kraftstoff</dt><dd className="font-medium">{k.kraftstoff}</dd></div>}
+              {k.kraftstoff && <div><dt className="text-gray-400 text-[11px]">Kraftstoff</dt><dd className="font-medium">{kraftstoffAnzeige(k)}</dd></div>}
               {k.getriebe.length > 0 && <div><dt className="text-gray-400 text-[11px]">Getriebe</dt>
                 <dd className="font-medium">{getriebeText(k.getriebe)}</dd></div>}
               {k.antrieb && <div><dt className="text-gray-400 text-[11px]">Antrieb</dt><dd className="font-medium">{k.antrieb}</dd></div>}
@@ -343,14 +352,16 @@ export default function ResultCard({ k, rank }: Props) {
             </div>
           </section>
 
-          <div>
-            <button
-              onClick={toKaufCheck}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
-            >
-              <ShoppingCart size={14} /> Dieses Fahrzeug mit KaufCheck prüfen
-            </button>
-          </div>
+          {kaufcheckMoeglich && (
+            <div>
+              <button
+                onClick={toKaufCheck}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
+              >
+                <ShoppingCart size={14} /> Dieses Fahrzeug mit KaufCheck prüfen
+              </button>
+            </div>
+          )}
         </div>
       )}
     </article>
