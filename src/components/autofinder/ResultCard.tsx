@@ -12,8 +12,6 @@ import {
   budgetChipText,
   baujahrAnzeige,
   kraftstoffAnzeige,
-  kaufcheckUebergabeMoeglich,
-  KAUFCHECK_GAS_HINWEIS,
   motorzeitraumHinweis,
   kiKennzeichnung,
   kartenZusammenfassung,
@@ -83,7 +81,6 @@ export default function ResultCard({ k, rank }: Props) {
   const budgetLabel = budgetChipText(k)
   const ki = kiKennzeichnung(k)
   const kurz = kartenZusammenfassung(k)
-  const kaufcheckMoeglich = kaufcheckUebergabeMoeglich(k)
   const bj = baujahrAnzeige(k)
   const getriebeWaehlbar = k.getriebe_verfuegbar.length > k.getriebe.length
   const filters = marketplaceFilters(k)
@@ -179,18 +176,14 @@ export default function ResultCard({ k, rank }: Props) {
               {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {open ? 'Weniger' : 'Details & Suchhilfe'}
             </button>
-            {kaufcheckMoeglich && (
-              <button
-                onClick={toKaufCheck}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
-              >
-                <ShoppingCart size={14} /> Mit KaufCheck prüfen
-              </button>
-            )}
+            {/* GAS-1: auch Gasfahrzeuge (Gasart wird verlustfrei übergeben). */}
+            <button
+              onClick={toKaufCheck}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
+            >
+              <ShoppingCart size={14} /> Mit KaufCheck prüfen
+            </button>
           </div>
-          {!kaufcheckMoeglich && (
-            <p className="mt-2 text-[11px] text-gray-500">{KAUFCHECK_GAS_HINWEIS}</p>
-          )}
         </div>
       </div>
 
@@ -352,16 +345,14 @@ export default function ResultCard({ k, rank }: Props) {
             </div>
           </section>
 
-          {kaufcheckMoeglich && (
-            <div>
-              <button
-                onClick={toKaufCheck}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
-              >
-                <ShoppingCart size={14} /> Dieses Fahrzeug mit KaufCheck prüfen
-              </button>
-            </div>
-          )}
+          <div>
+            <button
+              onClick={toKaufCheck}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-gray-900 rounded-full px-3.5 py-1.5 hover:bg-gray-800 transition-colors"
+            >
+              <ShoppingCart size={14} /> Dieses Fahrzeug mit KaufCheck prüfen
+            </button>
+          </div>
         </div>
       )}
     </article>

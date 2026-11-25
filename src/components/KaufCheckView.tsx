@@ -15,7 +15,7 @@ import {
 } from './KaufCheckDetails'
 import { formatiereHuEingabe } from './huEingabe'
 import { istTechnikEingeschraenkt, NEUTRALE_BOX } from './empfehlungsBox'
-import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo } from './autofinder/logic'
+import { readKaufCheckPrefill, clearKaufCheckPrefill, takeReturnTo, kraftstoffAusPrefill } from './autofinder/logic'
 import { mitLegacyServicehistorie, normalisiereGetriebe } from './kaufcheckFelder'
 import type { KaufCheckForm, KaufCheckResult, SavedKaufCheck } from '../types'
 
@@ -117,6 +117,9 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
           // korrigierbar ist ehrlicher. Freie Formen wie "8-Gang-Automatik"
           // werden abgebildet, Unklares bleibt leer.
           getriebe: normalisiereGetriebe(pf.getriebe),
+          // GAS-1: ein Gasfahrzeug kommt mit seiner Gasart ins Kraftstofffeld (unbekannte Gasart bleibt
+          // "Gas, Art unbekannt"), nie als "Benzin". Andere Fahrzeuge: Feld wie bisher leer.
+          kraftstoff: kraftstoffAusPrefill(pf),
           beschreibung: kontext ? `Aus AutoFinder übernommen: ${kontext}` : EMPTY.beschreibung,
         })
         setResult(null)
@@ -285,6 +288,10 @@ export default function KaufCheckView({ savedCheck, onCheckSaved, onClearSaved }
                   <option value="diesel">Diesel</option>
                   <option value="hybrid">Hybrid</option>
                   <option value="elektro">Elektro</option>
+                  {/* GAS-1: Erdgas und Autogas getrennt; "Gas, Art unbekannt" rät keine Gasart. */}
+                  <option value="cng">Erdgas (CNG)</option>
+                  <option value="lpg">Autogas (LPG)</option>
+                  <option value="gas">Gas, Art unbekannt</option>
                 </select>
               </Field>
               <Field label="Leistung">

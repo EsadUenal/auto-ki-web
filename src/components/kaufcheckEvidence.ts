@@ -143,6 +143,13 @@ export function kurzbegruendungText(insight: { kurzbegruendung?: string | null }
   return t ? t : null
 }
 
+/** GAS-1: Anzeige der Gasart (CNG und LPG getrennt, unbekannte Gasart nie geraten). */
+export const GAS_LABEL: Record<string, string> = {
+  CNG: 'Erdgas (CNG)',
+  LPG: 'Autogas (LPG)',
+  GAS_UNBEKANNT: 'Gasantrieb, Gasart unbekannt',
+}
+
 export interface IdentityFeld {
   label: string
   value: string
@@ -166,7 +173,19 @@ export function baueVehicleIdentityFelder(vehicleIdentity?: VehicleIdentity | nu
   push('year', 'Baujahr', vehicleIdentity.year != null ? String(vehicleIdentity.year) : null)
   push('engine_name', 'Motor', vehicleIdentity.engine_name)
   push('engine_code', 'Motorcode / Motorfamilie', vehicleIdentity.engine_code)
-  push('fuel', 'Kraftstoff', vehicleIdentity.fuel)
+  // GAS-1: bei einem Gasfahrzeug ist "benzin" nur die Motorklasse (Ottomotor), nicht der Antrieb.
+  push('fuel', 'Kraftstoff', vehicleIdentity.gas && vehicleIdentity.fuel === 'benzin'
+    ? 'benzin (Motorklasse, Antrieb siehe Gasantrieb)' : vehicleIdentity.fuel)
+  // GAS-1: Gasantrieb mit Gasart; die Herkunft ist der Backend-Hinweis selbst (Datensatz, Angabe,
+  // "Nachrüstung möglich", Widerspruch). Ohne Hinweis die übliche Herkunftsbezeichnung.
+  if (vehicleIdentity.gas) {
+    const feGas = fe['gas']
+    felder.push({
+      label: 'Gasantrieb',
+      value: GAS_LABEL[vehicleIdentity.gas] ?? GAS_LABEL.GAS_UNBEKANNT,
+      herkunft: feGas?.gas_hinweis || herkunftLabel(feGas),
+    })
+  }
   push('powertrain', FELD_LABEL.powertrain, vehicleIdentity.powertrain)
   push('transmission', 'Getriebe', vehicleIdentity.transmission)
   push('drivetrain', FELD_LABEL.drivetrain, vehicleIdentity.drivetrain)

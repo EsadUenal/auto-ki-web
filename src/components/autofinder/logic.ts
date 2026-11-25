@@ -745,6 +745,8 @@ export interface KaufCheckPrefill {
   karosserie: string
   baureihe_id: string | null
   variante_id: string | null
+  /** GAS-1: Gasantrieb der Karte ("CNG" belegt, "Gas" = Gasart unbekannt). Fehlt in älteren Prefills. */
+  antriebsgas?: string | null
 }
 
 export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
@@ -757,7 +759,10 @@ export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
     baujahr: null,
     quelle: 'autofinder',
     generation: k.generation,
-    kraftstoff: k.kraftstoff,
+    // GAS-1: bei Gasfahrzeugen der Kraftstoff-Hinweis ("primär Erdgas (CNG), Benzin nur als Reserve"),
+    // nie nur die Datensatzklasse "Benzin".
+    kraftstoff: kraftstoffAnzeige(k),
+    antriebsgas: k.antriebsgas ?? null,
     getriebe: k.getriebe.map((g) => (g === 'automatik' ? 'Automatik' : g === 'manuell' ? 'Schaltgetriebe' : g)).join(' / '),
     leistung_ps: k.leistung_ps,
     karosserie: k.karosserie.join(' / '),
@@ -766,21 +771,22 @@ export function buildKaufCheckPrefill(k: AutoFinderKandidat): KaufCheckPrefill {
   }
 }
 
-/** Vom AutoFinder-CTA aufgerufen: Prefill + Rücksprungziel merken, DANN erst
- *  navigieren (der Aufrufer macht die Navigation). */
-/** Der KaufCheck kennt keinen Gasantrieb. Eine Übergabe würde das Fahrzeug als gewöhnlichen Benziner
- *  vorbelegen (Datensatzklasse "Benzin") und den Gaskontext verlieren, deshalb gibt es sie für
- *  Gasfahrzeuge vorerst nicht (kein Eingriff in das KaufCheck-Kraftstoffmodell). */
-export const KAUFCHECK_GAS_HINWEIS =
-  'Der KaufCheck kennt noch keinen Gasantrieb, deshalb gibt es für dieses Gasfahrzeug keine direkte '
-  + 'Übergabe. Eine Prüfung als Benziner wäre irreführend.'
-
-export function kaufcheckUebergabeMoeglich(k: Pick<AutoFinderKandidat, 'antriebsgas'>): boolean {
-  return !k.antriebsgas
+/** GAS-1: Kraftstofffeld des KaufCheck aus dem Prefill. Gasfahrzeuge mit ihrer Gasart ("CNG" ist im
+ *  AutoFinder belegt, "Gas" heißt Gasart unbekannt -> nicht geraten); alle anderen wie bisher leer
+ *  (der Kraftstoff steht dann nur im Kontexttext). */
+export function kraftstoffAusPrefill(pf: Pick<KaufCheckPrefill, 'antriebsgas'>): '' | 'cng' | 'lpg' | 'gas' {
+  const g = (pf.antriebsgas ?? '').trim().toUpperCase()
+  if (!g) return ''
+  if (g === 'CNG') return 'cng'
+  if (g === 'LPG') return 'lpg'
+  return 'gas'
 }
 
+/** Vom AutoFinder-CTA aufgerufen. GAS-1: Der KaufCheck unterstützt Gasantrieb (CNG, LPG, Gasart
+ *  unbekannt) über den ganzen Pfad (Eingabe, Zuordnung, Bericht, Verkäuferfragen, Unterlagen); die
+ *  frühere Sperre für Gasfahrzeuge entfällt, die Gasart wird verlustfrei übergeben. Aufgerufen: Prefill + Rücksprungziel merken, DANN erst
+ *  navigieren (der Aufrufer macht die Navigation). */
 export function stageKaufCheckPrefill(k: AutoFinderKandidat): void {
-  if (!kaufcheckUebergabeMoeglich(k)) return   // Gasfahrzeug: nichts vorbelegen
   try {
     sessionStorage.setItem(KAUFCHECK_PREFILL_KEY, JSON.stringify(buildKaufCheckPrefill(k)))
     sessionStorage.setItem(RETURN_TO_KEY, KAUFCHECK_ROUTE)

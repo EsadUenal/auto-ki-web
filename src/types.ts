@@ -183,7 +183,13 @@ export interface VehicleIdentity {
     // app/vehicle_identity.py setzt sie bei verification_state 'user_only'; das Feld bleibt user_only (KEINE
     // Vollbestätigung). Optional - ältere Antworten tragen es nicht.
     bestaetigte_teile?: string[]
+    // GAS-1: nur am Feld `gas` (app/gasantrieb.py::feld_eintrag). Status, Nutzertext mit Herkunft und
+    // Unsicherheit (z. B. "Nachrüstung möglich", Widerspruch). Optional - ältere Antworten tragen es nicht.
+    gas_status?: string
+    gas_hinweis?: string
   }>
+  /** GAS-1: Gasantrieb ("CNG" | "LPG" | "GAS_UNBEKANNT"), nur bei Gasbezug gesetzt. Fehlt in älteren Antworten. */
+  gas?: 'CNG' | 'LPG' | 'GAS_UNBEKANNT' | string | null
 }
 
 // P1-4 — ergänzender Fahrzeugkontext aus der ENFAL-Fahrzeugdatenbank. KEINE
@@ -489,8 +495,11 @@ export interface KaufCheckForm {
    *  (app/marktvergleich.py, app/car_lookup.py). Ist er gesetzt, verwirft der
    *  Marktvergleich Angebote mit anderem Kraftstoff hart. Mild-, Voll- und
    *  Plug-in-Hybrid landen dort alle auf "hybrid", deshalb steht hier nur die
-   *  eine Hybrid-Option statt einer Genauigkeit, die nicht ausgewertet wird. */
-  kraftstoff: '' | 'benzin' | 'diesel' | 'hybrid' | 'elektro'
+   *  eine Hybrid-Option statt einer Genauigkeit, die nicht ausgewertet wird.
+   *  GAS-1: dazu drei Gaswerte. Das Backend übernimmt sie an der Eingabegrenze in
+   *  `antriebsgas` (app/models.py): Erdgas (CNG) und Autogas (LPG) getrennt, "gas"
+   *  heißt ausdrücklich "Gasart unbekannt". */
+  kraftstoff: '' | 'benzin' | 'diesel' | 'hybrid' | 'elektro' | 'cng' | 'lpg' | 'gas'
   /** Motorleistung in PS. Optional; ist sie gesetzt, schlägt sie im
    *  Marktvergleich die ungeprüfte Datenbank-Variante. */
   leistungPs: number | ''

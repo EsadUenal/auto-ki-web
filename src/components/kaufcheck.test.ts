@@ -156,19 +156,41 @@ const viewCode = ohneKommentare(view)
 const typesCode = ohneKommentare(types)
 
 test('P: Kraftstoff und Leistung stehen im Formulartyp', () => {
-  assert.match(typesCode, /kraftstoff: '' \| 'benzin' \| 'diesel' \| 'hybrid' \| 'elektro'/)
+  // GAS-1: dazu die drei Gaswerte (siehe nächster Test).
+  assert.match(typesCode, /kraftstoff: '' \| 'benzin' \| 'diesel' \| 'hybrid' \| 'elektro' \| 'cng' \| 'lpg' \| 'gas'/)
   assert.match(typesCode, /leistungPs: number \| ''/)
 })
 
-test('P: genau die vier Kraftstoffwerte, die das Backend normalisiert', () => {
+test('P: genau die Kraftstoffwerte, die das Backend normalisiert (vier Kraftstoffe + drei Gaswerte)', () => {
   // app/marktvergleich.py und app/car_lookup.py kennen benzin, diesel, hybrid
   // und elektro. Mild-, Voll- und Plug-in-Hybrid landen dort alle auf "hybrid";
   // eine feinere Auswahl wäre eine Genauigkeit, die nirgends ankommt.
-  for (const wert of ['benzin', 'diesel', 'hybrid', 'elektro']) {
+  // GAS-1: cng/lpg/gas normalisiert app/models.py::KaufCheckRequest an der Eingabegrenze nach
+  // `antriebsgas` (CNG/LPG getrennt, "gas" = Gasart unbekannt) — sie wirken also, sie sind keine Dekoration.
+  for (const wert of ['benzin', 'diesel', 'hybrid', 'elektro', 'cng', 'lpg', 'gas']) {
     assert.match(viewCode, new RegExp(`<option value="${wert}">`))
   }
   assert.ok(!/value="mildhybrid"|value="plugin"|value="phev"/.test(viewCode),
     'Kraftstoffwert angeboten, den die Auswertung nicht normalisiert')
+})
+
+test('GAS-1: Fahrzeugprofil zeigt den Gasantrieb mit Gasart und Herkunfts-/Unsicherheitshinweis', () => {
+  const felder = baueVehicleIdentityFelder({
+    fuel: 'benzin', gas: 'LPG',
+    field_evidence: { gas: { verification_state: 'user_only', gas_status: 'nachruestung_moeglich',
+      gas_hinweis: 'Laut Angabe. Die erkannte ENFAL-Variante ist nicht als Gasfahrzeug ab Werk gekennzeichnet: eine Werksausführung ist nicht belegt, eine nachgerüstete Gasanlage ist möglich.' } },
+  })
+  const gas = felder.find((f) => f.label === 'Gasantrieb')
+  assert.equal(gas?.value, 'Autogas (LPG)')
+  // "benzin" ist bei einem Gasfahrzeug nur die Motorklasse, nie der Antrieb.
+  assert.equal(felder.find((f) => f.label === 'Kraftstoff')?.value, 'benzin (Motorklasse, Antrieb siehe Gasantrieb)')
+  assert.equal(baueVehicleIdentityFelder({ fuel: 'benzin', field_evidence: {} }).find((f) => f.label === 'Kraftstoff')?.value, 'benzin')
+  assert.match(gas?.herkunft ?? '', /Werksausführung ist nicht belegt/)
+  const unbekannt = baueVehicleIdentityFelder({ gas: 'GAS_UNBEKANNT', field_evidence: {} })
+  assert.equal(unbekannt.find((f) => f.label === 'Gasantrieb')?.value, 'Gasantrieb, Gasart unbekannt')
+  assert.equal(unbekannt.find((f) => f.label === 'Gasantrieb')?.herkunft, 'unbestätigt')
+  // Ohne Gasbezug (und in älteren Antworten) erscheint keine Gaszeile.
+  assert.equal(baueVehicleIdentityFelder({ fuel: 'diesel', field_evidence: {} }).some((f) => f.label === 'Gasantrieb'), false)
 })
 
 test('P: beide Felder landen im Request-Body', () => {

@@ -32,9 +32,8 @@ import {
   baujahrAnzeige,
   kraftstoffAnzeige,
   kraftstoffKurz,
-  kaufcheckUebergabeMoeglich,
+  kraftstoffAusPrefill,
   stageKaufCheckPrefill,
-  KAUFCHECK_GAS_HINWEIS,
   motorzeitraumHinweis,
   MOTORZEITRAUM_HINWEIS,
   kiKennzeichnung,
@@ -960,30 +959,45 @@ test('AF-11: die Überschrift "sortiert nach Passung" bleibt; das Frontend sorti
   assert.doesNotMatch(viewTsx, /\.sort\(/)
 })
 
-// ── AF-10: keine KaufCheck-Übergabe für Gasfahrzeuge (der KaufCheck kennt keinen Gasantrieb) ──
-test('AF-10: Gasfahrzeug: keine Übergabe, kein Vorbelegen; normaler Benziner und Gas mit unbekannter Art wie definiert', () => {
+// ── GAS-1: verlustfreie KaufCheck-Übergabe für Gasfahrzeuge ──
+// Vorher (AF-10) war die Übergabe gesperrt, weil der KaufCheck keinen Gasantrieb kannte. Seit GAS-1
+// führt der KaufCheck Gasart und Unsicherheit durch Eingabe, Zuordnung, Bericht, Verkäuferfragen und
+// Unterlagen (Backend: test_kaufcheck_gas.py). Gesichert wird jetzt die richtige Aussage: die Gasart
+// kommt ohne Verlust an, eine unbekannte Gasart wird nicht geraten, normale Fahrzeuge bleiben unverändert.
+test('GAS-1: Gasfahrzeug wird übergeben: Prefill trägt Gasart und Kraftstoff-Hinweis statt "Benzin"', () => {
   const store: Record<string, string> = {}
   ;(globalThis as any).sessionStorage = {
     setItem: (k: string, v: string) => { store[k] = v }, getItem: (k: string) => store[k] ?? null,
     removeItem: (k: string) => { delete store[k] },
   }
-  assert.equal(kaufcheckUebergabeMoeglich({ antriebsgas: 'CNG' }), false)
-  assert.equal(kaufcheckUebergabeMoeglich({ antriebsgas: 'Gas' }), false)
-  assert.equal(kaufcheckUebergabeMoeglich({ antriebsgas: null }), true)
-  assert.equal(kaufcheckUebergabeMoeglich({}), true)
-  stageKaufCheckPrefill({ ...KAND, antriebsgas: 'CNG', kraftstoff: 'Benzin' })
-  assert.equal(Object.keys(store).length, 0)          // nichts staged: keine falsche Benzinvorbelegung
-  stageKaufCheckPrefill({ ...KAND, antriebsgas: 'Gas', kraftstoff: 'Benzin' })
-  assert.equal(Object.keys(store).length, 0)
-  stageKaufCheckPrefill(KAND)
-  assert.ok(Object.keys(store).length > 0)             // normaler Fall unverändert
-  assert.match(KAUFCHECK_GAS_HINWEIS, /kennt noch keinen Gasantrieb/)
+  const tgi = { ...KAND, antriebsgas: 'CNG', kraftstoff: 'Benzin', kraftstoff_hinweis: 'primär Erdgas (CNG), Benzin nur als Reserve' }
+  stageKaufCheckPrefill(tgi)
+  const pf = JSON.parse(store['vira.kaufcheck.prefill'])
+  assert.equal(pf.antriebsgas, 'CNG')
+  assert.equal(pf.kraftstoff, 'primär Erdgas (CNG), Benzin nur als Reserve')
+  assert.equal(pf.baujahr, null)
+  const unbekannt = buildKaufCheckPrefill({ ...KAND, antriebsgas: 'Gas', kraftstoff: 'Benzin',
+    kraftstoff_hinweis: 'Gasfahrzeug laut Variantenbezeichnung (Gasart, Primärkraftstoff und Verbrauchseinheit nicht geprüft)' })
+  assert.equal(unbekannt.antriebsgas, 'Gas')
+  assert.doesNotMatch(unbekannt.kraftstoff, /^Benzin$/)
+  const normal = buildKaufCheckPrefill(KAND)
+  assert.equal(normal.antriebsgas, null)
+  assert.equal(normal.kraftstoff, KAND.kraftstoff)      // normaler Fall unverändert
 })
 
-test('AF-10: Karte bietet beide KaufCheck-Schaltflächen nur ohne Gasantrieb an und zeigt sonst den Hinweis', () => {
-  assert.equal(cardTsx.split('{kaufcheckMoeglich && (').length - 1, 2)
-  assert.equal(cardTsx.split('{!kaufcheckMoeglich && (').length - 1, 1)
-  assert.match(cardTsx, /\{KAUFCHECK_GAS_HINWEIS\}/)
+test('GAS-1: Kraftstofffeld im KaufCheck: CNG -> Erdgas, "Gas" -> Gasart unbekannt (nicht geraten), sonst leer wie bisher', () => {
+  assert.equal(kraftstoffAusPrefill({ antriebsgas: 'CNG' }), 'cng')
+  assert.equal(kraftstoffAusPrefill({ antriebsgas: 'LPG' }), 'lpg')
+  assert.equal(kraftstoffAusPrefill({ antriebsgas: 'Gas' }), 'gas')
+  assert.equal(kraftstoffAusPrefill({ antriebsgas: null }), '')
+  assert.equal(kraftstoffAusPrefill({}), '')            // älteres Prefill ohne Feld
+  const kc = readFileSync(join(here, '..', 'KaufCheckView.tsx'), 'utf8')
+  assert.match(kc, /kraftstoff: kraftstoffAusPrefill\(pf\)/)
+})
+
+test('GAS-1: Karte bietet beide KaufCheck-Schaltflächen für jedes Fahrzeug an, ohne Sperrhinweis', () => {
+  assert.equal((cardTsx.match(/onClick=\{toKaufCheck\}/g) ?? []).length, 2)
+  assert.doesNotMatch(cardTsx, /kaufcheckMoeglich|KAUFCHECK_GAS_HINWEIS|kennt noch keinen Gasantrieb/)
 })
 
 test('AF-10: Kurzform für das Kennungs-Panel: Gas nie als "Benzin", normaler Benziner unverändert', () => {
