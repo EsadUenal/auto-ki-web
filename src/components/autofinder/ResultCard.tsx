@@ -269,9 +269,13 @@ export default function ResultCard({ k, rank }: Props) {
                 <div><dt className="text-gray-400 text-[11px]">Motorzeitraum</dt>
                   <dd className="font-medium">{bj.motorzeitraum ?? 'nicht hinterlegt'}</dd></div>
               )}
-              {bj.suchfenster && (
-                <div><dt className="text-gray-400 text-[11px]">Dein Suchfenster</dt>
-                  <dd className="font-medium">{bj.suchfenster}</dd></div>
+              {bj.wunschfenster && (
+                <div><dt className="text-gray-400 text-[11px]">Dein Wunschfenster</dt>
+                  <dd className="font-medium">{bj.wunschfenster}</dd></div>
+              )}
+              {bj.nurGeneration && bj.ueberschneidung && (
+                <div><dt className="text-gray-400 text-[11px]">Überschneidung mit der Baureihe</dt>
+                  <dd className="font-medium">{bj.ueberschneidung}</dd></div>
               )}
               {k.leistung_ps != null && <div><dt className="text-gray-400 text-[11px]">Leistung</dt><dd className="font-medium">{k.leistung_ps} PS</dd></div>}
               {k.kraftstoff && <div><dt className="text-gray-400 text-[11px]">Kraftstoff</dt><dd className="font-medium">{kraftstoffAnzeige(k)}</dd></div>}
@@ -329,8 +333,9 @@ export default function ResultCard({ k, rank }: Props) {
             </h4>
             <p className="mt-1.5 text-gray-500 text-xs">
               Werte zum direkten Eintippen bei mobile.de oder AutoScout24. ENFAL ruft keine
-              Portaldaten ab und nennt keinen Marktpreis. Leistung und Getriebe bitte im Angebot
-              gegenprüfen: ENFAL kennt die Motorzeiträume nicht.
+              Portaldaten ab und nennt keinen Marktpreis. Die Kombination aus Motor, Leistung und
+              Erstzulassungsjahr ist nicht geprüft und bestätigt keine Verfügbarkeit.
+              Leistung und Getriebe bitte im Angebot gegenprüfen: ENFAL kennt die Motorzeiträume nicht.
             </p>
             <div className="mt-2.5 rounded-xl border border-[#efe9df] bg-white overflow-hidden">
               {filters.map((f, i) => (

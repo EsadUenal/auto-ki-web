@@ -187,6 +187,30 @@ test('RC1: das Suchformular bietet kein Kilometerfeld mehr an', () => {
   assert.doesNotMatch(viewTsx, /Kilometerstand max\./)
 })
 
+test('AF-14: BELOW_BUDGET zeigt "Unter deinem Budgetrahmen" mit KI-Kennzeichnung; unbekannter/alter Status gibt keinen Chip', () => {
+  assert.equal(budgetChipText({ budget_status: 'BELOW_BUDGET' }), 'Unter deinem Budgetrahmen · grobe KI-Einschätzung')
+  assert.equal(budgetChipText({ budget_status: 'IN_BUDGET' }), 'Im Budget · grobe KI-Einschätzung')
+  assert.equal(budgetChipText({ budget_status: 'UNKNOWN' }), null)
+  assert.equal(budgetChipText({ budget_status: 'GIBT_ES_NICHT' as never }), null)
+})
+
+// ── AF-13: Wunschfenster, Baureihenüberschneidung und Motorzeit getrennt ───
+test('AF-13: echter Fall (Wunsch 2016–2022, Baureihe 2019 →): Karte, Details und Suchhilfe trennen die drei Zeiten', () => {
+  const k = { ...KAND, generation_baujahr_von: 2019, generation_baujahr_bis: null, baujahr_von: 2019, baujahr_bis: 2022,
+    wunsch_baujahr_von: 2016, wunsch_baujahr_bis: 2022, motorzeit_status: 'unbekannt' as const }
+  const bj = baujahrAnzeige(k)
+  assert.equal(bj.wunschfenster, '2016–2022')
+  assert.equal(bj.zeitraum, 'ab 2019, Ende nicht hinterlegt')
+  assert.equal(bj.ueberschneidung, '2019–2022')
+  assert.equal(bj.motorzeitraum, null)
+  assert.equal(bj.motorzeitStatus, 'unbekannt')
+  const f = marketplaceFilters(k)
+  assert.equal(f.find((x) => x.label === 'Erstzulassung (dein Wunschfenster)')?.value, '2016–2022')
+  assert.equal(f.find((x) => x.label === 'Baureihe gebaut (Motorzeitraum unbekannt)')?.value, 'ab 2019, Ende nicht hinterlegt')
+  assert.ok(!f.some((x) => /2019–2022/.test(x.value)), 'der Verschnitt steht nicht als Suchwert')
+  assert.match(motorzeitraumHinweis(bj), /nicht bestätigt/)
+})
+
 // ── RC1) Karte zeigt die KONKRETE Variante, nicht das Baureihen-Aggregat ───
 test('RC1: Suchhilfe uebernimmt genau die empfohlene Karosserie', () => {
   const f = marketplaceFilters(KAND)
@@ -195,9 +219,16 @@ test('RC1: Suchhilfe uebernimmt genau die empfohlene Karosserie', () => {
   const getr = f.find((x) => x.label === 'Getriebe')
   assert.equal(getr?.value, 'Automatik')
 })
-test('RC1: Suchhilfe nennt die fuer die Suche relevanten Baujahre (als Suchfenster des Nutzers, AF-03)', () => {
-  const f = marketplaceFilters({ ...KAND, baujahr_von: 2020, baujahr_bis: 2022 })
-  assert.equal(f.find((x) => x.label === 'Erstzulassung (dein Zeitraum)')?.value, '2020–2022')
+// AF-13: bisher stand hier der VERSCHNITT (baujahr_von/bis) als "dein Zeitraum". Das war nicht der Wunsch des Nutzers;
+// die Suchhilfe nennt jetzt das eingegebene Fenster und die Baureihe getrennt.
+test('RC1: Suchhilfe nennt das eingegebene Wunschfenster, nicht den Verschnitt mit der Baureihe (AF-13)', () => {
+  const f = marketplaceFilters({ ...KAND, baujahr_von: 2020, baujahr_bis: 2022, wunsch_baujahr_von: 2016, wunsch_baujahr_bis: 2022 })
+  assert.equal(f.find((x) => x.label === 'Erstzulassung (dein Wunschfenster)')?.value, '2016–2022')
+  assert.equal(f.find((x) => x.label === 'Erstzulassung (dein Zeitraum)'), undefined)
+  assert.equal(f.find((x) => x.label === 'Baureihe gebaut (Motorzeitraum unbekannt)')?.value, '2019–2024')
+  // Alte Antwort ohne Wunschfeld: der Verschnitt wird NICHT als Wunsch ausgegeben.
+  const alt = marketplaceFilters({ ...KAND, baujahr_von: 2020, baujahr_bis: 2022 })
+  assert.equal(alt.find((x) => x.label.startsWith('Erstzulassung')), undefined)
 })
 test('RC1: der KaufCheck-Prefill traegt eine einzelne Karosserie', () => {
   assert.equal(buildKaufCheckPrefill(KAND).karosserie, 'limousine')
@@ -847,24 +878,32 @@ test('AF-02: Aufteilung verliert keinen Trade-off (alle Status)', () => {
 const GEN = { generation_baujahr_von: 2011, generation_baujahr_bis: 2019 }
 
 test('AF-03: Datensatz-Kandidat zeigt Generationsjahre; das Suchfenster ist separat und nur bei Abweichung da', () => {
-  const eng = baujahrAnzeige({ ...GEN, baujahr_von: 2016, baujahr_bis: 2019 })
-  assert.deepEqual(eng, { nurGeneration: true, zeitraum: '2011–2019', motorzeitraum: null, suchfenster: '2016–2019' })
+  // AF-13: `suchfenster` war der Verschnitt; jetzt `ueberschneidung` (Baureihe x Wunsch) getrennt vom EINGEGEBENEN `wunschfenster`.
+  const eng = baujahrAnzeige({ ...GEN, baujahr_von: 2016, baujahr_bis: 2019, wunsch_baujahr_von: 2014, wunsch_baujahr_bis: 2022 })
+  assert.deepEqual(eng, { nurGeneration: true, zeitraum: '2011–2019', motorzeitraum: null, motorzeitStatus: 'unbekannt',
+    wunschfenster: '2014–2022', ueberschneidung: '2016–2019' })
   const ohne = baujahrAnzeige({ ...GEN, baujahr_von: 2011, baujahr_bis: 2019 })
-  assert.equal(ohne.suchfenster, null)
+  assert.equal(ohne.ueberschneidung, null)
+  assert.equal(ohne.wunschfenster, null)
   assert.equal(ohne.zeitraum, '2011–2019')
-  assert.equal(baujahrAnzeige({ generation_baujahr_von: 2019, generation_baujahr_bis: null, baujahr_von: 2019, baujahr_bis: null }).zeitraum, '2019 →')
+  // Ein offenes Baureihenende heißt "Ende nicht hinterlegt", nicht "heute" und nicht nur ein Pfeil.
+  const offen = baujahrAnzeige({ generation_baujahr_von: 2019, generation_baujahr_bis: null, baujahr_von: 2019, baujahr_bis: null })
+  assert.equal(offen.zeitraum, 'ab 2019, Ende nicht hinterlegt')
+  assert.doesNotMatch(String(offen.zeitraum), /heute|→/)
 })
 
 test('AF-03: Web-Kandidat mit belegter Bauzeit bleibt unverändert (kein Generationsbezug)', () => {
   const web = baujahrAnzeige({ generation_baujahr_von: null, generation_baujahr_bis: null, baujahr_von: 2018, baujahr_bis: 2022 })
-  assert.deepEqual(web, { nurGeneration: false, zeitraum: '2018–2022', motorzeitraum: null, suchfenster: null })
+  assert.deepEqual(web, { nurGeneration: false, zeitraum: '2018–2022', motorzeitraum: null, motorzeitStatus: null,
+    wunschfenster: null, ueberschneidung: null })
 })
 
-test('AF-03: Suchhilfe kennzeichnet das Fenster als dein Zeitraum, ohne Fenster die Baureihe, nie einen Motorzeitraum', () => {
-  const mit = marketplaceFilters({ ...KAND, ...GEN, baujahr_von: 2016, baujahr_bis: 2019 })
-  assert.equal(mit.find((x) => x.label === 'Erstzulassung (dein Zeitraum)')?.value, '2016–2019')
+test('AF-03: Suchhilfe nennt Wunschfenster und Baureihe getrennt, nie einen Motorzeitraum (AF-13: Wunsch unverändert)', () => {
+  const mit = marketplaceFilters({ ...KAND, ...GEN, baujahr_von: 2016, baujahr_bis: 2019, wunsch_baujahr_von: 2014, wunsch_baujahr_bis: 2022 })
+  assert.equal(mit.find((x) => x.label === 'Erstzulassung (dein Wunschfenster)')?.value, '2014–2022')
+  assert.equal(mit.find((x) => x.label === 'Baureihe gebaut (Motorzeitraum unbekannt)')?.value, '2011–2019')
   const ohne = marketplaceFilters({ ...KAND, ...GEN, baujahr_von: 2011, baujahr_bis: 2019 })
-  assert.equal(ohne.find((x) => x.label === 'Erstzulassung (dein Zeitraum)'), undefined)
+  assert.equal(ohne.find((x) => x.label === 'Erstzulassung (dein Wunschfenster)'), undefined)
   assert.equal(ohne.find((x) => x.label === 'Baureihe gebaut (Motorzeitraum unbekannt)')?.value, '2011–2019')
   const web = marketplaceFilters({ ...KAND, generation_baujahr_von: null, generation_baujahr_bis: null, baujahr_von: 2018, baujahr_bis: 2022 })
   assert.equal(web.find((x) => x.label === 'Erstzulassung')?.value, '2018–2022')
@@ -875,7 +914,10 @@ test('AF-03: Karte nennt Baureihenjahre, fehlenden Motorzeitraum, Suchfenster un
   assert.doesNotMatch(cardTsx, /Generation gebaut/)
   assert.match(cardTsx, /Motorzeitraum \$\{bj\.motorzeitraum/)
   assert.match(cardTsx, /'nicht hinterlegt'/)
-  assert.match(cardTsx, /Dein Suchfenster/)
+  assert.match(cardTsx, /Dein Wunschfenster/)
+  assert.match(cardTsx, /Überschneidung mit der Baureihe/)
+  assert.doesNotMatch(cardTsx, /Dein Suchfenster/)
+  assert.match(cardTsx, /bestätigt keine Verfügbarkeit/)
   assert.match(cardTsx, /motorzeitraumHinweis\(bj\)/)
   assert.match(MOTORZEITRAUM_HINWEIS, /nicht die der einzelnen Motorisierung/)
   assert.match(MOTORZEITRAUM_HINWEIS, /Leistung oder welches Getriebe/)
@@ -895,11 +937,16 @@ test('AF-03: der Jahresfilter im Formular erklärt seine begrenzte Aussage', () 
 // ── AF-03: belegte Motorgrenzen, nicht bestätigte Getriebe, KaufCheck-Übergabe ──
 test('AF-03: belegte Motorgrenze wird als solche genannt; das Suchfenster vergleicht gegen den eingeengten Zeitraum', () => {
   const alt = baujahrAnzeige({ ...GEN, motor_bauzeit_bis: 2015, baujahr_von: 2011, baujahr_bis: 2015 })
-  assert.deepEqual(alt, { nurGeneration: true, zeitraum: '2011–2019', motorzeitraum: 'bis 2015', suchfenster: null })
+  assert.deepEqual(alt, { nurGeneration: true, zeitraum: '2011–2019', motorzeitraum: 'bis 2015', motorzeitStatus: 'teilweise',
+    wunschfenster: null, ueberschneidung: null })
   const neu = baujahrAnzeige({ ...GEN, motor_bauzeit_von: 2015, baujahr_von: 2015, baujahr_bis: 2019 })
-  assert.deepEqual(neu, { nurGeneration: true, zeitraum: '2011–2019', motorzeitraum: 'ab 2015', suchfenster: null })
-  const mitFenster = baujahrAnzeige({ ...GEN, motor_bauzeit_von: 2015, baujahr_von: 2016, baujahr_bis: 2017 })
-  assert.equal(mitFenster.suchfenster, '2016–2017')
+  assert.deepEqual(neu, { nurGeneration: true, zeitraum: '2011–2019', motorzeitraum: 'ab 2015', motorzeitStatus: 'teilweise',
+    wunschfenster: null, ueberschneidung: null })
+  const mitFenster = baujahrAnzeige({ ...GEN, motor_bauzeit_von: 2015, baujahr_von: 2016, baujahr_bis: 2017, wunsch_baujahr_von: 2016, wunsch_baujahr_bis: 2017 })
+  assert.equal(mitFenster.ueberschneidung, '2016–2017')
+  assert.equal(mitFenster.wunschfenster, '2016–2017')
+  // Beide Grenzen belegt: Status "belegt".
+  assert.equal(baujahrAnzeige({ ...GEN, motor_bauzeit_von: 2013, motor_bauzeit_bis: 2015, baujahr_von: 2013, baujahr_bis: 2015 }).motorzeitStatus, 'belegt')
 })
 
 test('AF-03: der Jahres-Hinweis bleibt ehrlich: ohne Motorgrenze "nicht hinterlegt", mit Grenze nur diese Grenze', () => {
