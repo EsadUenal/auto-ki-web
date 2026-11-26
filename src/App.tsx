@@ -8,7 +8,6 @@ import VerkaufsCheckView from './components/VerkaufsCheckView'
 import DealerView from './components/DealerView'
 import DealerVehicleView from './components/DealerVehicleView'
 import EntdeckenView from './components/EntdeckenView'
-import ErsatzteileView from './components/ErsatzteileView'
 import PricingView from './components/PricingView'
 import SettingsView from './components/SettingsView'
 import HelpView from './components/HelpView'
@@ -69,6 +68,26 @@ function Guard({ authed, loading, children }: { authed: boolean; loading: boolea
   if (authed) return <>{children}</>
   setReturnTo(location.pathname + location.search)
   return <Navigate to="/login" replace />
+}
+
+// ── Ersatzteilsuche: derzeit nicht im Angebot ────────────────────────────────
+// Die Seite `ErsatzteileView` und der Backend-Suchcode bleiben im Repo erhalten, sind aber nicht Teil des
+// Consumer-Angebots: die Route zeigt nur diesen Hinweis. Kein Formular, kein Tarifangebot, kein
+// Freischaltversprechen, keine Suchanfrage. (Der Backend-Endpunkt ist zusätzlich für alle Tarife gesperrt.)
+function ErsatzteileNichtVerfuegbar() {
+  return (
+    <div className="h-full overflow-y-auto flex items-center justify-center px-6 py-16">
+      <div className="max-w-md text-center">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-[-0.02em]">Ersatzteilsuche</h1>
+        <p className="mt-3 text-sm text-gray-500 leading-relaxed">
+          Die Ersatzteilsuche ist derzeit nicht verfügbar.
+        </p>
+        <Link to="/" className="mt-6 inline-flex items-center justify-center rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors">
+          Zur Startseite
+        </Link>
+      </div>
+    </div>
+  )
 }
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
@@ -499,7 +518,7 @@ function AppContent() {
               Lesezeichen keine leere Flaeche zeigt. Inhalte (EbookView, API-Client,
               Backend-Router, Dateien) bleiben fuer den Marketing-Pass erhalten. */}
           <Route path="/ebooks" element={<Navigate to="/pricing" replace />} />
-          <Route path="/ersatzteile" element={<Guard authed={!!user} loading={isLoading}><ErsatzteileView /></Guard>} />
+          <Route path="/ersatzteile" element={<ErsatzteileNichtVerfuegbar />} />
           <Route path="/pricing" element={<PricingView />} />
           <Route path="/settings" element={<Guard authed={!!user} loading={isLoading}><SettingsView /></Guard>} />
           <Route path="/help" element={<Guard authed={!!user} loading={isLoading}><HelpView /></Guard>} />

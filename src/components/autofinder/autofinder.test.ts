@@ -98,7 +98,9 @@ test('A: /autofinder ist registriert, in der App-Shell und OHNE <Guard>', () => 
 
 test('A2: geschützte Routen behalten den <Guard>', () => {
   // /kaufcheck und /verkaufscheck müssen weiterhin hinter <Guard> liegen.
-  for (const path of ['/chat', '/kaufcheck', '/verkaufscheck', '/entdecken', '/ersatzteile', '/pricing']) {
+  // '/ersatzteile' ist hier bewusst nicht mehr gelistet: die Route zeigt nur einen neutralen Hinweis und braucht
+  // keinen Guard (siehe Test 'Ersatzteile J').
+  for (const path of ['/chat', '/kaufcheck', '/verkaufscheck', '/entdecken', '/pricing']) {
     const re = new RegExp(`path="${path.replace('/', '\\/')}"[\\s\\S]{0,120}?<Guard`)
     assert.match(appTsx, re, `${path} ohne <Guard>`)
   }
@@ -573,8 +575,13 @@ test('Ersatzteile I: keine andere sichtbare Consumer-Navigation zu /ersatzteile'
   assert.doesNotMatch(appTsx, /(to=|navigate\()\s*['"]\/ersatzteile['"]/)
   assert.doesNotMatch(appTsx, /label:\s*['"]Ersatzteile['"]/)
 })
-test('Ersatzteile J: Route bleibt technisch erhalten (geparkt, nur nicht in der Nav)', () => {
-  assert.match(appTsx, /path="\/ersatzteile" element=\{<Guard[\s\S]{0,80}<ErsatzteileView \/>/)
+test('Ersatzteile J: /ersatzteile zeigt nur den neutralen Hinweis, kein Suchformular und keine Suchanfrage', () => {
+  // Bisher: Route bleibt als Guard + ErsatzteileView erhalten (geparkt). Jetzt stillgelegt: nur Hinweis.
+  assert.match(appTsx, /path="\/ersatzteile" element=\{<ErsatzteileNichtVerfuegbar \/>\}/)
+  assert.match(appTsx, /Die Ersatzteilsuche ist derzeit nicht verfügbar\./)
+  assert.doesNotMatch(appTsx, /<ErsatzteileView|import ErsatzteileView|apiErsatzteilSuche/)
+  const hinweis = appTsx.slice(appTsx.indexOf('function ErsatzteileNichtVerfuegbar'), appTsx.indexOf('// ── 404'))
+  assert.doesNotMatch(hinweis, /<form|<input|fetch\(|api[A-Z]\w+\(|Abo|Upgrade|freischalt|Tarif/i)
 })
 
 test('History BUG2: Restore feuert ein Event, die Seite reagiert auch wenn schon offen', () => {

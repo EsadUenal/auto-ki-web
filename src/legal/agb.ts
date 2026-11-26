@@ -20,7 +20,6 @@ Je nach gewählter Funktion stellt ENFAL unter anderem folgende Leistungen berei
 - KI-Chat
 - Kaufcheck
 - Verkaufscheck
-- Ersatzteilsuche
 - Fahrzeuginformationen
 - digitale Produkte (z. B. E-Books)
 - weitere zukünftige Funktionen
