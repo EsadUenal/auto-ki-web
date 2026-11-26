@@ -27,6 +27,7 @@ import {
   loescheForm,
   baueInsights,
   budgetCheck,
+  fehlendeLaufendeAngaben,
   vergleiche,
   starteVergleich,
   type AutokostenForm,
@@ -146,14 +147,13 @@ test('C: Elektro rechnet mit kWh und Ladepreis', () => {
 // ── D) Monat = Jahr / 12 ───────────────────────────────────────────────────
 test('D: jede Monatskomponente ist der Jahreswert / 12', () => {
   const f = form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '7', garageMonat: '80',
-    finanzierungMonat: '199', wertverlustJahr: '1800' })
+    wertverlustJahr: '1800' })
   const e = berechne(f)
   assert.ok(nahe(e.wirtschaftlichMonat, e.wirtschaftlichJahr / 12))
   assert.ok(nahe(e.energieMonat, e.energieJahr / 12))
   assert.ok(nahe(e.posten.find((p) => p.key === 'versicherung')!.monat, 900 / 12))
   assert.ok(nahe(e.posten.find((p) => p.key === 'wertverlust')!.monat, 1800 / 12))
   assert.ok(nahe(e.posten.find((p) => p.key === 'garage')!.monat, 80))
-  assert.ok(nahe(e.finanzierungMonat, 199))
 })
 
 // ── E) Kosten pro Kilometer ────────────────────────────────────────────────
@@ -165,43 +165,35 @@ test('E: kostenProKm = wirtschaftlichJahr / kmProJahr', () => {
 })
 
 // ══════════════════════════════════════════════════════════════════════════
-// §2/§30 — WIRTSCHAFTLICHE KOSTEN vs. KONTOBELASTUNG (keine Doppelzählung)
+// AK-02 — LAUFENDE AUSGABEN (Monatsdurchschnitt) vs. WIRTSCHAFTLICHE KOSTEN (inkl. Wertverlust)
 // ══════════════════════════════════════════════════════════════════════════
-test('F: die Finanzierungsrate erhöht die wirtschaftlichen Kosten NICHT', () => {
-  const ohne = berechne(form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6', wertverlustJahr: '2000' }))
-  const mit = berechne(form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6', wertverlustJahr: '2000',
-    finanzierungMonat: '350' }))
-  // Der Fahrzeugwert steckt bereits im Wertverlust — die Rate darf ihn nicht doppeln.
-  assert.ok(nahe(mit.wirtschaftlichJahr, ohne.wirtschaftlichJahr))
-  assert.ok(nahe(mit.wirtschaftlichMonat, ohne.wirtschaftlichMonat))
-  // ... sie erhöht aber die tatsächliche monatliche Belastung
-  assert.ok(nahe(mit.cashBelastungMonat - ohne.cashBelastungMonat, 350))
-  assert.equal(mit.hatFinanzierung, true)
-  assert.equal(ohne.hatFinanzierung, false)
-  // Die Rate taucht in KEINEM Kostenposten auf (sonst stünde sie doch im Kuchen).
-  assert.equal(mit.posten.some((p) => (p.key as string) === 'finanzierung'), false)
+// AK-02: Die frühere Finanzierungsrate ist entfernt (Produktregel). Die Tests F/F2 sicherten die Rate als
+// "separate Kontobelastung" ab; gesichert wird jetzt die Trennung der beiden Kostengrößen ohne Rate.
+test('F: laufende Ausgaben und wirtschaftliche Kosten sind getrennte Größen; der Wertverlust ist nur in der zweiten', () => {
+  const ohne = berechne(form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6' }))
+  const mit = berechne(form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6', wertverlustJahr: '2000' }))
+  assert.ok(nahe(mit.laufendeCashMonat, ohne.laufendeCashMonat))            // Wertverlust ändert die laufenden Ausgaben nicht
+  assert.ok(nahe(mit.wirtschaftlichMonat - ohne.wirtschaftlichMonat, 2000 / 12))
+  assert.equal(mit.posten.find((p) => p.key === 'wertverlust')?.cash, false)  // Aufwand, keine Abbuchung
+  assert.equal('cashBelastungMonat' in mit, false)
+  assert.equal('finanzierungMonat' in mit, false)
 })
 
-test('F2: konkretes Auftragsbeispiel — 471 € wirtschaftlich, Rate separat', () => {
+test('F2: konkretes Auftragsbeispiel — 471 € wirtschaftlich, 305 € laufend (ohne Rate)', () => {
   const f = form({
     kmProJahr: '15000', kraftstoff: 'benzin', verbrauch: '6,5', preisBenzin: '1,75',
     versicherungJahr: '900', steuerJahr: '150', wartungJahr: '600', reifenJahr: '300',
-    wertverlustJahr: '2000', finanzierungMonat: '350',
+    wertverlustJahr: '2000',
   })
   const e = berechne(f)
   assert.ok(nahe(e.wirtschaftlichMonat, 5656.25 / 12))          // 471,35 €
   assert.ok(nahe(e.laufendeCashMonat, (5656.25 - 2000) / 12))   // 304,69 €
-  assert.ok(nahe(e.cashBelastungMonat, (5656.25 - 2000) / 12 + 350))
-  // NICHT 821 € als "wirtschaftliche Autokosten"
-  assert.ok(e.wirtschaftlichMonat < 500)
 })
 
-test('F3: laufende Cash-Ausgaben sind wirtschaftliche Kosten minus Wertverlust', () => {
+test('F3: laufende Ausgaben sind wirtschaftliche Kosten minus Wertverlust', () => {
   const e = berechne(form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6', wertverlustJahr: '2400' }))
   assert.ok(nahe(e.laufendeCashJahr, e.wirtschaftlichJahr - 2400))
   assert.ok(nahe(e.laufendeCashMonat, e.laufendeCashJahr / 12))
-  // Ohne Finanzierung ist die Belastung genau die laufende Cash-Summe
-  assert.ok(nahe(e.cashBelastungMonat, e.laufendeCashMonat))
 })
 
 // ── G) Wertverlust ─────────────────────────────────────────────────────────
@@ -356,29 +348,49 @@ test('Budget: ohne Eingabe gibt es den Bereich nicht', () => {
   const f = form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6,5', wertverlustJahr: '2000' })
   assert.equal(budgetCheck(berechne(f), f), null)
 })
+// AK-02: Bezugsgröße ist jetzt der Monatsdurchschnitt der LAUFENDEN Ausgaben (304,69 € im BASIS-Fall), nicht mehr die
+// wirtschaftlichen Kosten inklusive Wertverlust (471,35 €). Die Erwartungen unten sind darauf umgestellt, nicht abgeschwächt.
+const BUDGET_BASIS = { ...BASIS, kraftstoff: 'benzin' as const, verbrauch: '6,5', wertverlustJahr: '2000' }
 test('Budget: über Budget wird sachlich beziffert, ohne Bewertung der Person', () => {
-  const f = form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6,5', wertverlustJahr: '2000',
-    budgetMonat: '400' })
+  const f = form({ ...BUDGET_BASIS, budgetMonat: '250' })
   const b = budgetCheck(berechne(f), f)!
   assert.equal(b.status, 'ueber')
-  assert.ok(nahe(b.differenz, 5656.25 / 12 - 400))     // ~71,35 €
-  assert.match(b.text, /über deinem/)
+  assert.ok(nahe(b.differenz, (5656.25 - 2000) / 12 - 250))     // ~54,69 €
+  assert.match(b.text, /über deinem Monatsbudget/)
   assert.doesNotMatch(b.text, /kannst du dir nicht leisten|leisten/)
 })
 test('Budget: unter und exakt gleich werden unterschieden', () => {
-  const basis = { ...BASIS, kraftstoff: 'benzin' as const, verbrauch: '6,5', wertverlustJahr: '2000' }
-  const unter = budgetCheck(berechne(form({ ...basis, budgetMonat: '600' })),
-    form({ ...basis, budgetMonat: '600' }))!
-  assert.equal(unter.status, 'unter')
-  assert.match(unter.text, /unter deinem/)
-  const gleichForm = form({ ...basis, budgetMonat: String(5656.25 / 12).replace('.', ',') })
+  const unter = form({ ...BUDGET_BASIS, budgetMonat: '600' })
+  const bu = budgetCheck(berechne(unter), unter)!
+  assert.equal(bu.status, 'unter')
+  assert.match(bu.text, /unter deinem Monatsbudget/)
+  const gleichForm = form({ ...BUDGET_BASIS, budgetMonat: String((5656.25 - 2000) / 12).replace('.', ',') })
   assert.equal(budgetCheck(berechne(gleichForm), gleichForm)!.status, 'gleich')
 })
-test('Budget: bezieht sich auf die wirtschaftlichen Kosten, nicht auf die Rate', () => {
-  const f = form({ ...BASIS, kraftstoff: 'benzin', verbrauch: '6,5', wertverlustJahr: '2000',
-    budgetMonat: '400', finanzierungMonat: '350' })
+test('Budget: Bezugsgröße sind die laufenden Ausgaben; die wirtschaftlichen Kosten stehen daneben', () => {
+  const f = form({ ...BUDGET_BASIS, budgetMonat: '400' })
   const e = berechne(f)
-  assert.ok(nahe(budgetCheck(e, f)!.kostenMonat, e.wirtschaftlichMonat))
+  const b = budgetCheck(e, f)!
+  assert.ok(nahe(b.laufendMonat, e.laufendeCashMonat))
+  assert.ok(nahe(b.wirtschaftlichMonat, e.wirtschaftlichMonat))
+  assert.equal(b.status, 'unter')            // 304,69 < 400, obwohl 471,35 über 400 läge
+})
+test('AK-02 Kontrollfall: laufend 350 €, wirtschaftlich 550 €, Budget 600 €, Abstand 250 €', () => {
+  const f = form({ ...EMPTY_FORM, kmProJahr: '8000', verbrauch: '10', preisBenzin: '1,50', versicherungJahr: '1200',
+    steuerJahr: '240', wartungJahr: '600', reifenJahr: '360', garageMonat: '50', wertverlustJahr: '2400',
+    budgetMonat: '600', kaufpreis: '20000' })
+  assert.deepEqual(validate(f), [])
+  const e = berechne(f)
+  assert.ok(nahe(e.energieJahr, 1200))
+  assert.ok(nahe(e.laufendeCashJahr, 4200) && nahe(e.laufendeCashMonat, 350))
+  assert.ok(nahe(e.wirtschaftlichJahr, 6600) && nahe(e.wirtschaftlichMonat, 550))
+  assert.equal(e.laufendUnvollstaendig, false)
+  assert.equal(e.wirtschaftlichUnvollstaendig, false)
+  const b = budgetCheck(e, f)!
+  assert.equal(b.status, 'unter')
+  assert.ok(nahe(b.differenz, -250))
+  assert.match(b.text.replace(/ /g, ' '), /250,00 € unter deinem Monatsbudget/)
+  assert.ok(nahe(b.wirtschaftlichMonat, 550))
 })
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -436,8 +448,7 @@ test('Vergleich: Benzin gegen Elektro rechnet beide Einheiten sauber', () => {
 })
 
 test('Vergleich-Start: gemeinsame Nutzung übernommen, Fahrzeugwerte NICHT', () => {
-  const a = form({ ...A_FORM, garageMonat: '80', budgetMonat: '400', kaufpreis: '20000',
-    finanzierungMonat: '250' })
+  const a = form({ ...A_FORM, garageMonat: '80', budgetMonat: '400', kaufpreis: '20000' })
   const b = starteVergleich(a)
   // übernommen: Nutzungsannahmen
   assert.equal(b.kmProJahr, '15000')
@@ -447,7 +458,7 @@ test('Vergleich-Start: gemeinsame Nutzung übernommen, Fahrzeugwerte NICHT', () 
   assert.equal(b.kraftstoff, 'benzin')
   // NICHT übernommen: alles Fahrzeugspezifische
   for (const feld of ['kaufpreis', 'verbrauch', 'versicherungJahr', 'steuerJahr', 'wartungJahr',
-    'reifenJahr', 'wertverlustJahr', 'finanzierungMonat'] as const) {
+    'reifenJahr', 'wertverlustJahr'] as const) {
     assert.equal(b[feld], '', `${feld} darf nicht kopiert werden`)
   }
 })
@@ -625,7 +636,7 @@ test('K2: die View stellt die letzte Berechnung beim Mount wieder her', () => {
 
 // ── §23 Ergebnisstruktur ───────────────────────────────────────────────────
 test('§23: Ergebnis folgt der geforderten Reihenfolge', () => {
-  const reihenfolge = ['<Hero', '<Budget', '<Projektion', '<Aufschluesselung', '<Cashflow',
+  const reihenfolge = ['<Hero', '<Budget', '<Projektion', '<Aufschluesselung', '<Kostenarten',
     '<WasWaereWenn', '<Vergleich', '<Wege']
   let letzte = -1
   for (const marke of reihenfolge) {
@@ -645,7 +656,145 @@ test('§3: Hero zeigt Monat, Jahr, km und die 1/3/5-Jahres-Sicht mit Annahme-Hin
   assert.match(ergebnisSrc, /keine Prognose von Kraftstoffpreisen/i)
   assert.match(ergebnisSrc, /Kaufpreis ist hier nicht zusätzlich enthalten/)
 })
-test('§2: die Doppelzählungs-Erklärung steht in der Oberfläche', () => {
-  assert.match(ergebnisSrc, /nicht zusätzlich\s*\n?\s*vollständig als wirtschaftlicher Fahrzeugkostenblock/)
-  assert.match(ergebnisSrc, /doppelt erfasst/)
+test('§2: die Erklärung zu Monatsanteilen und Wertverlust steht in der Oberfläche', () => {
+  assert.match(ergebnisSrc, /rechnerische\s+Monatsanteile, keine tatsächliche monatliche Abbuchung/)
+  assert.match(ergebnisSrc, /Wertverlust ist ein wirtschaftlicher\s+Aufwand, kein Kontoabgang/)
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// AK-01 bis AK-03
+// ══════════════════════════════════════════════════════════════════════════
+const KONTROLL = form({ ...EMPTY_FORM, kmProJahr: '8000', verbrauch: '10', preisBenzin: '1,50', versicherungJahr: '1200',
+  steuerJahr: '240', wartungJahr: '600', reifenJahr: '360', garageMonat: '50', wertverlustJahr: '2400',
+  budgetMonat: '600', kaufpreis: '20000' })
+
+test('AK-02: die Finanzierungsrate ist aus Formular, Berechnung, Ergebnis, Vergleich und Demo entfernt', () => {
+  const showcaseSrc = readFileSync(join(here, '..', 'landing', 'showcase.ts'), 'utf8')
+  const code = (src: string) => src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  for (const [name, src] of [['logic', logicSrc], ['view', viewSrc], ['ergebnis', ergebnisSrc], ['showcase', showcaseSrc]] as const) {
+    assert.doesNotMatch(code(src), /finanzier|kredit|leasing|zins|tilgung|\bRate\b|Raten/i, `${name}: Finanzierungsbezug übrig`)
+  }
+  assert.equal('finanzierungMonat' in EMPTY_FORM, false)
+  assert.equal('finanzierungMonat' in BEISPIEL_FORM, false)
+  assert.equal(validate({ ...KONTROLL, finanzierungMonat: 'abc' } as unknown as AutokostenForm).length, 0)  // Alt-Schlüssel wird nicht geprüft
+})
+
+test('AK-02: alter Speicherstand mit Rate — gleiche Rechnung, übrige Angaben erhalten, Rate nach dem Speichern entfernt', () => {
+  const store = fakeStorage()
+  const alt = { ...KONTROLL, finanzierungMonat: '350' }
+  store['vira.autokosten.form'] = JSON.stringify(alt)                 // so lag er früher im localStorage
+  const geladen = ladeForm()!
+  assert.equal('finanzierungMonat' in geladen, false)                 // keine Wiederanzeige
+  assert.equal(geladen.kmProJahr, '8000')                             // übrige Angaben bleiben
+  assert.equal(geladen.wartungJahr, '600')
+  assert.equal(geladen.budgetMonat, '600')
+  const e = berechne(geladen), ohne = berechne(KONTROLL)
+  assert.deepEqual(e, ohne)                                           // keine Weiterberechnung
+  assert.ok(nahe(e.laufendeCashMonat, 350))                           // nicht 700
+  speichereForm(geladen)
+  assert.equal('finanzierungMonat' in JSON.parse(store['vira.autokosten.form']), false)
+  assert.equal(JSON.parse(store['vira.autokosten.form']).kmProJahr, '8000')
+  // kein pauschales Löschen: ein fremder Schlüssel bleibt unberührt
+  store['anderer.schluessel'] = 'bleibt'
+  speichereForm(geladen)
+  assert.equal(store['anderer.schluessel'], 'bleibt')
+})
+
+test('AK-02: Beschriftungen — beide Kostengrößen unabhängig sichtbar, Budgetfeld als Monatsbudget für laufende Ausgaben', () => {
+  assert.match(ergebnisSrc, /Laufende Ausgaben im Monatsdurchschnitt/)
+  assert.match(ergebnisSrc, /Wirtschaftliche Kosten inklusive Wertverlust/)
+  assert.match(ergebnisSrc, /<Kostenarten e=\{ergebnis\} \/>/)
+  assert.doesNotMatch(ergebnisSrc, /if \(!e\.hat/)                    // Abschnitt hängt an keiner Bedingung mehr
+  assert.match(viewSrc, /Dein Monatsbudget für laufende Ausgaben/)
+  assert.doesNotMatch(viewSrc, /Dein maximales Autobudget/)
+  assert.match(ergebnisSrc, /keine tatsächliche monatliche Abbuchung/)
+})
+
+test('AK-03: Versicherung/Steuer/Wartung/Reifen — ausgefüllt, leer und ausdrücklich 0', () => {
+  const felder = [['versicherungJahr', 1200, 'Versicherung'], ['steuerJahr', 240, 'Kfz-Steuer'],
+    ['wartungJahr', 600, 'Wartung / Inspektion'], ['reifenJahr', 360, 'Reifen']] as const
+  const vollMonat = berechne(KONTROLL).wirtschaftlichMonat
+  for (const [feld, wert, label] of felder) {
+    const leer = form({ ...KONTROLL, [feld]: '' })
+    const null0 = form({ ...KONTROLL, [feld]: '0' })
+    assert.deepEqual(validate(leer), []); assert.deepEqual(validate(null0), [])      // beides gültig
+    const el = berechne(leer), en = berechne(null0)
+    assert.ok(nahe(el.wirtschaftlichMonat, vollMonat - wert / 12))                     // keine erfundenen Kosten
+    assert.ok(nahe(en.wirtschaftlichMonat, el.wirtschaftlichMonat))                    // gleiche Rechnung ...
+    assert.deepEqual(el.fehlendLaufend, [label]); assert.equal(el.laufendUnvollstaendig, true)   // ... leer ist FEHLEND
+    assert.deepEqual(en.fehlendLaufend, []); assert.equal(en.laufendUnvollstaendig, false)       // 0 ist eine Angabe
+  }
+  assert.deepEqual(fehlendeLaufendeAngaben(form({ ...KONTROLL, versicherungJahr: '', reifenJahr: '' })), ['Versicherung', 'Reifen'])
+})
+
+test('AK-03: Budget bei fehlenden laufenden Kosten — kein uneingeschränktes "unter Budget"', () => {
+  const f = form({ ...KONTROLL, wartungJahr: '', reifenJahr: '' })        // laufend bekannt: 4200 - 960 = 3240 -> 270 €/Monat
+  const b = budgetCheck(berechne(f), f)!
+  assert.equal(b.unvollstaendig, true)
+  assert.equal(b.status, 'offen')
+  assert.deepEqual(b.fehlend, ['Wartung / Inspektion', 'Reifen'])
+  assert.match(b.text, /Zwischensumme/)
+  assert.match(b.text, /Es fehlen: Wartung \/ Inspektion, Reifen\./)
+  assert.doesNotMatch(b.text, /liegen im Monatsdurchschnitt etwa [\d.,]+ € unter deinem Monatsbudget\./)
+  // Liegen schon die bekannten Ausgaben über dem Budget, darf das eingeschränkt gesagt werden.
+  const knapp = form({ ...f, budgetMonat: '200' })
+  const bk = budgetCheck(berechne(knapp), knapp)!
+  assert.equal(bk.status, 'ueber')
+  assert.match(bk.text, /Schon die bekannten laufenden Ausgaben liegen/)
+  assert.match(bk.text, /Zwischensumme/)
+})
+
+test('AK-03: fehlender Wertverlust ist getrennt von fehlenden laufenden Kosten', () => {
+  const nurWertverlust = berechne(form({ ...KONTROLL, wertverlustJahr: '' }))
+  assert.equal(nurWertverlust.laufendUnvollstaendig, false)               // laufende Ausgaben vollständig
+  assert.equal(nurWertverlust.wirtschaftlichUnvollstaendig, true)         // wirtschaftliche Gesamtsicht nicht
+  assert.equal(nurWertverlust.hatWertverlust, false)
+  const f = form({ ...KONTROLL, wertverlustJahr: '' })
+  const b = budgetCheck(berechne(f), f)!
+  assert.equal(b.status, 'unter')                                          // laufend vollständig -> klare Aussage
+  assert.equal(b.unvollstaendig, false)
+  const nurLaufend = berechne(form({ ...KONTROLL, steuerJahr: '' }))
+  assert.equal(nurLaufend.laufendUnvollstaendig, true)
+  assert.equal(nurLaufend.hatWertverlust, true)
+  assert.match(ergebnisSrc, /deine laufenden Ausgaben sind davon nicht betroffen/)
+})
+
+test('AK-01/05: kaufpreis-relation — vollständiger Satz, richtige Rechengröße, Zwischensumme bei Lücken', () => {
+  const text = (f: AutokostenForm) => baueInsights(berechne(f), f).find((i) => i.key === 'kaufpreis-relation')!.text.replace(/ /g, ' ')
+  const voll = text(KONTROLL)                                              // 6600 x 5 = 33000 = 1,7 x 20000
+  assert.equal(voll, 'Bei gleichbleibenden Annahmen summieren sich die wirtschaftlichen Kosten inklusive Wertverlust in '
+    + 'fünf Jahren auf 33.000,00 €. Das ist das 1,7-fache des Kaufpreises.')
+  assert.doesNotMatch(voll, /laufenden Kosten/)
+  assert.doesNotMatch(voll, /\. das /)                                    // kein Satzanfang in Kleinschreibung
+  const ohneWert = text(form({ ...KONTROLL, wertverlustJahr: '' }))        // 4200 x 5 = 21000
+  assert.match(ohneWert, /bisher erfassten Kosten/); assert.match(ohneWert, /Zwischensumme, keine vollständigen wirtschaftlichen Gesamtkosten/)
+  assert.doesNotMatch(ohneWert, /inklusive Wertverlust/)
+  const luecke = text(form({ ...KONTROLL, steuerJahr: '' }))
+  assert.match(luecke, /Zwischensumme/)
+  const einsichten = baueInsights(berechne(form({ ...KONTROLL, wertverlustJahr: '' })), KONTROLL)
+  assert.ok(einsichten.some((i) => i.key === 'kein-wertverlust' && /fehlt die wirtschaftliche Gesamtsicht/.test(i.text)))
+  assert.match(ergebnisSrc, /Bei gleichbleibenden Annahmen/)               // Hinweis zur konstanten Hochrechnung bleibt
+})
+
+test('AK-03: Simulator und A/B-Vergleich behalten die Unterscheidung leer / 0', () => {
+  // Simulator: derselbe Rechenkern, die Zwischensumme wird angezeigt
+  const sim = berechne(form({ ...KONTROLL, versicherungJahr: '' }))
+  assert.equal(sim.laufendUnvollstaendig, true)
+  assert.match(ergebnisSrc, /simErgebnis\.wirtschaftlichUnvollstaendig \? ' \(Zwischensumme\)'/)
+  assert.match(ergebnisSrc, /simErgebnis\.laufendUnvollstaendig/)
+  // Vergleich: Auto B startet ohne Fixkosten -> fehlend, nicht 0
+  const b0 = berechne({ ...starteVergleich(KONTROLL), verbrauch: '6', preisBenzin: '1,50' })
+  assert.deepEqual(b0.fehlendLaufend, ['Versicherung', 'Kfz-Steuer', 'Wartung / Inspektion', 'Reifen'])
+  const b1 = berechne({ ...starteVergleich(KONTROLL), verbrauch: '6', preisBenzin: '1,50', versicherungJahr: '0',
+    steuerJahr: '0', wartungJahr: '0', reifenJahr: '0' })
+  assert.deepEqual(b1.fehlendLaufend, [])
+  assert.match(ergebnisSrc, /a\.wirtschaftlichUnvollstaendig \|\| b\.wirtschaftlichUnvollstaendig/)
+  assert.match(ergebnisSrc, /Zwischensumme, nicht vollständig vergleichbar/)
+  assert.match(ergebnisSrc, /trage 0 ausdrücklich ein/)
+})
+
+test('AK-03: das Formular erklärt leer gegenüber 0 und erfindet nichts', () => {
+  assert.match(viewSrc, /Leere Felder gelten als nicht angegeben/)
+  assert.match(viewSrc, /trage ausdrücklich 0 ein/)
+  assert.equal(BEISPIEL_FORM.garageMonat, '')                               // Demo setzt keine Zusatzwerte
 })

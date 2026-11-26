@@ -88,7 +88,6 @@ export const SHOWCASE_KOSTEN_FORM: AutokostenForm = {
   wartungJahr: '540',
   reifenJahr: '260',
   garageMonat: '',
-  finanzierungMonat: '',
   wertverlustJahr: '1900',
   budgetMonat: '',
 }

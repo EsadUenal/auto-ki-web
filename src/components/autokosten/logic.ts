@@ -11,17 +11,19 @@
 // keine zweite Formel, die auseinanderlaufen könnte. Gerundet wird ausschließlich
 // in der Darstellung (`formatEuro` & Co.), nie im Rechenkern.
 //
-// WIRTSCHAFTLICHE KOSTEN ≠ KONTOBELASTUNG
-// ---------------------------------------
-// Eine Finanzierungsrate ist KEIN zusätzlicher wirtschaftlicher Kostenblock: sie
-// enthält im Kern die Rückzahlung des Fahrzeugwerts, dessen Verzehr bereits im
-// Wertverlust steckt. Beides zu addieren zählt das Auto doppelt. Deshalb zwei
-// getrennte Kennzahlen:
+// LAUFENDE AUSGABEN ≠ WIRTSCHAFTLICHE KOSTEN
+// ------------------------------------------
+// Zwei getrennte Kennzahlen, beide direkt aus den Angaben:
 //
-//   wirtschaftlichJahr  = Energie + Fixkosten + Stellplatz + Wertverlust
-//   cashBelastungMonat  = laufende Cash-Ausgaben (ohne Wertverlust) + Rate
+//   laufendeCashMonat   = Energie + Fixkosten + Stellplatz, als MONATSDURCHSCHNITT
+//                         (jährliche und unregelmäßige Zahlungen sind rechnerische Monatsanteile,
+//                         keine tatsächliche monatliche Abbuchung)
+//   wirtschaftlichMonat = laufende Ausgaben + Wertverlust
+//                         (Wertverlust ist ein wirtschaftlicher Aufwand, keine Abbuchung)
 //
-// Zins- und Tilgungsanteil werden NICHT geschätzt: bekannt ist nur die Rate.
+// Fehlende Angaben: Versicherung, Steuer, Wartung und Reifen können leer sein (nicht angegeben)
+// oder ausdrücklich 0 (fällt nicht an). Leer wird wie 0 gerechnet, aber als FEHLEND benannt: das
+// Ergebnis ist dann eine Zwischensumme. Es wird nie ein Wert erfunden.
 
 export type Kraftstoff = 'benzin' | 'diesel' | 'elektro'
 
@@ -47,16 +49,15 @@ export interface AutokostenForm {
   reifenJahr: string
   // Optional
   garageMonat: string        // €/Monat
-  finanzierungMonat: string   // €/Monat — nur die Rate, KEINE Zinsrechnung
   wertverlustJahr: string     // €/Jahr — leer = nicht berücksichtigt
-  budgetMonat: string         // €/Monat — optionales eigenes Autobudget
+  budgetMonat: string         // €/Monat — optionales Monatsbudget für LAUFENDE Ausgaben
 }
 
 export const EMPTY_FORM: AutokostenForm = {
   kaufpreis: '', kraftstoff: 'benzin', verbrauch: '', kmProJahr: '',
   preisBenzin: '', preisDiesel: '', preisStrom: '',
   versicherungJahr: '', steuerJahr: '', wartungJahr: '', reifenJahr: '',
-  garageMonat: '', finanzierungMonat: '', wertverlustJahr: '', budgetMonat: '',
+  garageMonat: '', wertverlustJahr: '', budgetMonat: '',
 }
 
 /** BEISPIELWERTE — ausdrücklich Demo-Zahlen, KEINE Marktdurchschnitte und keine
@@ -68,7 +69,7 @@ export const BEISPIEL_FORM: AutokostenForm = {
   kaufpreis: '20000', kraftstoff: 'benzin', verbrauch: '6,5', kmProJahr: '15000',
   preisBenzin: '', preisDiesel: '', preisStrom: '',
   versicherungJahr: '900', steuerJahr: '150', wartungJahr: '600', reifenJahr: '300',
-  garageMonat: '', finanzierungMonat: '', wertverlustJahr: '2000', budgetMonat: '',
+  garageMonat: '', wertverlustJahr: '2000', budgetMonat: '',
 }
 
 // ── Zahl-Parsing (deutsche Eingabe: Komma als Dezimaltrenner) ────────────────
@@ -108,9 +109,8 @@ const OPTIONAL_NICHT_NEGATIV: { feld: keyof AutokostenForm; label: string }[] = 
   { feld: 'wartungJahr', label: 'Wartung' },
   { feld: 'reifenJahr', label: 'Reifen' },
   { feld: 'garageMonat', label: 'Stellplatz' },
-  { feld: 'finanzierungMonat', label: 'Finanzierungsrate' },
   { feld: 'wertverlustJahr', label: 'Wertverlust' },
-  { feld: 'budgetMonat', label: 'Autobudget' },
+  { feld: 'budgetMonat', label: 'Monatsbudget' },
 ]
 
 export function energiePreisFeld(k: Kraftstoff): keyof AutokostenForm {
@@ -149,6 +149,26 @@ export function validate(form: AutokostenForm): FeldFehler[] {
   return fehler
 }
 
+// ── Fehlende Angaben ────────────────────────────────────────────────────────
+
+/** Positionen, deren Fehlen das Ergebnis zur Zwischensumme macht. Leer = nicht angegeben,
+ *  ausdrücklich 0 = gültige Nutzerannahme (fällt nicht an). */
+export const LAUFEND_PFLICHT: { feld: keyof AutokostenForm; label: string }[] = [
+  { feld: 'versicherungJahr', label: 'Versicherung' },
+  { feld: 'steuerJahr', label: 'Kfz-Steuer' },
+  { feld: 'wartungJahr', label: 'Wartung / Inspektion' },
+  { feld: 'reifenJahr', label: 'Reifen' },
+]
+
+export function fehlendeLaufendeAngaben(form: AutokostenForm): string[] {
+  return LAUFEND_PFLICHT.filter(({ feld }) => ((form[feld] as string) ?? '').trim() === '').map((p) => p.label)
+}
+
+/** Satz zu fehlenden Positionen, "" wenn nichts fehlt. */
+export function fehlendText(fehlend: string[]): string {
+  return fehlend.length === 0 ? '' : `Es fehlen: ${fehlend.join(', ')}.`
+}
+
 // ── Berechnung (deterministisch) ────────────────────────────────────────────
 
 export type PostenKey =
@@ -176,19 +196,21 @@ export interface AutokostenErgebnis {
   // Aufschlüsselung
   posten: Posten[]              // absteigend nach Jahreskosten, nur > 0
 
-  // A) wirtschaftliche Kosten — MIT Wertverlust, OHNE Finanzierungsrate
+  // A) wirtschaftliche Kosten — laufende Ausgaben PLUS Wertverlust
   wirtschaftlichJahr: number
   wirtschaftlichMonat: number
   kostenProKm: number
   hatWertverlust: boolean
   wertverlustJahr: number
 
-  // B) Kontobelastung / Cashflow
+  // B) laufende Ausgaben im Monatsdurchschnitt (ohne Wertverlust)
   laufendeCashJahr: number      // wirtschaftlich minus Wertverlust
   laufendeCashMonat: number
-  finanzierungMonat: number
-  cashBelastungMonat: number    // laufende Cash-Ausgaben + Finanzierungsrate
-  hatFinanzierung: boolean
+
+  // Vollständigkeit: fehlende (leere) Pflichtpositionen und was daraus folgt
+  fehlendLaufend: string[]              // z. B. ['Versicherung', 'Wartung'], leer = vollständig
+  laufendUnvollstaendig: boolean        // laufende Ausgaben sind eine Zwischensumme
+  wirtschaftlichUnvollstaendig: boolean // Wertverlust oder laufende Position fehlt
 
   // Projektion unter unveränderten Annahmen
   projektion: { jahre: number; kosten: number }[]
@@ -204,10 +226,9 @@ const PROJEKTIONS_JAHRE = [1, 3, 5]
  *
  * wirtschaftlich_jahr = energie + versicherung + steuer + wartung + reifen
  *                       + garage*12 + wertverlust
- *                       (KEINE Finanzierungsrate — siehe Dateikopf)
  * wirtschaftlich_monat = wirtschaftlich_jahr / 12
  * kosten_pro_km        = wirtschaftlich_jahr / km_jahr   (km_jahr > 0)
- * cash_belastung_monat = (wirtschaftlich_jahr - wertverlust)/12 + rate
+ * laufende_ausgaben_monat = (wirtschaftlich_jahr - wertverlust)/12   (Monatsdurchschnitt)
  *
  * Setzt eine zuvor bestandene `validate()` voraus.
  */
@@ -229,7 +250,6 @@ export function berechne(form: AutokostenForm): AutokostenErgebnis {
   const wartungJahr = parseOptional(form.wartungJahr) || 0
   const reifenJahr = parseOptional(form.reifenJahr) || 0
   const garageMonat = parseOptional(form.garageMonat) || 0
-  const finanzierungMonat = parseOptional(form.finanzierungMonat) || 0
   const wertverlustRoh = parseLeerbar(form.wertverlustJahr)
   const hatWertverlust = wertverlustRoh !== null && Number.isFinite(wertverlustRoh)
   const wertverlustJahr = hatWertverlust ? (wertverlustRoh as number) : 0
@@ -242,6 +262,7 @@ export function berechne(form: AutokostenForm): AutokostenErgebnis {
   const kostenProKm = kmSicher > 0 ? wirtschaftlichJahr / kmSicher : 0
 
   const laufendeCashJahr = wirtschaftlichJahr - wertverlustJahr
+  const fehlendLaufend = fehlendeLaufendeAngaben(form)
   const laufendeCashMonat = laufendeCashJahr / 12
 
   const roh: { key: PostenKey; label: string; jahr: number; cash: boolean }[] = [
@@ -276,9 +297,9 @@ export function berechne(form: AutokostenForm): AutokostenErgebnis {
     wertverlustJahr,
     laufendeCashJahr,
     laufendeCashMonat,
-    finanzierungMonat,
-    cashBelastungMonat: laufendeCashMonat + finanzierungMonat,
-    hatFinanzierung: finanzierungMonat > 0,
+    fehlendLaufend,
+    laufendUnvollstaendig: fehlendLaufend.length > 0,
+    wirtschaftlichUnvollstaendig: fehlendLaufend.length > 0 || !hatWertverlust,
     projektion: PROJEKTIONS_JAHRE.map((jahre) => ({ jahre, kosten: wirtschaftlichJahr * jahre })),
   }
 }
@@ -320,25 +341,29 @@ export function baueInsights(e: AutokostenErgebnis, form: AutokostenForm): Insig
   if (e.hatWertverlust) {
     out.push({
       key: 'cash',
-      text: `Ohne den Wertverlust gehen ${formatEuro(e.laufendeCashMonat)} pro Monat tatsächlich `
-        + `vom Konto ab; mit Wertverlust kostet dich das Auto wirtschaftlich `
-        + `${formatEuro(e.wirtschaftlichMonat)}.`,
+      text: `Deine laufenden Ausgaben liegen im Monatsdurchschnitt bei ${formatEuro(e.laufendeCashMonat)}. `
+        + `Der Wertverlust ist ein wirtschaftlicher Aufwand, keine monatliche Abbuchung; mit ihm kostet `
+        + `dich das Auto wirtschaftlich ${formatEuro(e.wirtschaftlichMonat)} pro Monat.`,
     })
   } else {
     out.push({
       key: 'kein-wertverlust',
-      text: 'Ohne Angabe zum Wertverlust rechnet ENFAL nur mit den laufenden Kosten. '
-        + 'Deine tatsächlichen wirtschaftlichen Kosten liegen dadurch höher.',
+      text: 'Ohne Angabe zum Wertverlust fehlt die wirtschaftliche Gesamtsicht. Angezeigt werden nur die '
+        + 'laufenden Ausgaben; der tatsächliche wirtschaftliche Aufwand liegt höher.',
     })
   }
   const kaufpreis = parseZahl(form.kaufpreis)
   if (Number.isFinite(kaufpreis) && kaufpreis > 0) {
     const fuenf = e.wirtschaftlichJahr * 5
-    out.push({
-      key: 'kaufpreis-relation',
-      text: `In fünf Jahren summieren sich die laufenden Kosten auf ${formatEuro(fuenf)}. `
-        + `das ${formatFaktor(fuenf / kaufpreis)} des Kaufpreises.`,
-    })
+    const faktor = formatFaktor(fuenf / kaufpreis)
+    // Die Rechengröße ist wirtschaftlichJahr x 5. Vollständig nur mit Wertverlust UND allen Pflichtpositionen.
+    const text = e.wirtschaftlichUnvollstaendig
+      ? `Bei gleichbleibenden Annahmen summieren sich die bisher erfassten Kosten in fünf Jahren auf `
+        + `${formatEuro(fuenf)}. Das ist eine Zwischensumme, keine vollständigen wirtschaftlichen Gesamtkosten. `
+        + `Sie ist das ${faktor} des Kaufpreises.`
+      : `Bei gleichbleibenden Annahmen summieren sich die wirtschaftlichen Kosten inklusive Wertverlust in `
+        + `fünf Jahren auf ${formatEuro(fuenf)}. Das ist das ${faktor} des Kaufpreises.`
+    out.push({ key: 'kaufpreis-relation', text })
   }
   return out
 }
@@ -347,33 +372,54 @@ export function baueInsights(e: AutokostenErgebnis, form: AutokostenForm): Insig
 
 export interface BudgetCheck {
   budgetMonat: number
-  kostenMonat: number
-  differenz: number            // + = über Budget
-  status: 'unter' | 'gleich' | 'ueber'
+  /** Laufende Ausgaben im Monatsdurchschnitt (Bezugsgröße des Status). */
+  laufendMonat: number
+  /** Wirtschaftliche Kosten inklusive Wertverlust — zur Orientierung daneben, nicht Bezugsgröße. */
+  wirtschaftlichMonat: number
+  differenz: number            // laufend minus Budget; + = über Budget
+  /** 'offen' = laufende Ausgaben unvollständig und nicht schon über dem Budget: kein "unter Budget". */
+  status: 'unter' | 'gleich' | 'ueber' | 'offen'
+  unvollstaendig: boolean
+  fehlend: string[]
   text: string
 }
 
 /**
- * Vergleicht die wirtschaftlichen Monatskosten mit dem SELBST gesetzten Budget.
- * Keine Finanzberatung, keine Gehaltsannahme, kein "kannst du dir nicht leisten".
+ * Vergleicht die LAUFENDEN Ausgaben im Monatsdurchschnitt mit dem selbst gesetzten Monatsbudget für
+ * laufende Ausgaben. Der Wertverlust ist ein wirtschaftlicher Aufwand und bleibt daneben sichtbar.
+ * Fehlen laufende Positionen, ist der Wert eine Zwischensumme: "unter Budget" wird dann nicht
+ * behauptet, "über Budget" nur als Aussage über die bekannten Ausgaben. Keine Finanzberatung.
  * `null`, wenn kein Budget eingegeben wurde — dann entfällt der ganze Bereich.
  */
 export function budgetCheck(e: AutokostenErgebnis, form: AutokostenForm): BudgetCheck | null {
   const budget = parseLeerbar(form.budgetMonat)
   if (budget === null || !Number.isFinite(budget) || budget <= 0) return null
-  const kosten = e.wirtschaftlichMonat
-  const differenz = kosten - budget
-  const status: BudgetCheck['status'] =
+  const laufend = e.laufendeCashMonat
+  const differenz = laufend - budget
+  const unvollstaendig = e.laufendUnvollstaendig
+  const rohStatus: 'unter' | 'gleich' | 'ueber' =
     Math.abs(differenz) < 0.005 ? 'gleich' : differenz > 0 ? 'ueber' : 'unter'
-  const text =
-    status === 'ueber'
-      ? `Das Auto liegt nach deinen Annahmen etwa ${formatEuro(differenz)} pro Monat über deinem `
-        + 'selbst gesetzten Autobudget.'
-      : status === 'unter'
-        ? `Das Auto liegt nach deinen Annahmen etwa ${formatEuro(-differenz)} pro Monat unter deinem `
-          + 'selbst gesetzten Autobudget.'
-        : 'Das Auto trifft dein selbst gesetztes Autobudget nach deinen Annahmen genau.'
-  return { budgetMonat: budget, kostenMonat: kosten, differenz, status, text }
+  const status: BudgetCheck['status'] = unvollstaendig && rohStatus !== 'ueber' ? 'offen' : rohStatus
+  const fehlt = fehlendText(e.fehlendLaufend)
+  let text: string
+  if (status === 'ueber') {
+    text = unvollstaendig
+      ? `Schon die bekannten laufenden Ausgaben liegen im Monatsdurchschnitt etwa ${formatEuro(differenz)} über `
+        + `deinem Monatsbudget. Das ist eine Zwischensumme, mit den fehlenden Positionen wird es mehr. ${fehlt}`
+      : `Deine laufenden Ausgaben liegen im Monatsdurchschnitt etwa ${formatEuro(differenz)} über deinem Monatsbudget.`
+  } else if (status === 'offen') {
+    text = `Die bekannten laufenden Ausgaben liegen im Monatsdurchschnitt bei ${formatEuro(laufend)} und damit `
+      + `${formatEuro(Math.abs(differenz))} ${differenz < 0 ? 'unter' : 'genau auf'} deinem Monatsbudget. `
+      + `Das ist eine Zwischensumme: ein Restbudget lässt sich erst mit allen Angaben nennen. ${fehlt}`
+  } else if (status === 'unter') {
+    text = `Deine laufenden Ausgaben liegen im Monatsdurchschnitt etwa ${formatEuro(-differenz)} unter deinem Monatsbudget.`
+  } else {
+    text = 'Deine laufenden Ausgaben treffen dein Monatsbudget im Monatsdurchschnitt genau.'
+  }
+  return {
+    budgetMonat: budget, laufendMonat: laufend, wirtschaftlichMonat: e.wirtschaftlichMonat,
+    differenz, status, unvollstaendig, fehlend: e.fehlendLaufend, text,
+  }
 }
 
 // ── A/B-Vergleich ───────────────────────────────────────────────────────────
@@ -413,8 +459,8 @@ export function vergleiche(a: AutokostenErgebnis, b: AutokostenErgebnis): Vergle
 }
 
 /** Auto B vorbelegen: gemeinsame NUTZUNGSannahmen übernehmen, fahrzeugspezifische
- *  Werte (Preis, Verbrauch, Versicherung, Steuer, Wartung, Reifen, Wertverlust,
- *  Finanzierung) bewusst NICHT — die gehören zum anderen Auto. */
+ *  Werte (Preis, Verbrauch, Versicherung, Steuer, Wartung, Reifen, Wertverlust)
+ *  bewusst NICHT — die gehören zum anderen Auto. */
 export function starteVergleich(a: AutokostenForm): AutokostenForm {
   return {
     ...EMPTY_FORM,
@@ -489,7 +535,8 @@ export function ladeForm(): AutokostenForm | null {
     if (!roh) return null
     const obj = JSON.parse(roh)
     if (!obj || typeof obj !== 'object') return null
-    // nur bekannte Felder übernehmen, Rest aus EMPTY_FORM
+    // Nur bekannte Felder übernehmen, Rest aus EMPTY_FORM. Alte, nicht mehr bekannte Schlüssel (z. B. eine
+    // früher gespeicherte Rate) werden hier ignoriert und beim nächsten Speichern nicht mehr geschrieben.
     const out: AutokostenForm = { ...EMPTY_FORM }
     for (const k of Object.keys(EMPTY_FORM) as (keyof AutokostenForm)[]) {
       if (typeof obj[k] === 'string') (out[k] as string) = obj[k]

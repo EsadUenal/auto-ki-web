@@ -5,7 +5,7 @@ import {
   GitCompareArrows, ArrowRight, Info, RotateCcw,
 } from 'lucide-react'
 import {
-  baueInsights, berechne, budgetCheck, formatDelta, formatEuro, formatEuroKurz,
+  baueInsights, berechne, budgetCheck, fehlendText, formatDelta, formatEuro, formatEuroKurz,
   formatMenge, formatProKm, formatProzent, starteVergleich, validate, vergleiche,
   type AutokostenErgebnis as Ergebnis, type AutokostenForm, type PostenKey,
 } from './logic'
@@ -18,7 +18,7 @@ import {
  * und Vergleich nie unterschiedliche Ergebnisse zeigen.
  *
  * Reihenfolge bewusst nach Erkenntniswert: Hero → Budget → 1/3/5 Jahre →
- * Aufschlüsselung → Kontobelastung → Simulator → Vergleich → ENFAL-Wege.
+ * Aufschlüsselung → laufende vs. wirtschaftliche Kosten → Simulator → Vergleich → ENFAL-Wege.
  */
 
 const cardCls = 'rounded-2xl border border-[#e6e1da] bg-white shadow-[0_16px_36px_-28px_rgba(40,25,10,0.22)]'
@@ -56,7 +56,11 @@ function Hero({ e }: { e: Ergebnis }) {
       <div className="rounded-2xl bg-gray-900 text-white p-4 sm:p-5 shadow-[0_16px_36px_-24px_rgba(0,0,0,0.5)]">
         <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-white/55">Pro Monat</p>
         <p className="mt-1.5 text-3xl font-bold tabular-nums">{formatEuro(e.wirtschaftlichMonat)}</p>
-        <p className="mt-1 text-[11px] text-white/50">wirtschaftliche Autokosten</p>
+        <p className="mt-1 text-[11px] text-white/50">
+          {e.wirtschaftlichUnvollstaendig
+            ? 'Zwischensumme, wirtschaftliche Kosten unvollständig'
+            : 'wirtschaftliche Kosten inklusive Wertverlust'}
+        </p>
       </div>
       <div className={`${cardCls} p-4 sm:p-5`}>
         <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400">Pro Jahr</p>
@@ -81,22 +85,31 @@ function Budget({ e, form }: { e: Ergebnis; form: AutokostenForm }) {
   if (!b) return null
   const farbe = b.status === 'ueber' ? 'text-amber-700' : b.status === 'unter' ? 'text-emerald-700' : 'text-gray-700'
   return (
-    <Abschnitt icon={<PiggyBank size={14} />} titel="Budget-Check">
+    <Abschnitt
+      icon={<PiggyBank size={14} />}
+      titel="Budget-Check"
+      hinweis="Verglichen werden deine laufenden Ausgaben im Monatsdurchschnitt mit deinem Monatsbudget für laufende Ausgaben."
+    >
       <div className="grid grid-cols-3 gap-3 text-center">
-        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] py-3">
-          <p className="text-[11px] text-gray-500">Dein Budget</p>
+        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] py-3 px-1">
+          <p className="text-[11px] text-gray-500">Dein Monatsbudget</p>
           <p className="mt-0.5 text-lg font-bold text-gray-900 tabular-nums">{formatEuro(b.budgetMonat)}</p>
         </div>
-        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] py-3">
-          <p className="text-[11px] text-gray-500">Berechnet</p>
-          <p className="mt-0.5 text-lg font-bold text-gray-900 tabular-nums">{formatEuro(b.kostenMonat)}</p>
+        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] py-3 px-1">
+          <p className="text-[11px] text-gray-500">{b.unvollstaendig ? 'Laufend (Zwischensumme)' : 'Laufende Ausgaben'}</p>
+          <p className="mt-0.5 text-lg font-bold text-gray-900 tabular-nums">{formatEuro(b.laufendMonat)}</p>
         </div>
-        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] py-3">
-          <p className="text-[11px] text-gray-500">Differenz</p>
+        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] py-3 px-1">
+          <p className="text-[11px] text-gray-500">Abstand</p>
           <p className={`mt-0.5 text-lg font-bold tabular-nums ${farbe}`}>{formatDelta(b.differenz, false)}</p>
         </div>
       </div>
       <p className="mt-3 text-sm text-gray-700 leading-relaxed">{b.text}</p>
+      <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+        Daneben: wirtschaftliche Kosten inklusive Wertverlust {formatEuro(b.wirtschaftlichMonat)} pro Monat
+        {e.wirtschaftlichUnvollstaendig ? ' (Zwischensumme, unvollständig)' : ''}. Der Wertverlust ist ein
+        wirtschaftlicher Aufwand und wird nicht monatlich abgebucht.
+      </p>
       <p className="mt-1 text-[11px] text-gray-400">
         Das ist ein Abgleich mit deiner eigenen Zahl, keine Finanzberatung.
       </p>
@@ -185,32 +198,35 @@ function Aufschluesselung({ e, form }: { e: Ergebnis; form: AutokostenForm }) {
   )
 }
 
-// ── Wirtschaftliche Kosten vs. Kontobelastung ───────────────────────────────
+// ── Laufende Ausgaben vs. wirtschaftliche Kosten ────────────────────────────
 
-function Cashflow({ e }: { e: Ergebnis }) {
-  if (!e.hatFinanzierung) return null
+function Kostenarten({ e }: { e: Ergebnis }) {
   return (
-    <Abschnitt icon={<Wallet size={14} />} titel="Wirtschaftliche Kosten vs. monatliche Belastung">
+    <Abschnitt icon={<Wallet size={14} />} titel="Laufende Ausgaben und wirtschaftliche Kosten">
       <div className="grid sm:grid-cols-2 gap-3">
-        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] p-4">
-          <p className="text-[11px] uppercase tracking-wide text-gray-400">Wirtschaftliche Autokosten</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 tabular-nums">{formatEuro(e.wirtschaftlichMonat)}</p>
-          <p className="mt-1 text-xs text-gray-500">inkl. Wertverlust, ohne Finanzierungsrate</p>
-        </div>
         <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-          <p className="text-[11px] uppercase tracking-wide text-orange-500">Monatliche Kontobelastung</p>
-          <p className="mt-1 text-2xl font-bold text-orange-600 tabular-nums">{formatEuro(e.cashBelastungMonat)}</p>
+          <p className="text-[11px] uppercase tracking-wide text-orange-500">Laufende Ausgaben im Monatsdurchschnitt</p>
+          <p className="mt-1 text-2xl font-bold text-orange-600 tabular-nums">{formatEuro(e.laufendeCashMonat)}</p>
           <p className="mt-1 text-xs text-orange-500/80">
-            {formatEuro(e.laufendeCashMonat)} laufende Ausgaben + {formatEuro(e.finanzierungMonat)} Rate
+            {e.laufendUnvollstaendig ? `Zwischensumme. ${fehlendText(e.fehlendLaufend)}` : 'ohne Wertverlust'}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[#e6e1da] bg-[#faf8f5] p-4">
+          <p className="text-[11px] uppercase tracking-wide text-gray-400">Wirtschaftliche Kosten inklusive Wertverlust</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 tabular-nums">{formatEuro(e.wirtschaftlichMonat)}</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {e.wirtschaftlichUnvollstaendig
+              ? 'Zwischensumme: ' + (e.hatWertverlust ? 'laufende Positionen fehlen.' : 'Wertverlust nicht angegeben.')
+              : 'laufende Ausgaben plus Wertverlust'}
           </p>
         </div>
       </div>
       <p className="mt-3 flex items-start gap-2 text-xs text-gray-500 leading-relaxed">
         <Info size={13} className="mt-0.5 shrink-0 text-gray-400" />
         <span>
-          Die Finanzierungsrate beeinflusst deine monatliche Belastung. Sie wird nicht zusätzlich
-          vollständig als wirtschaftlicher Fahrzeugkostenblock gezählt, damit Fahrzeugwert und
-          Wertverlust nicht doppelt erfasst werden. Zins- und Tilgungsanteil schätzt ENFAL nicht.
+          Jährliche und unregelmäßige Zahlungen (Versicherung, Steuer, Wartung, Reifen) sind hier rechnerische
+          Monatsanteile, keine tatsächliche monatliche Abbuchung. Der Wertverlust ist ein wirtschaftlicher
+          Aufwand, kein Kontoabgang.
         </span>
       </p>
     </Abschnitt>
@@ -285,7 +301,9 @@ function WasWaereWenn({ basisForm, basis }: { basisForm: AutokostenForm; basis: 
         {simErgebnis ? (
           <>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-sm text-gray-600">Neu pro Monat</span>
+              <span className="text-sm text-gray-600">
+                Neu pro Monat{simErgebnis.wirtschaftlichUnvollstaendig ? ' (Zwischensumme)' : ''}
+              </span>
               <span className="text-2xl font-bold text-gray-900 tabular-nums">
                 {formatEuro(simErgebnis.wirtschaftlichMonat)}
               </span>
@@ -298,6 +316,11 @@ function WasWaereWenn({ basisForm, basis }: { basisForm: AutokostenForm; basis: 
                 {formatDelta(delta, false)} pro Monat
               </span>
             </div>
+            {simErgebnis.laufendUnvollstaendig && (
+              <p className="mt-2 text-xs text-amber-800">
+                Zwischensumme: {fehlendText(simErgebnis.fehlendLaufend)}
+              </p>
+            )}
             <p className="mt-2 text-xs text-gray-500">
               {formatEuroKurz(simErgebnis.wirtschaftlichJahr)} pro Jahr ·
               {' '}{formatProKm(simErgebnis.kostenProKm)} pro km
@@ -332,7 +355,6 @@ const B_FELDER: { feld: keyof AutokostenForm; label: string; suffix: string }[] 
   { feld: 'wartungJahr', label: 'Wartung', suffix: '€/Jahr' },
   { feld: 'reifenJahr', label: 'Reifen', suffix: '€/Jahr' },
   { feld: 'wertverlustJahr', label: 'Wertverlust', suffix: '€/Jahr' },
-  { feld: 'finanzierungMonat', label: 'Finanzierungsrate', suffix: '€/Monat' },
 ]
 
 function Vergleich({ formA, a }: { formA: AutokostenForm; a: Ergebnis }) {
@@ -448,6 +470,17 @@ function Vergleich({ formA, a }: { formA: AutokostenForm; a: Ergebnis }) {
             ))}
           </div>
 
+          {(a.wirtschaftlichUnvollstaendig || b.wirtschaftlichUnvollstaendig) && (
+            <p className="mt-4 text-xs text-amber-800 leading-relaxed">
+              Zwischensumme, nicht vollständig vergleichbar.
+              {a.fehlendLaufend.length > 0 && ` Auto A: ${fehlendText(a.fehlendLaufend)}`}
+              {!a.hatWertverlust && ' Auto A: Wertverlust nicht angegeben.'}
+              {b.fehlendLaufend.length > 0 && ` Auto B: ${fehlendText(b.fehlendLaufend)}`}
+              {!b.hatWertverlust && ' Auto B: Wertverlust nicht angegeben.'}
+              {' '}Ein fehlender Betrag zählt als 0; trage 0 ausdrücklich ein, wenn die Position nicht anfällt.
+            </p>
+          )}
+
           <div className="mt-4 rounded-xl border border-[#e6e1da] bg-[#faf8f5] p-4">
             <p className="text-sm text-gray-700">
               Auto B kostet <span className="font-semibold">{formatDelta(d.monat, false)} pro Monat</span>,
@@ -525,12 +558,22 @@ export default function AutokostenErgebnis({ ergebnis, form }: {
     <div className="space-y-4">
       <Hero e={ergebnis} />
 
+      {ergebnis.laufendUnvollstaendig && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">Laufende Ausgaben unvollständig</p>
+          <p className="mt-0.5 text-xs text-amber-800 leading-relaxed">
+            {fehlendText(ergebnis.fehlendLaufend)} Alle Ergebnisse sind eine Zwischensumme. ENFAL setzt keine
+            Werte ein. Fällt eine Position nicht an, trage ausdrücklich 0 ein.
+          </p>
+        </div>
+      )}
       {!ergebnis.hatWertverlust && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-semibold text-amber-900">Wertverlust nicht berücksichtigt</p>
           <p className="mt-0.5 text-xs text-amber-800 leading-relaxed">
-            Du hast keinen Wertverlust angegeben. Deine tatsächlichen wirtschaftlichen Kosten
-            können dadurch deutlich höher sein. ENFAL setzt hier bewusst keinen geschätzten Wert ein.
+            Du hast keinen Wertverlust angegeben. Die wirtschaftliche Gesamtsicht ist dadurch unvollständig;
+            deine laufenden Ausgaben sind davon nicht betroffen. ENFAL setzt hier bewusst keinen geschätzten
+            Wert ein.
           </p>
         </div>
       )}
@@ -538,7 +581,7 @@ export default function AutokostenErgebnis({ ergebnis, form }: {
       <Budget e={ergebnis} form={form} />
       <Projektion e={ergebnis} />
       <Aufschluesselung e={ergebnis} form={form} />
-      <Cashflow e={ergebnis} />
+      <Kostenarten e={ergebnis} />
       <WasWaereWenn basisForm={form} basis={ergebnis} />
       <Vergleich formA={form} a={ergebnis} />
       <Wege />

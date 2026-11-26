@@ -294,16 +294,18 @@ export default function AutokostenView() {
                 <Field label="Reifen" suffix="€/Jahr" value={form.reifenJahr}
                   onChange={(v) => set('reifenJahr', v)} placeholder="300" error={fehlerFuer('reifenJahr')} />
               </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Leere Felder gelten als nicht angegeben: das Ergebnis wird dann als Zwischensumme
+                gekennzeichnet. Fällt eine Position nicht an, trage ausdrücklich 0 ein.
+              </p>
             </section>
 
             {/* 4 — Optional */}
             <section className="p-5 sm:p-6 space-y-3">
               <GroupTitle n={4}>Optional</GroupTitle>
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Stellplatz / Garage" suffix="€/Monat" value={form.garageMonat}
                   onChange={(v) => set('garageMonat', v)} placeholder="0" error={fehlerFuer('garageMonat')} />
-                <Field label="Finanzierungsrate" suffix="€/Monat" value={form.finanzierungMonat}
-                  onChange={(v) => set('finanzierungMonat', v)} placeholder="0" error={fehlerFuer('finanzierungMonat')} />
                 <Field label="Wertverlust" suffix="€/Jahr" value={form.wertverlustJahr}
                   onChange={(v) => set('wertverlustJahr', v)} placeholder="2.000" error={fehlerFuer('wertverlustJahr')} />
               </div>
@@ -317,15 +319,15 @@ export default function AutokostenView() {
               </button>
               {showMore && (
                 <div className="sm:max-w-[50%]">
-                  <Field label="Dein maximales Autobudget pro Monat" suffix="€/Monat"
+                  <Field label="Dein Monatsbudget für laufende Ausgaben" suffix="€/Monat"
                     value={form.budgetMonat} onChange={(v) => set('budgetMonat', v)}
                     placeholder="400" error={fehlerFuer('budgetMonat')}
-                    hint="Nur für den Abgleich mit dem Ergebnis. Keine Finanzberatung." />
+                    hint="Verglichen wird mit deinen laufenden Ausgaben im Monatsdurchschnitt, ohne Wertverlust. Keine Finanzberatung." />
                 </div>
               )}
               <p className="text-[11px] text-gray-400 leading-relaxed">
                 Wertverlust als Betrag pro Jahr. Wenn du ihn nicht kennst, lass das Feld leer.
-                die Kosten werden dann ohne Wertverlust berechnet und ausdrücklich so gekennzeichnet.
+                Die Kosten werden dann ohne Wertverlust berechnet und ausdrücklich so gekennzeichnet.
                 ENFAL setzt keine geschätzte Quote ein.
               </p>
             </section>
