@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import { streamChat } from '../api/client'
 import { baueVerlauf } from './chatVerlauf'
 import SourceBadge from './SourceBadge'
+import AntwortHinweis from './AntwortHinweis'
 import type { CarContext, Conversation, Message, SourceMeta } from '../types'
 
 interface ChatViewProps {
@@ -156,22 +157,33 @@ export default function ChatView({ conversation, onMessagesUpdate, onSaveExchang
           )
         )
       },
-      onError(err: string, art?: 'fehler' | 'hinweis') {
+      onError(err: string, art?: 'fehler' | 'hinweis', teilantwort?: boolean) {
         cancelPendingRaf()
+        const teilText = accumRef.current
         streamIdRef.current = null
         setLiveText('')
         setStatusText('')
         setIsStreaming(false)
+        // CHAT-1: Ein Fehler oder Abbruch ist KEIN vollstaendiger Austausch — er wird nicht
+        // gespeichert (kein Speichern des Austauschs) und per `status` aus dem naechsten Verlauf gehalten.
         // Konversation gewechselt → Fehler nicht auf die falsche schreiben.
         if (convIdRef.current !== startConvId) return
+        const behalteTeil = teilantwort === true && teilText.trim().length > 0
         onMessagesUpdate(
-          baseMessages.map((m) =>
+          baseMessages.map((m) => {
+            if (m.id !== assistantMsg.id) return m
+            // Abbruch nach bereits empfangenem Text: Teiltext bleibt sichtbar, ausdruecklich als
+            // unvollstaendig gekennzeichnet.
+            if (behalteTeil) return { ...m, content: teilText, streaming: false, status: 'unvollstaendig' as const }
             // Ein erreichtes Tageslimit ist ein normaler Produktzustand, kein
             // Defekt — es bekommt deshalb kein "Fehler:"-Praefix.
-            m.id === assistantMsg.id
-              ? { ...m, content: art === 'hinweis' ? err : `**Fehler:** ${err}`, streaming: false }
-              : m
-          )
+            return {
+              ...m,
+              content: art === 'hinweis' ? err : `**Fehler:** ${err}`,
+              streaming: false,
+              status: art === 'hinweis' ? ('hinweis' as const) : ('fehler' as const),
+            }
+          })
         )
       },
     }, ctrl.signal, car?.titel)
@@ -403,6 +415,9 @@ function MessageBubble({
               {message.content || (message.streaming ? '​' : '')}
             </ReactMarkdown>
           </div>
+        )}
+        {!message.streaming && message.status === 'unvollstaendig' && (
+          <AntwortHinweis art="unvollstaendig" />
         )}
         {!message.streaming && message.meta && (
           <SourceBadge meta={message.meta} />

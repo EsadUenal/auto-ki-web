@@ -1,4 +1,4 @@
-import { ShieldCheck, Globe, Layers, Scissors } from 'lucide-react'
+import { Database, Globe, Layers, Scissors } from 'lucide-react'
 import type { SourceMeta } from '../types'
 
 interface SourceBadgeProps {
@@ -58,8 +58,11 @@ function SourceChip({ source }: { source: string }) {
   const s = source?.toLowerCase()
   if (s === 'datenbank') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5">
-        <ShieldCheck size={11} /> Geprüfte Datenbank
+      <span
+        className="inline-flex items-center gap-1 text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-full px-2.5 py-0.5"
+        title="Herkunft: ENFAL-Fahrzeugdatenbank. Das ist keine Prüfung jedes einzelnen Eintrags; ungeprüfte Einträge werden in der Antwort als gemeldeter Hinweis genannt."
+      >
+        <Database size={11} /> Fahrzeugdatenbank
       </span>
     )
   }
@@ -73,7 +76,7 @@ function SourceChip({ source }: { source: string }) {
   if (s === 'gemischt') {
     return (
       <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5">
-        <Layers size={11} /> Datenbank + Web
+        <Layers size={11} /> Fahrzeugdatenbank + Web
       </span>
     )
   }

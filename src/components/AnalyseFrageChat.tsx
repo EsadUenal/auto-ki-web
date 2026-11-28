@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Send, Loader2, MessageCircleQuestion, ChevronDown, ArrowDown } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import AntwortHinweis from './AntwortHinweis'
+import { istSpeicherbar } from './chatVerlauf'
 import {
   streamAnalyseFrage,
   apiListCheckFragen,
@@ -12,6 +14,13 @@ import {
 interface QA {
   frage: string
   antwort: string
+  /**
+   * CHAT-1: 'fehler' = es gibt keine Antwort, nur eine Meldung; 'unvollstaendig' = Abbruch nach
+   * bereits empfangenem Text. Beides wird nicht gespeichert und nicht als Verlauf weitergereicht.
+   */
+  status?: 'fehler' | 'unvollstaendig'
+  /** Das Modell hat am Output-Limit gestoppt (Hinweis steht zusaetzlich im Text). */
+  abgeschnitten?: boolean
 }
 
 /**
@@ -116,7 +125,8 @@ export default function AnalyseFrageChat({
     setInput('')
 
     // Verlauf aus den bisherigen Q&A-Paaren (Multi-Turn, baut aufeinander auf).
-    const verlauf: VerlaufItem[] = qas.flatMap((qa) => [
+    // Fehlgeschlagene und abgebrochene Paare gehoeren nicht in den Verlauf (keine KI-Aussage).
+    const verlauf: VerlaufItem[] = qas.filter((qa) => !qa.status).flatMap((qa) => [
       { rolle: 'user' as const, text: qa.frage },
       { rolle: 'ki' as const, text: qa.antwort },
     ])
@@ -129,6 +139,7 @@ export default function AnalyseFrageChat({
     abortRef.current = ctrl
 
     let answer = ''
+    let fehlerGemeldet = false
     await streamAnalyseFrage(
       checkId,
       frage,
@@ -140,8 +151,23 @@ export default function AnalyseFrageChat({
             prev.map((qa, i) => (i === idx ? { ...qa, antwort: qa.antwort + t } : qa)),
           )
         },
-        onError: (err) => setError(err),
-        onDone: () => {},
+        onError: (err, _art, teilantwort) => {
+          fehlerGemeldet = true
+          const behalteTeil = teilantwort === true && answer.trim().length > 0
+          if (behalteTeil) {
+            // Teilantwort bleibt sichtbar, ausdruecklich als unvollstaendig.
+            setQas((prev) => prev.map((qa, i) => (i === idx ? { ...qa, status: 'unvollstaendig' } : qa)))
+          } else {
+            // Keine Antwort: statt eines endlosen Spinners die Meldung am Paar zeigen.
+            setQas((prev) => prev.map((qa, i) => (i === idx ? { ...qa, antwort: '', status: 'fehler' } : qa)))
+          }
+          setError(err)
+        },
+        onDone: (meta) => {
+          if (meta?.abgeschnitten) {
+            setQas((prev) => prev.map((qa, i) => (i === idx ? { ...qa, abgeschnitten: true } : qa)))
+          }
+        },
       },
       ctrl.signal,
     )
@@ -149,8 +175,9 @@ export default function AnalyseFrageChat({
     setStreaming(false)
     abortRef.current = null
 
-    // Fertiges Paar zum Speichern vormerken und (falls checkId da) sofort sichern.
-    if (answer.trim()) {
+    // Fertiges Paar zum Speichern vormerken und (falls checkId da) sofort sichern. Ein Fehler oder
+    // Abbruch ist kein vollstaendiger Austausch und wird nicht gespeichert.
+    if (istSpeicherbar(answer, fehlerGemeldet)) {
       pendingRef.current.push({ frage, antwort: answer })
       void flush()
     }
@@ -193,8 +220,16 @@ export default function AnalyseFrageChat({
                         <div className="chat-prose">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{qa.antwort}</ReactMarkdown>
                         </div>
+                      ) : qa.status === 'fehler' ? (
+                        <p className="text-xs text-red-600">Zu dieser Frage gibt es keine Antwort.</p>
                       ) : (
                         <Loader2 size={15} className="animate-spin text-gray-400" />
+                      )}
+                      {qa.status === 'unvollstaendig' && <AntwortHinweis art="unvollstaendig" />}
+                      {qa.abgeschnitten && (
+                        <div className="mt-2">
+                          <AntwortHinweis art="abgeschnitten" />
+                        </div>
                       )}
                     </div>
                   </div>

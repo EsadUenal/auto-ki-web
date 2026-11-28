@@ -1,3 +1,4 @@
+import { deuteStreamEreignis } from './streamEreignis'
 import type {
   InseratOptimierung,
   KaufCheckForm,
@@ -469,7 +470,7 @@ export interface ChatStreamCallbacks {
    * in der Oberflaeche nicht wie einer aussehen. Optional — bestehende
    * Aufrufer bleiben unveraendert gueltig.
    */
-  onError: (err: string, art?: MeldungsArt) => void
+  onError: (err: string, art?: MeldungsArt, teilantwort?: boolean) => void
 }
 
 export async function streamChat(
@@ -527,6 +528,10 @@ export async function streamChat(
   const decoder = new TextDecoder()
   let buffer = ''
   let capturedMeta: SourceMeta | null = null
+  // CHAT-1: Fehler und Abbruch sind eigene Ereignisse. Nach einem Fehler gibt es kein onDone —
+  // die Oberflaeche behandelt den Austausch nicht als vollstaendig und speichert ihn nicht.
+  let fehler: { nachricht: string; teilantwort: boolean } | null = null
+  let hatText = false
 
   try {
     while (true) {
@@ -539,34 +544,18 @@ export async function streamChat(
 
       for (const line of lines) {
         if (!line.startsWith('data:')) continue
-        const raw = line.slice(5).trim()
+        const ereignis = deuteStreamEreignis(line.slice(5).trim())
 
-        if (!raw || raw === '[DONE]') continue
-
-        let parsed: Record<string, unknown>
-        try {
-          parsed = JSON.parse(raw)
-        } catch {
-          // Kein JSON → roher Text-Token (Fallback)
-          callbacks.onToken(raw)
-          continue
-        }
-
-        // Status-Event: {"status": "Durchsuche das Web…"}
-        if (typeof parsed.status === 'string') {
-          callbacks.onStatus(parsed.status)
-          continue
-        }
-
-        // Text-Delta: {"delta": "..."}
-        if (typeof parsed.delta === 'string') {
-          callbacks.onToken(parsed.delta)
-          continue
-        }
-
-        // Meta-Event: {"meta": {"quelle": "...", "vertrauen": "...", "belege": [...]}}
-        if (parsed.meta && typeof parsed.meta === 'object') {
-          const m = parsed.meta as Record<string, unknown>
+        if (ereignis.art === 'status') {
+          callbacks.onStatus(ereignis.text)
+        } else if (ereignis.art === 'delta') {
+          hatText = true
+          callbacks.onToken(ereignis.text)
+        } else if (ereignis.art === 'fehler') {
+          fehler = { nachricht: ereignis.nachricht, teilantwort: ereignis.teilantwort || hatText }
+        } else if (ereignis.art === 'meta') {
+          // Meta-Event: {"meta": {"quelle": "...", "vertrauen": "...", "belege": [...]}}
+          const m = ereignis.meta
           capturedMeta = {
             source: (m.quelle as SourceMeta['source']) ?? 'unbekannt',
             trust_level: (m.vertrauen as SourceMeta['trust_level']) ?? 'unbekannt',
@@ -576,8 +565,18 @@ export async function streamChat(
         }
       }
     }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return
+    // Verbindung mitten im Stream verloren: bereits empfangener Text ist eine Teilantwort.
+    callbacks.onError(BACKEND_NICHT_ERREICHBAR, 'fehler', hatText)
+    return
   } finally {
     reader.releaseLock()
+  }
+
+  if (fehler) {
+    callbacks.onError(fehler.nachricht, 'fehler', fehler.teilantwort)
+    return
   }
 
   callbacks.onDone(
@@ -588,14 +587,15 @@ export async function streamChat(
 // ---- Analyse-Rückfragen (kontextgebundener Chat nach einem Check) ----
 export interface AnalyseFrageCallbacks {
   onToken: (token: string) => void
-  onDone: () => void
+  /** `abgeschnitten`: das Modell hat am Output-Limit gestoppt (Hinweis steht zusaetzlich im Text). */
+  onDone: (meta?: { abgeschnitten: boolean }) => void
   /**
    * `art` unterscheidet einen echten Fehler von einem normalen
    * Produktzustand. Ein erreichtes Tageslimit ist kein Defekt und soll
    * in der Oberflaeche nicht wie einer aussehen. Optional — bestehende
    * Aufrufer bleiben unveraendert gueltig.
    */
-  onError: (err: string, art?: MeldungsArt) => void
+  onError: (err: string, art?: MeldungsArt, teilantwort?: boolean) => void
 }
 
 /**
@@ -649,6 +649,9 @@ export async function streamAnalyseFrage(
 
   const decoder = new TextDecoder()
   let buffer = ''
+  let fehler: { nachricht: string; teilantwort: boolean } | null = null
+  let hatText = false
+  let abgeschnitten = false
   try {
     while (true) {
       const { done, value } = await reader.read()
@@ -658,25 +661,30 @@ export async function streamAnalyseFrage(
       buffer = lines.pop() ?? ''
       for (const line of lines) {
         if (!line.startsWith('data:')) continue
-        const raw = line.slice(5).trim()
-        if (!raw || raw === '[DONE]') continue
-        try {
-          const parsed = JSON.parse(raw) as Record<string, unknown>
-          if (typeof parsed.delta === 'string') callbacks.onToken(parsed.delta)
-        } catch {
-          callbacks.onToken(raw)  // Kein JSON → roher Text-Token (Fallback)
+        const ereignis = deuteStreamEreignis(line.slice(5).trim())
+        if (ereignis.art === 'delta') {
+          hatText = true
+          callbacks.onToken(ereignis.text)
+        } else if (ereignis.art === 'fehler') {
+          fehler = { nachricht: ereignis.nachricht, teilantwort: ereignis.teilantwort || hatText }
+        } else if (ereignis.art === 'meta') {
+          abgeschnitten = ereignis.meta.abgeschnitten === true
         }
       }
     }
   } catch (e) {
     if ((e as Error).name === 'AbortError') return
-    callbacks.onError((e as Error).message)
+    callbacks.onError(BACKEND_NICHT_ERREICHBAR, 'fehler', hatText)
     return
   } finally {
     reader.releaseLock()
   }
 
-  callbacks.onDone()
+  if (fehler) {
+    callbacks.onError(fehler.nachricht, 'fehler', fehler.teilantwort)
+    return
+  }
+  callbacks.onDone({ abgeschnitten })
 }
 
 // ── Payments (Phase 2d) ───────────────────────────────────────────────────────

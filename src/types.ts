@@ -14,6 +14,14 @@ export interface SourceMeta {
   abgeschnitten?: boolean
 }
 
+/**
+ * Zustand einer Assistenten-Nachricht, die KEINE vollstaendige Antwort ist:
+ *  - 'fehler' / 'hinweis': es gibt keine Antwort, nur eine Meldung (Ausfall, Kontingent);
+ *  - 'unvollstaendig': die Antwort ist nach bereits empfangenem Text abgebrochen.
+ * Solche Nachrichten werden nicht als Austausch gespeichert und nicht als Verlauf weitergereicht.
+ */
+export type NachrichtenStatus = 'fehler' | 'hinweis' | 'unvollstaendig'
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -21,6 +29,7 @@ export interface Message {
   meta?: SourceMeta
   streaming?: boolean
   statusText?: string
+  status?: NachrichtenStatus
 }
 
 export interface CarContext {
