@@ -420,7 +420,7 @@ function MessageBubble({
           <AntwortHinweis art="unvollstaendig" />
         )}
         {!message.streaming && message.meta && (
-          <SourceBadge meta={message.meta} />
+          <SourceBadge meta={message.meta} art="chat" />
         )}
       </div>
     </div>

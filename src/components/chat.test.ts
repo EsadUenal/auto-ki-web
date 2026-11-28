@@ -97,7 +97,7 @@ test('G: Quellen haengen ausschliesslich an ihrer eigenen Assistenten-Nachricht'
   // Und sie wird nur unter einer nicht mehr streamenden Nachricht angezeigt,
   // die selbst ein meta traegt — kein Rueckgriff auf einen Chat-weiten State.
   assert.match(chatView, /!message\.streaming && message\.meta/)
-  assert.match(chatView, /<SourceBadge meta=\{message\.meta\} \/>/)
+  assert.match(chatView, /<SourceBadge meta=\{message\.meta\} art=\"chat\" \/>/)
   // Es gibt keinen konversationsweiten Quellen-State, aus dem geleakt werden koennte.
   assert.doesNotMatch(chatView, /useState<SourceMeta/)
 })
@@ -125,7 +125,7 @@ test('K: reines Modellwissen bekommt KEINEN pseudoquellenartigen Chip', () => {
   assert.doesNotMatch(badgeCode, /KI-Wissen/)
   assert.doesNotMatch(badgeCode, /Quelle unbekannt/)
   assert.match(badge, /export const BELEGTE_QUELLEN = \['datenbank', 'web', 'gemischt'\] as const/)
-  assert.match(badge, /\{belegt && <SourceChip source=\{meta\.source\} \/>\}/)
+  assert.match(badge, /\{belegt && <SourceChip source=\{meta\.source\} art=\{art\} \/>\}/)
   // Ohne belegte Quelle, ohne Links und ohne Kuerzung: gar nichts rendern.
   assert.match(badge, /if \(!belegt && links\.length === 0 && !meta\.abgeschnitten\) return null/)
 })
@@ -248,4 +248,27 @@ test('T: Totalausfall, Abbruch nach Teiltext und MAX_TOKENS haben getrennte Zust
   const chatLF = chatView.replace(/\r\n/g, '\n')
   assert.match(chatLF, /onDone\(meta: SourceMeta\) \{[\s\S]*?onSaveExchange\?\.\(text, finalContent, startConvId\)/)
   assert.match(analyseChat, /meta\?\.abgeschnitten/)
+})
+
+test('U: Chat-Chip nennt nur bereitgestellten Kontext, die Check-Ansichten behalten ihre Bedeutung', () => {
+  const kauf = readFileSync(new URL('./KaufCheckView.tsx', import.meta.url), 'utf8')
+  const verkauf = readFileSync(new URL('./VerkaufsCheckView.tsx', import.meta.url), 'utf8')
+  // Chat: Kontext-Wortlaut, keine Behauptung tatsaechlicher Antwortbelege.
+  assert.match(badge, /Fahrzeugdaten als Kontext/)
+  assert.match(badge, /Fahrzeugdaten \+ Web als Kontext/)
+  assert.match(badge, /Web-Treffer als Kontext/)
+  assert.match(badge, /belegt nicht, dass jede Aussage daraus stammt/)
+  assert.match(chatView, /<SourceBadge meta=\{message\.meta\} art="chat" \/>/)
+  // KaufCheck/VerkaufCheck: kein art-Prop -> Standard 'check' mit dem bisherigen Wortlaut.
+  for (const v of [kauf, verkauf]) {
+    assert.match(v, /<SourceBadge meta=\{\{ source: result\.quelle as never/)
+    assert.doesNotMatch(v, /art="chat"/)
+  }
+  assert.match(badge, /art = 'check'/)
+  assert.match(badge, /chat \? 'Fahrzeugdaten als Kontext' : 'Fahrzeugdatenbank'/)
+  assert.match(badge, /chat \? 'Web-Treffer als Kontext' : 'Web-Recherche'/)
+  assert.match(badge, /chat \? 'Fahrzeugdaten \+ Web als Kontext' : 'Fahrzeugdatenbank \+ Web'/)
+  // Echte Beleglinks bleiben unveraendert nutzbar, der Belegstatus ebenfalls.
+  assert.match(badge, /links\.map\(\(link, i\) =>/)
+  assert.match(badge, /BELEGTE_QUELLEN = \['datenbank', 'web', 'gemischt'\] as const/)
 })

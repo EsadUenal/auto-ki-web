@@ -3,6 +3,14 @@ import type { SourceMeta } from '../types'
 
 interface SourceBadgeProps {
   meta: SourceMeta
+  /**
+   * Was die Metadaten aussagen:
+   *  - 'check' (Standard, KaufCheck/VerkaufCheck): der Check ist aus Fahrzeugdatenbank/Web aufgebaut,
+   *    die Quelle ist die Herkunft der Befunde.
+   *  - 'chat': die Metadaten zeigen nur, welcher Kontext der Antwort BEREITGESTELLT wurde. Sie belegen
+   *    nicht, dass jede Aussage daraus stammt; die Antwort kann auch allgemeines Wissen enthalten.
+   */
+  art?: 'check' | 'chat'
 }
 
 /**
@@ -17,7 +25,7 @@ export function hatBelegteQuelle(source: string | undefined): boolean {
   return (BELEGTE_QUELLEN as readonly string[]).includes(source?.toLowerCase() ?? '')
 }
 
-export default function SourceBadge({ meta }: SourceBadgeProps) {
+export default function SourceBadge({ meta, art = 'check' }: SourceBadgeProps) {
   const links = extractLinks(meta.belege)
   const belegt = hatBelegteQuelle(meta.source)
 
@@ -27,7 +35,7 @@ export default function SourceBadge({ meta }: SourceBadgeProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-[#ece7e0]">
-      {belegt && <SourceChip source={meta.source} />}
+      {belegt && <SourceChip source={meta.source} art={art} />}
 
       {meta.abgeschnitten && (
         <span
@@ -54,29 +62,43 @@ export default function SourceBadge({ meta }: SourceBadgeProps) {
   )
 }
 
-function SourceChip({ source }: { source: string }) {
+// Chat: nur bereitgestellter Kontext (keine Behauptung tatsaechlicher Antwortbelege).
+const KONTEXT_HINWEIS =
+  'Zu dieser Antwort lagen diese Daten als Kontext vor. Das belegt nicht, dass jede Aussage daraus stammt: ' +
+  'die Antwort kann auch allgemeines Wissen enthalten. Die Links darunter sind die abgerufenen Quellen.'
+
+function SourceChip({ source, art }: { source: string; art: 'check' | 'chat' }) {
   const s = source?.toLowerCase()
+  const chat = art === 'chat'
   if (s === 'datenbank') {
     return (
       <span
         className="inline-flex items-center gap-1 text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-full px-2.5 py-0.5"
-        title="Herkunft: ENFAL-Fahrzeugdatenbank. Das ist keine Prüfung jedes einzelnen Eintrags; ungeprüfte Einträge werden in der Antwort als gemeldeter Hinweis genannt."
+        title={chat
+          ? KONTEXT_HINWEIS
+          : 'Herkunft: ENFAL-Fahrzeugdatenbank. Das ist keine Prüfung jedes einzelnen Eintrags; ungeprüfte Einträge werden in der Antwort als gemeldeter Hinweis genannt.'}
       >
-        <Database size={11} /> Fahrzeugdatenbank
+        <Database size={11} /> {chat ? 'Fahrzeugdaten als Kontext' : 'Fahrzeugdatenbank'}
       </span>
     )
   }
   if (s === 'web') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2.5 py-0.5">
-        <Globe size={11} /> Web-Recherche
+      <span
+        className="inline-flex items-center gap-1 text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2.5 py-0.5"
+        title={chat ? KONTEXT_HINWEIS : undefined}
+      >
+        <Globe size={11} /> {chat ? 'Web-Treffer als Kontext' : 'Web-Recherche'}
       </span>
     )
   }
   if (s === 'gemischt') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5">
-        <Layers size={11} /> Fahrzeugdatenbank + Web
+      <span
+        className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5"
+        title={chat ? KONTEXT_HINWEIS : undefined}
+      >
+        <Layers size={11} /> {chat ? 'Fahrzeugdaten + Web als Kontext' : 'Fahrzeugdatenbank + Web'}
       </span>
     )
   }
